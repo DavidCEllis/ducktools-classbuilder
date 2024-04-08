@@ -98,9 +98,9 @@ It will copy values provided as the `type` to `Field` into the
 Values provided to `doc` will be placed in the final `__slots__` 
 field so they are present on the class if `help(...)` is called.
 
-## Why don't you add <Feature>? ##
+## Why don't you add `<Feature>`? ##
 
-The core idea of this classbuilder is that if you need <feature> then 
+The core idea of this classbuilder is that if you need `<feature>` then 
 you can add it yourself, making it work the way **you** want it to work 
 rather than relying on something that is **almost** as you'd want it 
 to work.
@@ -250,7 +250,6 @@ if __name__ == "__main__":
 ### Frozen Classes? ###
 
 ```python
-# Frozen Classes #
 from ducktools.classbuilder import (
     slotclass,
     get_fields,

@@ -1,4 +1,3 @@
-# Frozen Classes #
 from ducktools.classbuilder import (
     slotclass,
     get_fields,
