@@ -409,11 +409,6 @@ along with adding a check to the builder.
 The additional check in the builder is needed to prevent more confusing
 errors when the `__init__` method is generated.
 
-To keep the code shorter for this example I'm just using `isinstance`
-checks on `PosOnlyField` instead of defining new attributes. If you
-want multiple new attributes it is better to define them as shown earlier
-for the `repr` exclusion example.
-
 ```python
 from ducktools.classbuilder import (
     builder,
