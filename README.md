@@ -180,7 +180,7 @@ Here is an example of adding the ability to exclude fields from `__repr__`.
 ```python
 from ducktools.classbuilder import (
     eq_desc,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     init_desc,
     slotclass,
@@ -190,7 +190,9 @@ from ducktools.classbuilder import (
 )
 
 
-FieldExt = fieldclass_maker("FieldExt", repr=True)
+@fieldclass
+class FieldExt(Field):
+    __slots__ = SlotFields(repr=True)
 
 
 def repr_exclude_maker(cls):
@@ -414,19 +416,19 @@ errors when the `__init__` method is generated.
 from ducktools.classbuilder import (
     builder,
     eq_desc,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     slot_gatherer,
+    Field,
     SlotFields,
     NOTHING,
     MethodMaker,
 )
 
 
-PosOnlyField = fieldclass_maker(
-    "PosOnlyField",
-    pos_only=True,
-)
+@fieldclass
+class PosOnlyField(Field):
+    __slots__ = SlotFields(pos_only=True)
 
 
 def init_maker(cls):
@@ -554,15 +556,18 @@ their attribute is set.
 from ducktools.classbuilder import (
     builder,
     default_methods,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     slot_gatherer,
+    Field,
     SlotFields,
     MethodMaker,
 )
 
 
-ConverterField = fieldclass_maker("ConverterField", converter=None)
+@fieldclass
+class ConverterField(Field):
+    __slots__ = SlotFields(converter=None)
 
 
 def setattr_maker(cls):
@@ -606,7 +611,6 @@ if __name__ == "__main__":
 
     ex = ConverterEx("42", "42")
     print(ex)
-
 ```
 
 
