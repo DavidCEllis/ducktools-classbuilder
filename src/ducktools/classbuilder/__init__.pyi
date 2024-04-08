@@ -51,12 +51,6 @@ repr_desc: MethodMaker
 eq_desc: MethodMaker
 default_methods: frozenset[MethodMaker]
 
-class SlotFields(dict):
-    ...
-
-def slot_gatherer(cls: type) -> dict[str, Field]:
-    ...
-
 def builder(
     cls: type,
     /,
@@ -65,6 +59,12 @@ def builder(
     methods: frozenset[MethodMaker],
     default_check: bool =True,
 ) -> type: ...
+
+class SlotFields(dict):
+    ...
+
+def slot_gatherer(cls: type) -> dict[str, Field]:
+    ...
 
 def slotclass(
     cls: type | None = None,

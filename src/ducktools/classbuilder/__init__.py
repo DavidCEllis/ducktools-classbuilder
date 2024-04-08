@@ -192,46 +192,6 @@ eq_desc = MethodMaker("__eq__", eq_maker)
 default_methods = frozenset({init_desc, repr_desc, eq_desc})
 
 
-# Subclass of dict to be identifiable by isinstance checks
-# For anything more complicated this could be made into a Mapping
-class SlotFields(dict):
-    pass
-
-
-def slot_gatherer(cls):
-    cls_slots = cls.__dict__.get("__slots__", None)
-
-    if not isinstance(cls_slots, SlotFields):
-        raise TypeError(
-            "__slots__ must be an instance of SlotFields "
-            "in order to generate a slotclass"
-        )
-
-    cls_annotations = cls.__dict__.get("__annotations__", {})
-    cls_fields = {}
-    slot_replacement = {}
-
-    for k, v in cls_slots.items():
-        if isinstance(v, Field):
-            attrib = v
-            if v.type is not NOTHING:
-                cls_annotations[k] = attrib.type
-        else:
-            # Plain values treated as defaults
-            attrib = Field(default=v)
-
-        slot_replacement[k] = attrib.doc
-        cls_fields[k] = attrib
-
-    # Replace the SlotAttributes instance with a regular dict
-    # So that help() works
-    setattr(cls, "__slots__", slot_replacement)
-
-    # Update annotations with any types from the slots assignment
-    setattr(cls, "__annotations__", cls_annotations)
-    return cls_fields
-
-
 def builder(cls, /, *, gatherer, methods, default_check=True):
     """
     The main builder for class generation
@@ -279,6 +239,47 @@ def builder(cls, /, *, gatherer, methods, default_check=True):
         setattr(cls, method.funcname, method)
 
     return cls
+
+
+# Example code of a slot-based boilerplate generator.
+# Subclass of dict to be identifiable by isinstance checks
+# For anything more complicated this could be made into a Mapping
+class SlotFields(dict):
+    pass
+
+
+def slot_gatherer(cls):
+    cls_slots = cls.__dict__.get("__slots__", None)
+
+    if not isinstance(cls_slots, SlotFields):
+        raise TypeError(
+            "__slots__ must be an instance of SlotFields "
+            "in order to generate a slotclass"
+        )
+
+    cls_annotations = cls.__dict__.get("__annotations__", {})
+    cls_fields = {}
+    slot_replacement = {}
+
+    for k, v in cls_slots.items():
+        if isinstance(v, Field):
+            attrib = v
+            if v.type is not NOTHING:
+                cls_annotations[k] = attrib.type
+        else:
+            # Plain values treated as defaults
+            attrib = Field(default=v)
+
+        slot_replacement[k] = attrib.doc
+        cls_fields[k] = attrib
+
+    # Replace the SlotAttributes instance with a regular dict
+    # So that help() works
+    setattr(cls, "__slots__", slot_replacement)
+
+    # Update annotations with any types from the slots assignment
+    setattr(cls, "__annotations__", cls_annotations)
+    return cls_fields
 
 
 def slotclass(cls=None, /, *, methods=default_methods):
