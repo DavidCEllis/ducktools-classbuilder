@@ -414,6 +414,13 @@ if __name__ == "__main__":
 
 ### Positional Only Arguments? ###
 
+Also possible. 
+
+To keep the code shorter for this example I'm just using `isinstance`
+checks on `PosOnlyField` instead of defining new attributes. If you
+want multiple new attributes it is better to define them as shown earlier
+for the `repr` exclusion example.
+
 ```python
 from ducktools.classbuilder import (
     builder,
