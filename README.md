@@ -170,8 +170,13 @@ You could also choose to yield tuples of `name, value` pairs in your implementat
 ### What if I want to exclude fields from a method? ###
 
 In order to exclude fields you first need to extend the `Field` class
-to add a new attribute. Thankfully there is a convenience `fieldclass_maker`
-function to assist in this.
+to add a new attribute. Thankfully the `@fieldclass` decorator can be used
+to extend `Field` in the same way as `@slotclass` works for regular classes.
+
+This special class builder is needed to treat `NOTHING` sentinel values as
+regular values in the `__init__` generator. As such this is only intended
+for use on `Field` subclasses.
+
 You also need to rewrite the code generator to check for the new attribute 
 and exclude the field if it is `False`.
 
