@@ -46,7 +46,7 @@ dataclasses has had to recreate the class from scratch while slotclasses
 has simply added the methods on to the original class. This is easy to 
 demonstrate using another decorator.
 
-> [!NOTE] This example requires Python 3.10 as earlier versions of 
+> This example requires Python 3.10 as earlier versions of 
 > `dataclasses` did not support the `slots` argument.
 
 ```python
