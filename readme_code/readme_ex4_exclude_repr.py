@@ -1,8 +1,9 @@
 from ducktools.classbuilder import (
-    slotclass,
+    eq_desc,
+    fieldclass_maker,
     get_fields,
     init_desc,
-    eq_desc,
+    slotclass,
     Field,
     SlotFields,
     NOTHING,
@@ -10,25 +11,7 @@ from ducktools.classbuilder import (
 )
 
 
-class FieldExt(Field):
-    __slots__ = ("repr", )
-
-    def __init__(
-            self,
-            *,
-            default=NOTHING,
-            default_factory=NOTHING,
-            type=NOTHING,
-            doc=None,
-            repr=True,
-    ):
-        super().__init__(
-            default=default,
-            default_factory=default_factory,
-            type=type,
-            doc=doc,
-        )
-        self.repr = repr
+FieldExt = fieldclass_maker("FieldExt", repr=True)
 
 
 def repr_exclude_maker(cls):

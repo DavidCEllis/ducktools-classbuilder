@@ -91,6 +91,52 @@ class Field:
         return NotImplemented
 
 
+def fieldclass_maker(__classname, /, **new_fields):
+    """
+    Create a new `Field` subclass with additional
+    fields and default values.
+
+    :param __classname: name of the new `Field` subclass
+    :param new_fields: fieldname=default keys
+    :return: a new Field subclass
+    """
+    args = {
+        "default": NOTHING,
+        "default_factory": NOTHING,
+        "type": NOTHING,
+        "doc": None,
+    }
+    args.update(new_fields)
+
+    globs = {}
+    arglist = []
+    assignments = []
+
+    for k, v in args.items():
+        globs[f"_{k}_default"] = v
+        arg = f"{k}=_{k}_default"
+        assignment = f"self.{k} = {k}"
+
+        arglist.append(arg)
+        assignments.append(assignment)
+
+    args = ", ".join(arglist)
+    assigns = "\n    ".join(assignments)
+    code = f"def __init__(self, {args}):\n" f"    {assigns}\n"
+
+    locs = {}
+    exec(code, globs, locs)
+    init_func = locs.get("__init__")
+    slots = tuple(k for k in new_fields)
+
+    class_dict = {
+        "__init__": init_func,
+        "__slots__": slots,
+    }
+
+    return type(__classname, (Field, ), class_dict)
+
+
 class MethodMaker:
     """
     The descriptor class to place where methods should be generated.

@@ -1,16 +1,19 @@
 from ducktools.classbuilder import (
     builder,
-    slot_gatherer,
-    get_fields,
     eq_desc,
-    Field,
+    fieldclass_maker,
+    get_fields,
+    slot_gatherer,
     SlotFields,
     NOTHING,
     MethodMaker,
 )
 
 
-class PosOnlyField(Field): pass
+PosOnlyField = fieldclass_maker(
+    "PosOnlyField",
+    pos_only=True,
+)
 
 
 def init_maker(cls):
@@ -24,7 +27,7 @@ def init_maker(cls):
     used_kw = False
 
     for k, v in fields.items():
-        if isinstance(v, PosOnlyField):
+        if getattr(v, "pos_only", False):
             used_posonly = True
         elif used_posonly and not used_kw:
             used_kw = True
@@ -52,10 +55,10 @@ def init_maker(cls):
 
 
 def repr_maker(cls):
-    attributes = get_fields(cls)
+    fields = get_fields(cls)
     content_list = []
-    for name, attrib in attributes.items():
-        if isinstance(attrib, PosOnlyField):
+    for name, field in fields.items():
+        if getattr(field, "pos_only", False):
             assign = f"{{self.{name}!r}}"
         else:
             assign = f"{name}={{self.{name}!r}}"
@@ -86,7 +89,7 @@ def pos_slotclass(cls, /):
     flds = get_fields(cls)
     used_kwarg = False
     for k, v in flds.items():
-        if isinstance(v, PosOnlyField):
+        if getattr(v, "pos_only", False):
             if used_kwarg:
                 raise SyntaxError(
                     f"Positional only parameter {k!r}"

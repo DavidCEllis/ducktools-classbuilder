@@ -32,6 +32,11 @@ class Field:
     @typing.overload
     def __eq__(self, other: object) -> NotImplemented: ...
 
+# Really this will return a subclass of field with additional fields
+# But I don't know how to make typing understand this so `any` will do
+# for now.
+def fieldclass_maker(__classname: str, /, **new_fields: typing.Any) -> typing.Any: ...
+
 # Stub Only
 _codegen_type = Callable[[type], tuple[str, dict[str, typing.Any]]]
 
