@@ -323,4 +323,9 @@ def fieldclass(cls):
     )
     field_methods = frozenset({field_init_desc, repr_desc, eq_desc})
 
-    return slotclass(cls, methods=field_methods, default_check=False)
+    return builder(
+        cls,
+        gatherer=slot_gatherer,
+        methods=field_methods,
+        default_check=False
+    )
