@@ -32,14 +32,14 @@ class FieldExt(Field):
 
 
 def repr_exclude_maker(cls):
-    attributes = get_fields(cls)
+    fields = get_fields(cls)
 
     # Use getattr with default True for the condition so
-    # regular fields without the 'repr' attribute still work
+    # regular fields without the 'repr' field still work
     content = ", ".join(
         f"{name}={{self.{name}!r}}"
-        for name, attrib in attributes.items()
-        if getattr(attrib, "repr", True)
+        for name, field in fields.items()
+        if getattr(field, "repr", True)
     )
     code = (
         f"def __repr__(self):\n"

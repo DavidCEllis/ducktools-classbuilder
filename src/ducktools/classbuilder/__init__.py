@@ -68,15 +68,15 @@ class Field:
 
     @property
     def _inherited_slots(self):
-        attribs = []
+        fields = []
         for cls in reversed(self.__class__.__mro__):
-            attribs.extend(getattr(cls, "__slots__", ()))
-        return attribs
+            fields.extend(getattr(cls, "__slots__", ()))
+        return fields
 
     def __repr__(self):
         flds = ", ".join(
-            f"{attrib}={getattr(self, attrib)!r}"
-            for attrib in self._inherited_slots
+            f"{field}={getattr(self, field)!r}"
+            for field in self._inherited_slots
         )
         return (
             f"{self.__class__.__name__}({flds})"
@@ -85,8 +85,8 @@ class Field:
     def __eq__(self, other):
         if type(self) is type(other):
             return all(
-                getattr(self, attrib) == getattr(other, attrib)
-                for attrib in self._inherited_slots
+                getattr(self, field) == getattr(other, field)
+                for field in self._inherited_slots
             )
         return NotImplemented
 
@@ -151,10 +151,10 @@ def init_maker(cls):
 
 
 def repr_maker(cls):
-    attributes = get_fields(cls)
+    fields = get_fields(cls)
     content = ", ".join(
         f"{name}={{self.{name}!r}}"
-        for name, attrib in attributes.items()
+        for name, attrib in fields.items()
     )
     code = (
         f"def __repr__(self):\n"
