@@ -561,6 +561,13 @@ if __name__ == "__main__":
         print(e)
 ```
 
+## How about... ##
+
+I think that's enough examples.
+
+You're encouraged to look at 
+[the source](https://github.com/DavidCEllis/ducktools-classbuilder/blob/main/src/ducktools/classbuilder/__init__.py)
+and build on it yourself at this point.
 
 ## Credit ##
 
