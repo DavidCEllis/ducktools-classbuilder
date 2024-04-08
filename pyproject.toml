@@ -1,0 +1,39 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="ducktools-classbuilder"
+description="Toolkit for creating class boilerplate generators"
+authors = [
+  { name="David C Ellis" },
+]
+readme="README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: MIT License",
+]
+dynamic = ['version']
+license = {file = "LICENSE.md"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "ducktools.classbuilder.__version__"}
+
+[project.optional-dependencies]
+testing = ["pytest", "pytest-cov"]
+
+[project.urls]
+"Homepage" = "https://github.com/davidcellis/ducktools-classbuilder"
