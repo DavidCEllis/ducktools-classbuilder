@@ -169,43 +169,27 @@ You could also choose to yield tuples of `name, value` pairs in your implementat
 ### What if I want to exclude fields from a method? ###
 
 In order to exclude fields you first need to extend the `Field` class
-to add a new attribute. Then you need to rewrite the code generator to 
-check for the new attribute and exclude the field if it is `True`.
+to add a new attribute. Thankfully there is a convenience `fieldclass_maker`
+function to assist in this.
+You also need to rewrite the code generator to check for the new attribute 
+and exclude the field if it is `False`.
 
 Here is an example of adding the ability to exclude fields from `__repr__`.
 
 ```python
 from ducktools.classbuilder import (
-    slotclass,
+    eq_desc,
+    fieldclass_maker,
     get_fields,
     init_desc,
-    eq_desc,
+    slotclass,
     Field,
     SlotFields,
-    NOTHING,
     MethodMaker,
 )
 
 
-class FieldExt(Field):
-    __slots__ = ("repr", )
-
-    def __init__(
-            self,
-            *,
-            default=NOTHING,
-            default_factory=NOTHING,
-            type=NOTHING,
-            doc=None,
-            repr=True,
-    ):
-        super().__init__(
-            default=default,
-            default_factory=default_factory,
-            type=type,
-            doc=doc,
-        )
-        self.repr = repr
+FieldExt = fieldclass_maker("FieldExt", repr=True)
 
 
 def repr_exclude_maker(cls):
@@ -433,17 +417,20 @@ for the `repr` exclusion example.
 ```python
 from ducktools.classbuilder import (
     builder,
-    slot_gatherer,
-    get_fields,
     eq_desc,
-    Field,
+    fieldclass_maker,
+    get_fields,
+    slot_gatherer,
     SlotFields,
     NOTHING,
     MethodMaker,
 )
 
 
-class PosOnlyField(Field): pass
+PosOnlyField = fieldclass_maker(
+    "PosOnlyField",
+    pos_only=True,
+)
 
 
 def init_maker(cls):
@@ -457,7 +444,7 @@ def init_maker(cls):
     used_kw = False
 
     for k, v in fields.items():
-        if isinstance(v, PosOnlyField):
+        if getattr(v, "pos_only", False):
             used_posonly = True
         elif used_posonly and not used_kw:
             used_kw = True
@@ -485,10 +472,10 @@ def init_maker(cls):
 
 
 def repr_maker(cls):
-    attributes = get_fields(cls)
+    fields = get_fields(cls)
     content_list = []
-    for name, attrib in attributes.items():
-        if isinstance(attrib, PosOnlyField):
+    for name, field in fields.items():
+        if getattr(field, "pos_only", False):
             assign = f"{{self.{name}!r}}"
         else:
             assign = f"{name}={{self.{name}!r}}"
@@ -519,7 +506,7 @@ def pos_slotclass(cls, /):
     flds = get_fields(cls)
     used_kwarg = False
     for k, v in flds.items():
-        if isinstance(v, PosOnlyField):
+        if getattr(v, "pos_only", False):
             if used_kwarg:
                 raise SyntaxError(
                     f"Positional only parameter {k!r}"
@@ -561,6 +548,71 @@ if __name__ == "__main__":
     except SyntaxError as e:
         print(e)
 ```
+
+### What if I wanted converters ###
+
+Here's an implementation of basic converters that always convert when
+their attribute is set.
+
+```python
+from ducktools.classbuilder import (
+    builder,
+    default_methods,
+    fieldclass_maker,
+    get_fields,
+    slot_gatherer,
+    SlotFields,
+    MethodMaker,
+)
+
+
+ConverterField = fieldclass_maker("ConverterField", converter=None)
+
+
+def setattr_maker(cls):
+    fields = get_fields(cls)
+    converters = {}
+    for k, v in fields.items():
+        if conv := getattr(v, "converter", None):
+            converters[k] = conv
+
+    globs = {
+        "_converters": converters,
+        "_object_setattr": object.__setattr__,
+    }
+
+    code = (
+        f"def __setattr__(self, name, value):\n"
+        f"    if conv := _converters.get(name):\n"
+        f"        _object_setattr(self, name, conv(value))\n"
+        f"    else:\n"
+        f"        _object_setattr(self, name, value)\n"
+    )
+
+    return code, globs
+
+
+setattr_desc = MethodMaker("__setattr__", setattr_maker)
+methods = frozenset(default_methods | {setattr_desc})
+
+
+def converterclass(cls, /):
+    return builder(cls, gatherer=slot_gatherer, methods=methods)
+
+
+if __name__ == "__main__":
+    @converterclass
+    class ConverterEx:
+        __slots__ = SlotFields(
+            unconverted=ConverterField(),
+            converted=ConverterField(converter=int),
+        )
+
+    ex = ConverterEx("42", "42")
+    print(ex)
+
+```
+
 
 ## How about... ##
 
