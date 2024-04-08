@@ -249,6 +249,7 @@ if __name__ == "__main__":
 
     ex = Example()
     print(ex)
+    print(ex.the_book)
 ```
 
 ### How about Frozen Classes? ###
