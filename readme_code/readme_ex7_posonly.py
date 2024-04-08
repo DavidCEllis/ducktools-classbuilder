@@ -117,4 +117,13 @@ if __name__ == "__main__":
     except TypeError as e:
         print(e)
 
-    print(init_maker(WorkingEx)[0])
+    try:
+        @pos_slotclass
+        class FailEx:
+            __slots__ = SlotFields(
+                a=42,
+                x=PosOnlyField(default=6),
+                y=PosOnlyField(default=9),
+            )
+    except SyntaxError as e:
+        print(e)

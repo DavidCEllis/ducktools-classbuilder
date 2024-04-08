@@ -1,6 +1,7 @@
 # Python Class Builder #
 
-A toolset for building class generators, similar to `dataclasses` or `attrs`.
+A toolset for building class generators, for creating class boilerplate generators
+in a similar way to `attrs` or `dataclasses`.
 
 Included is a simple example class generator that works using `__slots__`
 
@@ -26,14 +27,17 @@ ex = SlottedDC()
 print(ex)
 ```
 
-## Why might you use slots to declare a class instead of type hints? ##
+## I thought everyone had settled on type hints, why would you use slots? ##
 
-Dataclasses has a problem when you use `@dataclass(slots=True)`. In order
-for this to appear to work, dataclasses has to actually make a new class 
+Dataclasses has a problem when you use `@dataclass(slots=True)`, 
+although this is not unique to dataclasses but inherent to the way both
+`__slots__` and decorators work.
+
+In order for this to *appear* to work, dataclasses has to make a new class 
 and attempt to copy over everything from the original. This is because 
 decorators operate on classes *after they have been created* while slots 
 need to be declared beforehand. While you can change the value of `__slots__` 
-after a class has been created, this will have no effect on the actual
+after a class has been created, this will have no effect on the internal
 structure of the class.
 
 By declaring the class using `__slots__` on the other hand, we can take
@@ -87,35 +91,35 @@ print(f"{SlotCoords is class_register[SlotCoords.__name__] = }")
 
 ## What features does this have? ##
 
-The key feature here is customizability.
+The key feature here is customizability. Ths idea here is that this is
+a basic toolkit for constructing a class builder the way **you** want it 
+to work. Instead of trying to convince a maintainer to add a feature you
+desire, simply make it yourself.
 
 Included as an example implementation, the `slotclass` generator supports 
 `default_factory` for creating mutable defaults like lists, dicts etc.
 It also supports default values that are not builtins (try this on 
-[Cluegen](https://github.com/dabeaz/cluegen)). 
+[Cluegen](https://github.com/dabeaz/cluegen)).
 It will copy values provided as the `type` to `Field` into the 
 `__annotations__` dictionary of the class. 
 Values provided to `doc` will be placed in the final `__slots__` 
 field so they are present on the class if `help(...)` is called.
 
-## Why don't you add `<Feature>`? ##
-
-The core idea of this classbuilder is that if you need `<feature>` then 
-you can add it yourself, making it work the way **you** want it to work 
-rather than relying on something that is **almost** as you'd want it 
-to work.
-
 If you need something with more built-in features, but less extendible 
 you can check out [PrefabClasses](https://github.com/DavidCEllis/PrefabClasses)
 which also supports this form of slot class declaration but is more complex
-and less modifiable.
+and less modifiable. In the future it may be built on this core.
 
-## Extending ##
+## OK, so how do I go about customising this? ##
 
 Here are some quick examples of how you might extend the class generator
 to add the features you require.
 
-### How can I add <method> to the class ###
+### How can I add `<method>` to the class ###
+
+To do this you need to write a code generator that returns source code
+along with a dictionary of any variables the code needs to refer to, or
+an empty dictionary if none are needed.
 
 Say you want to make the class iterable, so you want to add `__iter__`.
 
@@ -247,7 +251,10 @@ if __name__ == "__main__":
     print(ex)
 ```
 
-### Frozen Classes? ###
+### How about Frozen Classes? ###
+
+Here's an example of frozen slotted classes that only allow assignment once
+(which happens in the `__init__` method generated).
 
 ```python
 from ducktools.classbuilder import (
@@ -260,10 +267,6 @@ from ducktools.classbuilder import (
 
 
 def setattr_maker(cls):
-    # This is a set once __setattr__ method
-    # As opposed to some set never methods.
-    # This saves rewriting __init__ in this case.
-
     globs = {
         "object_setattr": object.__setattr__
     }
@@ -331,9 +334,10 @@ if __name__ == "__main__":
 
 ### What if I want to use type hints instead of slots? ###
 
-Really? Have you heard of `dataclasses`?
+Really? Have you heard of [dataclasses](https://docs.python.org/3/library/dataclasses.html)?
 
-But we can also do that. These classes will not be slotted, however.
+But we can also do that. These classes will not be slotted, however, 
+due to the issues mentioned earlier.
 
 ```python
 import sys
@@ -414,7 +418,11 @@ if __name__ == "__main__":
 
 ### Positional Only Arguments? ###
 
-Also possible. 
+Also possible, but a little longer as we need to modify multiple methods
+along with adding a check to the builder.
+
+The additional check in the builder is needed to prevent more confusing
+errors when the `__init__` method is generated.
 
 To keep the code shorter for this example I'm just using `isinstance`
 checks on `PosOnlyField` instead of defining new attributes. If you
@@ -541,7 +549,16 @@ if __name__ == "__main__":
     except TypeError as e:
         print(e)
 
-    print(init_maker(WorkingEx)[0])
+    try:
+        @pos_slotclass
+        class FailEx:
+            __slots__ = SlotFields(
+                a=42,
+                x=PosOnlyField(default=6),
+                y=PosOnlyField(default=9),
+            )
+    except SyntaxError as e:
+        print(e)
 ```
 
 
