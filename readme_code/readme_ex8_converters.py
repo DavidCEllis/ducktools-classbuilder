@@ -1,15 +1,18 @@
 from ducktools.classbuilder import (
     builder,
     default_methods,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     slot_gatherer,
+    Field,
     SlotFields,
     MethodMaker,
 )
 
 
-ConverterField = fieldclass_maker("ConverterField", converter=None)
+@fieldclass
+class ConverterField(Field):
+    __slots__ = SlotFields(converter=None)
 
 
 def setattr_maker(cls):

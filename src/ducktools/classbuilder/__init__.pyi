@@ -10,33 +10,6 @@ class _NothingType:
     ...
 NOTHING: _NothingType
 
-class Field:
-    default: _NothingType | typing.Any
-    default_factory: _NothingType | typing.Any
-    type: _NothingType | type
-    doc: None | str
-
-    def __init__(
-        self,
-        *,
-        default: _NothingType | typing.Any = NOTHING,
-        default_factory: _NothingType | typing.Any = NOTHING,
-        type: _NothingType | type = NOTHING,
-        doc: None | str = None,
-    ) -> None: ...
-    @property
-    def _inherited_slots(self) -> list[str]: ...
-    def __repr__(self) -> str: ...
-    @typing.overload
-    def __eq__(self, other: Field) -> bool: ...
-    @typing.overload
-    def __eq__(self, other: object) -> NotImplemented: ...
-
-# Really this will return a subclass of field with additional fields
-# But I don't know how to make typing understand this so `any` will do
-# for now.
-def fieldclass_maker(__classname: str, /, **new_fields: typing.Any) -> typing.Any: ...
-
 # Stub Only
 _codegen_type = Callable[[type], tuple[str, dict[str, typing.Any]]]
 
@@ -62,8 +35,32 @@ def builder(
     *,
     gatherer: Callable[[type], dict[str, Field]],
     methods: frozenset[MethodMaker],
-    default_check: bool =True,
+    default_check: bool = True,
 ) -> type: ...
+
+
+class Field:
+    default: _NothingType | typing.Any
+    default_factory: _NothingType | typing.Any
+    type: _NothingType | type
+    doc: None | str
+
+    def __init__(
+        self,
+        *,
+        default: _NothingType | typing.Any = NOTHING,
+        default_factory: _NothingType | typing.Any = NOTHING,
+        type: _NothingType | type = NOTHING,
+        doc: None | str = None,
+    ) -> None: ...
+    @property
+    def _inherited_slots(self) -> list[str]: ...
+    def __repr__(self) -> str: ...
+    @typing.overload
+    def __eq__(self, other: Field) -> bool: ...
+    @typing.overload
+    def __eq__(self, other: object) -> NotImplemented: ...
+
 
 class SlotFields(dict):
     ...
@@ -76,4 +73,7 @@ def slotclass(
     /,
     *,
     methods: frozenset[MethodMaker] = default_methods,
+    default_check: bool = True
 ) -> type: ...
+
+def fieldclass(cls: type) -> type: ...
