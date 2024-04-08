@@ -93,8 +93,9 @@ print(f"{SlotCoords is class_register[SlotCoords.__name__] = }")
 
 The key feature here is customizability. Ths idea here is that this is
 a basic toolkit for constructing a class builder the way **you** want it 
-to work. Instead of trying to convince a maintainer to add a feature you
-desire, simply make it yourself.
+to work. The goal is to make it easier to add your own features to a class
+boilerplate generator, rather than trying to convince a maintainer to add
+the feature you want to their package.
 
 Included as an example implementation, the `slotclass` generator supports 
 `default_factory` for creating mutable defaults like lists, dicts etc.
