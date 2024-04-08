@@ -1,17 +1,18 @@
 from ducktools.classbuilder import (
     eq_desc,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     init_desc,
     slotclass,
     Field,
     SlotFields,
-    NOTHING,
     MethodMaker,
 )
 
 
-FieldExt = fieldclass_maker("FieldExt", repr=True)
+@fieldclass
+class FieldExt(Field):
+    __slots__ = SlotFields(repr=True)
 
 
 def repr_exclude_maker(cls):

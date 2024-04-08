@@ -40,103 +40,6 @@ class _NothingType:
 NOTHING = _NothingType()
 
 
-class Field:
-    """
-    A basic class to handle the assignment of defaults/factories with
-    some metadata.
-
-    Intended to be extendable by subclasses for additional features.
-
-    __repr__ and __eq__ methods will extend to include any additional
-    __slots__ values defined in subclasses.
-    """
-    __slots__ = ("default", "default_factory", "type", "doc")
-
-    # noinspection PyShadowingBuiltins
-    def __init__(
-        self,
-        *,
-        default=NOTHING,
-        default_factory=NOTHING,
-        type=NOTHING,
-        doc=None,
-    ):
-        self.default = default
-        self.default_factory = default_factory
-        self.type = type
-        self.doc = doc
-
-    @property
-    def _inherited_slots(self):
-        fields = []
-        for cls in reversed(self.__class__.__mro__):
-            fields.extend(getattr(cls, "__slots__", ()))
-        return fields
-
-    def __repr__(self):
-        flds = ", ".join(
-            f"{field}={getattr(self, field)!r}"
-            for field in self._inherited_slots
-        )
-        return (
-            f"{self.__class__.__name__}({flds})"
-        )
-
-    def __eq__(self, other):
-        if type(self) is type(other):
-            return all(
-                getattr(self, field) == getattr(other, field)
-                for field in self._inherited_slots
-            )
-        return NotImplemented
-
-
-def fieldclass_maker(__classname, /, **new_fields):
-    """
-    Create a new `Field` subclass with additional
-    fields and default values.
-
-    :param __classname: name of the new `Field` subclass
-    :param new_fields: fieldname=default keys
-    :return: a new Field subclass
-    """
-    args = {
-        "default": NOTHING,
-        "default_factory": NOTHING,
-        "type": NOTHING,
-        "doc": None,
-    }
-    args.update(new_fields)
-
-    globs = {}
-    arglist = []
-    assignments = []
-
-    for k, v in args.items():
-        globs[f"_{k}_default"] = v
-        arg = f"{k}=_{k}_default"
-        assignment = f"self.{k} = {k}"
-
-        arglist.append(arg)
-        assignments.append(assignment)
-
-    args = ", ".join(arglist)
-    assigns = "\n    ".join(assignments)
-    code = f"def __init__(self, {args}):\n" f"    {assigns}\n"
-
-    locs = {}
-    exec(code, globs, locs)
-    init_func = locs.get("__init__")
-    slots = tuple(k for k in new_fields)
-
-    class_dict = {
-        "__init__": init_func,
-        "__slots__": slots,
-    }
-
-    return type(__classname, (Field, ), class_dict)
-
-
 class MethodMaker:
     """
     The descriptor class to place where methods should be generated.
@@ -167,7 +70,7 @@ class MethodMaker:
         return method.__get__(instance, cls)
 
 
-def init_maker(cls):
+def init_maker(cls, *, null=NOTHING):
     fields = get_fields(cls)
 
     arglist = []
@@ -175,11 +78,11 @@ def init_maker(cls):
     globs = {}
 
     for k, v in fields.items():
-        if v.default is not NOTHING:
+        if v.default is not null:
             globs[f"_{k}_default"] = v.default
             arg = f"{k}=_{k}_default"
             assignment = f"self.{k} = {k}"
-        elif v.default_factory is not NOTHING:
+        elif v.default_factory is not null:
             globs[f"_{k}_factory"] = v.default_factory
             arg = f"{k}=None"
             assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
@@ -287,7 +190,58 @@ def builder(cls, /, *, gatherer, methods, default_check=True):
     return cls
 
 
-# Example code of a slot-based boilerplate generator.
+class Field:
+    """
+    A basic class to handle the assignment of defaults/factories with
+    some metadata.
+
+    Intended to be extendable by subclasses for additional features.
+
+    __repr__ and __eq__ methods will extend to include any additional
+    __slots__ values defined in subclasses.
+    """
+    __slots__ = {
+        "default": "Standard default value to be used for attributes with"
+                   "this field.",
+        "default_factory": "A 0 argument function to be called to generate "
+                           "a default value, useful for mutable objects like "
+                           "lists.",
+        "type": "The type of the attribute to be assigned by this field.",
+        "doc": "The documentation that appears when calling help(...) on the class."
+    }
+
+    # noinspection PyShadowingBuiltins
+    def __init__(
+        self,
+        *,
+        default=NOTHING,
+        default_factory=NOTHING,
+        type=NOTHING,
+        doc=None,
+    ):
+        self.default = default
+        self.default_factory = default_factory
+        self.type = type
+        self.doc = doc
+
+
+# Use the builder to generate __repr__ and __eq__ methods
+# and pretend `Field` was a built class all along.
+_field_internal = {
+    "default": Field(default=NOTHING),
+    "default_factory": Field(default=NOTHING),
+    "type": Field(default=NOTHING),
+    "doc": Field(default=None),
+}
+
+builder(
+    Field,
+    gatherer=lambda cls_: _field_internal,
+    methods=frozenset({repr_desc, eq_desc}),
+    default_check=False
+)
+
+
 # Subclass of dict to be identifiable by isinstance checks
 # For anything more complicated this could be made into a Mapping
 class SlotFields(dict):
@@ -328,14 +282,50 @@ def slot_gatherer(cls):
     return cls_fields
 
 
-def slotclass(cls=None, /, *, methods=default_methods):
+def slotclass(cls=None, /, *, methods=default_methods, default_check=True):
     """
     Example of class builder in action using __slots__ to find fields.
 
     :param cls: Class to be analysed and modified
     :param methods: MethodMakers to be added to the class
+    :param default_check: check there are no arguments without defaults
+                          after arguments with defaults.
     :return: Modified class
     """
     if cls is None:
-        return lambda cls_: builder(cls_, gatherer=slot_gatherer, methods=methods)
-    return builder(cls, gatherer=slot_gatherer, methods=methods)
+        return lambda cls_: builder(
+            cls_,
+            gatherer=slot_gatherer,
+            methods=methods,
+            default_check=default_check
+        )
+    return builder(
+        cls,
+        gatherer=slot_gatherer,
+        methods=methods,
+        default_check=default_check
+    )
+
+
+def fieldclass(cls):
+    """
+    This is a special decorator for making Field subclasses using __slots__.
+    This works by forcing the __init__ method to treat NOTHING as a regular
+    value. This means *all* instance attributes always have defaults.
+
+    :param cls: Field subclass
+    :return: Modified subclass
+    """
+    field_nothing = _NothingType()
+    field_init_desc = MethodMaker(
+        "__init__",
+        lambda cls_: init_maker(cls_, null=field_nothing)
+    )
+    field_methods = frozenset({field_init_desc, repr_desc, eq_desc})
+
+    return builder(
+        cls,
+        gatherer=slot_gatherer,
+        methods=field_methods,
+        default_check=False
+    )

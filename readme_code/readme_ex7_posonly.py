@@ -1,19 +1,19 @@
 from ducktools.classbuilder import (
     builder,
     eq_desc,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     slot_gatherer,
+    Field,
     SlotFields,
     NOTHING,
     MethodMaker,
 )
 
 
-PosOnlyField = fieldclass_maker(
-    "PosOnlyField",
-    pos_only=True,
-)
+@fieldclass
+class PosOnlyField(Field):
+    __slots__ = SlotFields(pos_only=True)
 
 
 def init_maker(cls):

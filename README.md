@@ -170,8 +170,13 @@ You could also choose to yield tuples of `name, value` pairs in your implementat
 ### What if I want to exclude fields from a method? ###
 
 In order to exclude fields you first need to extend the `Field` class
-to add a new attribute. Thankfully there is a convenience `fieldclass_maker`
-function to assist in this.
+to add a new attribute. Thankfully the `@fieldclass` decorator can be used
+to extend `Field` in the same way as `@slotclass` works for regular classes.
+
+This special class builder is needed to treat `NOTHING` sentinel values as
+regular values in the `__init__` generator. As such this is only intended
+for use on `Field` subclasses.
+
 You also need to rewrite the code generator to check for the new attribute 
 and exclude the field if it is `False`.
 
@@ -180,7 +185,7 @@ Here is an example of adding the ability to exclude fields from `__repr__`.
 ```python
 from ducktools.classbuilder import (
     eq_desc,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     init_desc,
     slotclass,
@@ -190,7 +195,9 @@ from ducktools.classbuilder import (
 )
 
 
-FieldExt = fieldclass_maker("FieldExt", repr=True)
+@fieldclass
+class FieldExt(Field):
+    __slots__ = SlotFields(repr=True)
 
 
 def repr_exclude_maker(cls):
@@ -414,19 +421,19 @@ errors when the `__init__` method is generated.
 from ducktools.classbuilder import (
     builder,
     eq_desc,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     slot_gatherer,
+    Field,
     SlotFields,
     NOTHING,
     MethodMaker,
 )
 
 
-PosOnlyField = fieldclass_maker(
-    "PosOnlyField",
-    pos_only=True,
-)
+@fieldclass
+class PosOnlyField(Field):
+    __slots__ = SlotFields(pos_only=True)
 
 
 def init_maker(cls):
@@ -554,15 +561,18 @@ their attribute is set.
 from ducktools.classbuilder import (
     builder,
     default_methods,
-    fieldclass_maker,
+    fieldclass,
     get_fields,
     slot_gatherer,
+    Field,
     SlotFields,
     MethodMaker,
 )
 
 
-ConverterField = fieldclass_maker("ConverterField", converter=None)
+@fieldclass
+class ConverterField(Field):
+    __slots__ = SlotFields(converter=None)
 
 
 def setattr_maker(cls):
@@ -606,7 +616,6 @@ if __name__ == "__main__":
 
     ex = ConverterEx("42", "42")
     print(ex)
-
 ```
 
 
