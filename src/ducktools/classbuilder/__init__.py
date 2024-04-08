@@ -232,7 +232,7 @@ def slot_gatherer(cls):
     return cls_fields
 
 
-def builder(cls=None, /, *, gatherer, methods, default_check=True):
+def builder(cls, /, *, gatherer, methods, default_check=True):
     """
     The main builder for class generation
 

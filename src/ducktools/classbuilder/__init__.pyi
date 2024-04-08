@@ -67,7 +67,7 @@ def builder(
 ) -> type: ...
 
 def slotclass(
-    cls: type,
+    cls: type | None = None,
     /,
     *,
     methods: frozenset[MethodMaker] = default_methods,
