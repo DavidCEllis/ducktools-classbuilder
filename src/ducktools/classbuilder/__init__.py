@@ -141,7 +141,7 @@ eq_desc = MethodMaker("__eq__", eq_maker)
 default_methods = frozenset({init_desc, repr_desc, eq_desc})
 
 
-def builder(cls, /, *, gatherer, methods, default_check=True):
+def builder(cls=None, /, *, gatherer, methods, default_check=True):
     """
     The main builder for class generation
 
@@ -150,9 +150,17 @@ def builder(cls, /, *, gatherer, methods, default_check=True):
     :param methods: MethodMakers to add to the class
     :param default_check: Check if fields without default values have been
                           defined *after* fields with defaults.
-    :return: The modified class (the class is returned so this could be used
-             directly as a decorator if desired).
+    :return: The modified class (the class itself is modified, but this is expected).
     """
+    # Handle `None` to make wrapping with a decorator easier.
+    if cls is None:
+        return lambda cls_: builder(
+            cls_,
+            gatherer=gatherer,
+            methods=methods,
+            default_check=default_check
+        )
+
     internals = {}
     setattr(cls, INTERNALS_DICT, internals)
 
@@ -292,13 +300,6 @@ def slotclass(cls=None, /, *, methods=default_methods, default_check=True):
                           after arguments with defaults.
     :return: Modified class
     """
-    if cls is None:
-        return lambda cls_: builder(
-            cls_,
-            gatherer=slot_gatherer,
-            methods=methods,
-            default_check=default_check
-        )
     return builder(
         cls,
         gatherer=slot_gatherer,

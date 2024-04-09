@@ -381,8 +381,6 @@ def annotation_gatherer(cls):
 
 
 def annotation_class(cls=None, /, *, methods=default_methods):
-    if cls is None:
-        return lambda cls_: builder(cls_, gatherer=annotation_gatherer, methods=methods)
     return builder(cls, gatherer=annotation_gatherer, methods=methods)
 
 

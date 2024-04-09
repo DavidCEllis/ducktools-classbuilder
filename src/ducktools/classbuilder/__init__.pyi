@@ -29,6 +29,7 @@ repr_desc: MethodMaker
 eq_desc: MethodMaker
 default_methods: frozenset[MethodMaker]
 
+@typing.overload
 def builder(
     cls: type,
     /,
@@ -37,6 +38,16 @@ def builder(
     methods: frozenset[MethodMaker],
     default_check: bool = True,
 ) -> type: ...
+
+@typing.overload
+def builder(
+    cls: None = None,
+    /,
+    *,
+    gatherer: Callable[[type], dict[str, Field]],
+    methods: frozenset[MethodMaker],
+    default_check: bool = True,
+) -> Callable[[type], type]: ...
 
 
 class Field:
@@ -68,12 +79,21 @@ class SlotFields(dict):
 def slot_gatherer(cls: type) -> dict[str, Field]:
     ...
 
+@typing.overload
 def slotclass(
-    cls: type | None = None,
+    cls: type,
     /,
     *,
     methods: frozenset[MethodMaker] = default_methods,
     default_check: bool = True
 ) -> type: ...
+
+def slotclass(
+    cls: None = None,
+    /,
+    *,
+    methods: frozenset[MethodMaker] = default_methods,
+    default_check: bool = True
+) -> Callable[[type], type]: ...
 
 def fieldclass(cls: type) -> type: ...
