@@ -1,6 +1,6 @@
 """Tests related to serialization to JSON or Pickle"""
 
-from ducktools.classbuilder.prefab import prefab, attribute
+from ducktools.classbuilder.prefab import prefab, attribute, SlotFields
 from ducktools.classbuilder.prefab import is_prefab, is_prefab_instance, as_dict
 
 
@@ -52,14 +52,24 @@ def test_as_dict_excludes():
         name: str
         password: str = attribute(in_dict=False)
 
+    @prefab(dict_method=True)
+    class ExcludesSlots:
+        __slots__ = SlotFields(
+            name=attribute(type=str),
+            password=attribute(in_dict=False, type=str)
+        )
+
     user1 = ExcludesUncached("Boris", "chair")
     user2 = ExcludesCached("Skroob", "1 2 3 4 5")
+    user3 = ExcludesSlots("user", "password")
 
     user1_out = {"name": "Boris"}
     user2_out = {"name": "Skroob"}
+    user3_out = {"name": "user"}
 
     assert as_dict(user1) == user1_out
     assert as_dict(user2) == user2_out
+    assert as_dict(user3) == user3_out
 
 
 def test_picklable():

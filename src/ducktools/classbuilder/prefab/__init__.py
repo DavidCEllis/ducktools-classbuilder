@@ -425,6 +425,7 @@ def attribute(
     )
 
 
+# Gatherer for classes built on attributes or annotations
 def attribute_gatherer(cls):
     cls_annotations = cls.__dict__.get("__annotations__", {})
     cls_annotation_names = cls_annotations.keys()
@@ -493,6 +494,7 @@ def attribute_gatherer(cls):
     return cls_attributes
 
 
+# Class Builders
 def _make_prefab(
     cls,
     *,
