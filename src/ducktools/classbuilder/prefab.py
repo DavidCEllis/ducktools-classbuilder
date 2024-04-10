@@ -689,18 +689,19 @@ def _make_prefab(
         else:
             valid_args.append(name)
 
-        # Syntax check arguments for __init__ don't have non-default after default
-        if attrib.init and not attrib.kw_only:
-            if attrib.default is not NOTHING or attrib.default_factory is not NOTHING:
-                default_defined.append(name)
-            else:
-                if default_defined:
-                    names = ", ".join(default_defined)
-                    raise SyntaxError(
-                        "non-default argument follows default argument",
-                        f"defaults: {names}",
-                        f"non_default after default: {name}",
-                    )
+        if not kw_only:
+            # Syntax check arguments for __init__ don't have non-default after default
+            if attrib.init and not attrib.kw_only:
+                if attrib.default is not NOTHING or attrib.default_factory is not NOTHING:
+                    default_defined.append(name)
+                else:
+                    if default_defined:
+                        names = ", ".join(default_defined)
+                        raise SyntaxError(
+                            "non-default argument follows default argument",
+                            f"defaults: {names}",
+                            f"non_default after default: {name}",
+                        )
 
     setattr(cls, PREFAB_FIELDS, valid_args)
 

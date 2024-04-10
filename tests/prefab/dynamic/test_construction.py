@@ -81,3 +81,13 @@ def test_double_decorate():
         @prefab
         class DoubleDecorated:
             pass
+
+
+def test_kwonly_class():
+
+    # This class should actually work because *all* attributes are kw_only
+    @prefab(kw_only=True)
+    class KeywordPrefab:
+        a: int = 0
+        b: int = attribute(kw_only=True)
+        c: int = attribute()  # kw_only should be ignored
