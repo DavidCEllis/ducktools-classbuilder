@@ -7,7 +7,7 @@ import reprlib
 from .. import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
-    builder, fieldclass, get_fields, slot_gatherer
+    builder, fieldclass, get_fields, get_internals, slot_gatherer
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -50,7 +50,7 @@ def _is_classvar(hint):
 def get_init_maker(*, init_name="__init__"):
     def __init__(cls):
         globs = {}
-        internals = getattr(cls, INTERNALS_DICT)
+        internals = get_internals(cls)
         # Get the internals dictionary and prepare attributes
         attributes = internals["fields"]
         kw_only = internals["kw_only"]
@@ -294,13 +294,14 @@ def get_iter_maker():
 def get_frozen_setattr_maker():
     def __setattr__(cls):
         globs = {}
-        field_names = get_fields(cls).keys()
+        internals = get_internals(cls)
+        field_names = internals["fields"].keys()
 
         # Make the fields set literal
         fields_delimited = ", ".join(f"{field!r}" for field in field_names)
         field_set = f"{{ {fields_delimited} }}"
 
-        if getattr(cls, INTERNALS_DICT)["slotted"]:
+        if internals["slotted"]:
             globs["__prefab_setattr_func"] = object.__setattr__
             setattr_method = "__prefab_setattr_func(self, name, value)"
         else:
@@ -330,6 +331,23 @@ def get_frozen_delattr_maker():
     return MethodMaker("__delattr__", __delattr__)
 
 
+def get_asdict_maker():
+    def as_dict_gen(cls):
+        fields = get_fields(cls)
+
+        vals = ", ".join(
+            f"'{name}': self.{name}"
+            for name, attrib in fields.items()
+            if attrib.in_dict
+        )
+        out_dict = f"{{{vals}}}"
+        code = f"def as_dict(self): return {out_dict}"
+
+        globs = {}
+        return code, globs
+    return MethodMaker("as_dict", as_dict_gen)
+
+
 init_desc = get_init_maker()
 prefab_init_desc = get_init_maker(init_name=PREFAB_INIT_FUNC)
 repr_desc = get_repr_maker()
@@ -337,6 +355,7 @@ eq_desc = get_eq_maker()
 iter_desc = get_iter_maker()
 frozen_setattr_desc = get_frozen_setattr_maker()
 frozen_delattr_desc = get_frozen_delattr_maker()
+asdict_desc = get_asdict_maker()
 
 
 # Updated field with additional attributes
@@ -347,6 +366,7 @@ class Attribute(Field):
         repr=True,
         compare=True,
         kw_only=False,
+        in_dict=True,
         exclude_field=False,
     )
 
@@ -366,6 +386,7 @@ def attribute(
     repr=True,
     compare=True,
     kw_only=False,
+    in_dict=True,
     exclude_field=False,
     doc=None,
     type=NOTHING,
@@ -381,6 +402,7 @@ def attribute(
     :param repr: Include this attribute in the class __repr__
     :param compare: Include this attribute in the class __eq__
     :param kw_only: Make this argument keyword only in init
+    :param in_dict: Include this attribute in methods that serialise to dict
     :param exclude_field: Exclude this field from all magic method generation
                           apart from __init__
                           and do not include it in PREFAB_FIELDS
@@ -396,6 +418,7 @@ def attribute(
         repr=repr,
         compare=compare,
         kw_only=kw_only,
+        in_dict=in_dict,
         exclude_field=exclude_field,
         doc=doc,
         type=type,
@@ -480,6 +503,7 @@ def _make_prefab(
     match_args=True,
     kw_only=False,
     frozen=False,
+    dict_method=False,
 ):
     """
     Generate boilerplate code for dunder methods in a class.
@@ -494,6 +518,7 @@ def _make_prefab(
     :param frozen: Prevent attribute values from being changed once defined
                    (This does not prevent the modification of mutable attributes
                    such as lists)
+    :param dict_method: Include an as_dict method for faster dictionary creation
     :return: class with __ methods defined
     """
     cls_dict = cls.__dict__
@@ -528,6 +553,8 @@ def _make_prefab(
     if frozen:
         methods.add(frozen_setattr_desc)
         methods.add(frozen_delattr_desc)
+    if dict_method:
+        methods.add(asdict_desc)
 
     cls = builder(
         cls,
@@ -536,7 +563,7 @@ def _make_prefab(
     )
 
     # Add fields not covered by builder
-    internals = getattr(cls, INTERNALS_DICT)
+    internals = get_internals(cls)
     internals["slotted"] = slotted
     internals["kw_only"] = kw_only
     fields = internals["fields"]
@@ -655,6 +682,7 @@ def prefab(
     match_args=True,
     kw_only=False,
     frozen=False,
+    dict_method=False,
 ):
     """
     Generate boilerplate code for dunder methods in a class.
@@ -670,6 +698,7 @@ def prefab(
     :param kw_only: make all attributes keyword only
     :param frozen: Prevent attribute values from being changed once defined
                    (This does not prevent the modification of mutable attributes such as lists)
+    :param dict_method: Include an as_dict method for faster dictionary creation
 
     :return: class with __ methods defined
     """
@@ -684,6 +713,7 @@ def prefab(
             match_args=match_args,
             kw_only=kw_only,
             frozen=frozen,
+            dict_method=dict_method,
         )
     else:
         return _make_prefab(
@@ -695,6 +725,7 @@ def prefab(
             match_args=match_args,
             kw_only=kw_only,
             frozen=frozen,
+            dict_method=dict_method,
         )
 
 
@@ -711,6 +742,7 @@ def build_prefab(
     match_args=True,
     kw_only=False,
     frozen=False,
+    dict_method=False,
 ):
     """
     Dynamically construct a (dynamic) prefab.
@@ -729,6 +761,7 @@ def build_prefab(
     :param kw_only: make all attributes keyword only
     :param frozen: Prevent attribute values from being changed once defined
                    (This does not prevent the modification of mutable attributes such as lists)
+    :param dict_method: Include an as_dict method for faster dictionary creation
     :return: class with __ methods defined
     """
     class_dict = {} if class_dict is None else class_dict
@@ -745,6 +778,62 @@ def build_prefab(
         match_args=match_args,
         kw_only=kw_only,
         frozen=frozen,
+        dict_method=dict_method,
     )
 
     return cls
+
+
+# Extra Functions
+def is_prefab(o):
+    """
+    Identifier function, return True if an object is a prefab class *or* if
+    it is an instance of a prefab class.
+
+    The check works by looking for a PREFAB_FIELDS attribute.
+
+    :param o: object for comparison
+    :return: True/False
+    """
+    cls = o if isinstance(o, type) else type(o)
+    return hasattr(cls, PREFAB_FIELDS)
+
+
+def is_prefab_instance(o):
+    """
+    Identifier function, return True if an object is an instance of a prefab
+    class.
+
+    The check works by looking for a PREFAB_FIELDS attribute.
+
+    :param o: object for comparison
+    :return: True/False
+    """
+    return hasattr(type(o), PREFAB_FIELDS)
+
+
+def as_dict(o):
+    """
+    Get the valid fields from a prefab respecting the in_dict
+    values of attributes
+
+    :param o: instance of a prefab class
+    :return: dictionary of {k: v} from fields
+    """
+    # Attempt to use the generated method if available
+    try:
+        return o.as_dict()
+    except AttributeError:
+        pass
+
+    cls = type(o)
+    try:
+        flds = get_fields(cls)
+    except AttributeError:
+        raise TypeError(f"inst should be a prefab instance, not {cls}")
+
+    return {
+        name: getattr(o, name)
+        for name, attrib in flds.items()
+        if attrib.in_dict
+    }

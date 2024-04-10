@@ -25,6 +25,10 @@ __version__ = "v0.1.0"
 INTERNALS_DICT = "__classbuilder_internals__"
 
 
+def get_internals(cls):
+    return getattr(cls, INTERNALS_DICT, None)
+
+
 def get_fields(cls):
     """Utility function to gather the fields from the class internals"""
     return getattr(cls, INTERNALS_DICT)["fields"]
@@ -178,7 +182,7 @@ def builder(cls=None, /, *, gatherer, methods):
         fields = {}
         for c in reversed(mro):
             try:
-                fields.update(getattr(c, INTERNALS_DICT)["local_fields"])
+                fields.update(get_internals(c)["local_fields"])
             except AttributeError:
                 pass
 
