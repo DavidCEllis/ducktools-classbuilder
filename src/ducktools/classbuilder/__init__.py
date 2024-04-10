@@ -327,11 +327,10 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
                         after arguments with defaults.
     :return: Modified class
     """
-    cls = builder(
-        cls,
-        gatherer=slot_gatherer,
-        methods=methods
-    )
+    if not cls:
+        return lambda cls_: slotclass(cls_, methods=methods, syntax_check=syntax_check)
+
+    cls = builder(cls, gatherer=slot_gatherer, methods=methods)
 
     if syntax_check:
         fields = get_fields(cls)
