@@ -37,3 +37,9 @@ testing = ["pytest", "pytest-cov"]
 
 [project.urls]
 "Homepage" = "https://github.com/davidcellis/ducktools-classbuilder"
+
+[tool.pytest.ini_options]
+addopts= "--cov=src/ --cov-report=term-missing"
+testpaths = [
+    "tests",
+]
