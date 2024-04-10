@@ -6,6 +6,8 @@ INTERNALS_DICT: str
 
 def get_fields(cls: type) -> dict[str, Field]: ...
 
+def get_inst_fields(inst: typing.Any) -> dict[str, typing.Any]: ...
+
 class _NothingType:
     ...
 NOTHING: _NothingType
@@ -35,9 +37,8 @@ def builder(
     /,
     *,
     gatherer: Callable[[type], dict[str, Field]],
-    methods: frozenset[MethodMaker],
-    default_check: bool = True,
-) -> type: ...
+    methods: frozenset[MethodMaker] | set[MethodMaker]
+) -> typing.Any: ...
 
 @typing.overload
 def builder(
@@ -45,10 +46,11 @@ def builder(
     /,
     *,
     gatherer: Callable[[type], dict[str, Field]],
-    methods: frozenset[MethodMaker],
-    default_check: bool = True,
+    methods: frozenset[MethodMaker] | set[MethodMaker]
 ) -> Callable[[type], type]: ...
 
+
+_Self = typing.TypeVar("_Self", bound="Field")
 
 class Field:
     default: _NothingType | typing.Any
@@ -68,9 +70,12 @@ class Field:
     def _inherited_slots(self) -> list[str]: ...
     def __repr__(self) -> str: ...
     @typing.overload
-    def __eq__(self, other: Field) -> bool: ...
+    def __eq__(self, other: _Self) -> bool: ...
     @typing.overload
     def __eq__(self, other: object) -> NotImplemented: ...
+    def validate_field(self) -> None: ...
+    @classmethod
+    def from_field(cls, fld: Field) -> _Self: ...
 
 
 class SlotFields(dict):
@@ -84,16 +89,16 @@ def slotclass(
     cls: type,
     /,
     *,
-    methods: frozenset[MethodMaker] = default_methods,
-    default_check: bool = True
-) -> type: ...
+    methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
+    syntax_check: bool = True
+) -> typing.Any: ...
 
 def slotclass(
     cls: None = None,
     /,
     *,
-    methods: frozenset[MethodMaker] = default_methods,
-    default_check: bool = True
+    methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
+    syntax_check: bool = True
 ) -> Callable[[type], type]: ...
 
-def fieldclass(cls: type) -> type: ...
+def fieldclass(cls: type) -> typing.Any: ...

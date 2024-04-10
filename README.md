@@ -106,15 +106,31 @@ It will copy values provided as the `type` to `Field` into the
 Values provided to `doc` will be placed in the final `__slots__` 
 field so they are present on the class if `help(...)` is called.
 
-If you need something with more built-in features, but less extendible 
-you can check out [PrefabClasses](https://github.com/DavidCEllis/PrefabClasses)
-which also supports this form of slot class declaration but is more complex
-and less modifiable. In the future it may be built on this core.
+If you want something with more features you can look at the `prefab`
+submodule which also serves as an example of the customization on this
+base.
 
 ## OK, so how do I go about customising this? ##
 
-Here are some quick examples of how you might extend the class generator
-to add the features you require.
+The core idea is that there are 3 main parts to the generation process:
+
+1. Gather the fields from the decorated class.
+2. Gather inherited fields from any parent classes in the standard 
+   method resolution order.
+3. Assign the method builders to the class.
+
+The field gathering is done by a function that operates on the class and returns
+a dictionary of field_name: field values. `slot_gatherer` is an example of this.
+This function is provided to `builder` as the `gatherer` argument.
+
+The inheritance is handled by the `builder` function itself and should not need
+to be customisable.
+
+Assignment of method builders is where all of the functions that will lazily
+create `__init__` and other magic methods are added to the class.
+
+This might be easier to understand by looking at examples so here are a few
+demonstrations of adding additional features to the builder.
 
 ### How can I add `<method>` to the class ###
 

@@ -30,6 +30,13 @@ def get_fields(cls):
     return getattr(cls, INTERNALS_DICT)["fields"]
 
 
+def get_inst_fields(inst):
+    return {
+        k: getattr(inst, k)
+        for k in get_fields(type(inst))
+    }
+
+
 # As 'None' can be a meaningful default we need a sentinel value
 # to use to show no value has been provided.
 class _NothingType:
@@ -141,15 +148,13 @@ eq_desc = MethodMaker("__eq__", eq_maker)
 default_methods = frozenset({init_desc, repr_desc, eq_desc})
 
 
-def builder(cls=None, /, *, gatherer, methods, default_check=True):
+def builder(cls=None, /, *, gatherer, methods):
     """
     The main builder for class generation
 
     :param cls: Class to be analysed and have methods generated
     :param gatherer: Function to gather field information
     :param methods: MethodMakers to add to the class
-    :param default_check: Check if fields without default values have been
-                          defined *after* fields with defaults.
     :return: The modified class (the class itself is modified, but this is expected).
     """
     # Handle `None` to make wrapping with a decorator easier.
@@ -158,7 +163,6 @@ def builder(cls=None, /, *, gatherer, methods, default_check=True):
             cls_,
             gatherer=gatherer,
             methods=methods,
-            default_check=default_check
         )
 
     internals = {}
@@ -178,17 +182,6 @@ def builder(cls=None, /, *, gatherer, methods, default_check=True):
             except AttributeError:
                 pass
 
-    if default_check:
-        used_default = False
-        for k, v in fields.items():
-            if v.default is NOTHING and v.default_factory is NOTHING:
-                if used_default:
-                    raise SyntaxError(
-                        f"non-default argument {k!r} follows default argument"
-                    )
-            else:
-                used_default = True
-
     internals["fields"] = fields
 
     # Assign all of the method generators
@@ -198,6 +191,9 @@ def builder(cls=None, /, *, gatherer, methods, default_check=True):
     return cls
 
 
+# The Field class can finally be defined.
+# The __init__ method has to be written manually so Fields can be created
+# However after this, the other methods can be generated.
 class Field:
     """
     A basic class to handle the assignment of defaults/factories with
@@ -232,6 +228,28 @@ class Field:
         self.type = type
         self.doc = doc
 
+        self.validate_field()
+
+    def validate_field(self):
+        if self.default is not NOTHING and self.default_factory is not NOTHING:
+            raise AttributeError(
+                "Cannot define both a default value and a default factory."
+            )
+
+    @classmethod
+    def from_field(cls, fld, /, **kwargs):
+        """
+        Create an instance of field or subclass from another field.
+        
+        This is intended to be used to convert a base 
+        Field into a subclass.
+        
+        :param fld: field class to convert
+        :param kwargs: Additional keyword arguments for subclasses
+        :return: new field subclass instance
+        """
+        return cls(**get_inst_fields(fld), **kwargs)
+
 
 # Use the builder to generate __repr__ and __eq__ methods
 # and pretend `Field` was a built class all along.
@@ -245,8 +263,7 @@ _field_internal = {
 builder(
     Field,
     gatherer=lambda cls_: _field_internal,
-    methods=frozenset({repr_desc, eq_desc}),
-    default_check=False
+    methods=frozenset({repr_desc, eq_desc})
 )
 
 
@@ -257,6 +274,12 @@ class SlotFields(dict):
 
 
 def slot_gatherer(cls):
+    """
+    Gather field information for class generation based on __slots__
+    
+    :param cls: Class to gather field information from
+    :return: dict of field_name: Field(...)
+    """
     cls_slots = cls.__dict__.get("__slots__", None)
 
     if not isinstance(cls_slots, SlotFields):
@@ -290,22 +313,35 @@ def slot_gatherer(cls):
     return cls_fields
 
 
-def slotclass(cls=None, /, *, methods=default_methods, default_check=True):
+def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     """
     Example of class builder in action using __slots__ to find fields.
 
     :param cls: Class to be analysed and modified
     :param methods: MethodMakers to be added to the class
-    :param default_check: check there are no arguments without defaults
-                          after arguments with defaults.
+    :param syntax_check: check there are no arguments without defaults
+                        after arguments with defaults.
     :return: Modified class
     """
-    return builder(
+    cls = builder(
         cls,
         gatherer=slot_gatherer,
-        methods=methods,
-        default_check=default_check
+        methods=methods
     )
+
+    if syntax_check:
+        fields = get_fields(cls)
+        used_default = False
+        for k, v in fields.items():
+            if v.default is NOTHING and v.default_factory is NOTHING:
+                if used_default:
+                    raise SyntaxError(
+                        f"non-default argument {k!r} follows default argument"
+                    )
+            else:
+                used_default = True
+
+    return cls
 
 
 def fieldclass(cls):
@@ -317,16 +353,25 @@ def fieldclass(cls):
     :param cls: Field subclass
     :return: Modified subclass
     """
+
+    # Fields need a way to call their validate method
+    # So append it to the code from __init__.
+    def field_init_func(cls_):
+        code, globs = init_maker(cls_, null=field_nothing)
+        code += "    self.validate_field()\n"
+        return code, globs
+
     field_nothing = _NothingType()
     field_init_desc = MethodMaker(
         "__init__",
-        lambda cls_: init_maker(cls_, null=field_nothing)
+        field_init_func,
     )
     field_methods = frozenset({field_init_desc, repr_desc, eq_desc})
 
-    return builder(
+    cls = builder(
         cls,
         gatherer=slot_gatherer,
-        methods=field_methods,
-        default_check=False
+        methods=field_methods
     )
+
+    return cls
