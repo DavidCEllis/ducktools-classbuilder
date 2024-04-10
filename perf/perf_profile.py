@@ -133,7 +133,6 @@ class C{n}:
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
-# Checking your syntax is for cowards
 slotclass_template = '''
 @slotclass(syntax_check=True)
 class C{n}:
@@ -143,6 +142,18 @@ class C{n}:
         c=Field(),
         d=Field(),
         e=Field(),
+    )
+'''
+
+prefab_slots_template = '''
+@prefab
+class C{n}:
+    __slots__ = SlotFields(
+        a=attribute(),
+        b=attribute(),
+        c=attribute(),
+        d=attribute(),
+        e=attribute(),
     )
 '''
 
@@ -257,7 +268,10 @@ def main(reps, test_everything=False):
     write_perftemp(100, slotclass_template, slotclass_import)
     run_test(f"slotclass {classbuilder.__version__}", reps)
 
-    prefab_import = "from ducktools.classbuilder.prefab import prefab, attribute\n"
+    prefab_import = "from ducktools.classbuilder.prefab import prefab, attribute, SlotFields\n"
+
+    write_perftemp(100, prefab_slots_template, prefab_import)
+    run_test(f'prefab_slots {classbuilder.__version__}', reps)
 
     write_perftemp(100, prefab_template, prefab_import)
     run_test(f'prefab {classbuilder.__version__}', reps)
