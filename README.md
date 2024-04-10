@@ -106,8 +106,8 @@ It will copy values provided as the `type` to `Field` into the
 Values provided to `doc` will be placed in the final `__slots__` 
 field so they are present on the class if `help(...)` is called.
 
-If you want something with more features you can look at the `prefab`
-submodule which also serves as an example of the customization on this
+If you want something with more features you can look at the `prefab.py`
+source which also serves as an example of the customization on this
 base.
 
 ## OK, so how do I go about customising this? ##
