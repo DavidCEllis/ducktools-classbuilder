@@ -82,7 +82,7 @@ class ExcludeField:
 class PostInitPartial:
     x: int
     y: int
-    z: list[int] = attribute(default_factory=list)
+    z: "list[int]" = attribute(default_factory=list)
 
     def __prefab_post_init__(self, z):
         z.append(1)
