@@ -1,10 +1,34 @@
+# MIT License
+#
+# Copyright (c) 2024 David C Ellis
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 """
 A 'prebuilt' implementation of class generation.
-"""
-import sys
-import reprlib
 
-from .. import (
+Includes pre and post init functions along with other methods.
+"""
+
+import sys
+
+from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
     builder, fieldclass, get_fields, get_internals, slot_gatherer
@@ -201,7 +225,7 @@ def get_init_maker(*, init_name="__init__"):
     return MethodMaker(init_name, __init__)
 
 
-def get_repr_maker():
+def get_repr_maker(recursion_safe=False):
     def __repr__(cls):
         attributes = get_fields(cls)
 
@@ -221,27 +245,33 @@ def get_repr_maker():
             for name in valid_names
         )
 
+        recursion_func = "@_recursive_repr\n" if recursion_safe else ""
+
         if will_eval:
             code = (
-                f"@_recursive_repr\n"
+                f"{recursion_func}"
                 f"def __repr__(self):\n"
                 f"    return f'{{type(self).__qualname__}}({content})'\n"
             )
         else:
             if content:
                 code = (
-                    f"@_recursive_repr\n"
+                    f"{recursion_func}"
                     f"def __repr__(self):\n"
                     f"    return f'<prefab {{type(self).__qualname__}}; {content}>'\n"
                 )
             else:
                 code = (
-                    f"@_recursive_repr\n"
+                    f"{recursion_func}"
                     f"def __repr__(self):\n"
                     f"    return f'<prefab {{type(self).__qualname__}}>'\n"
                 )
 
-        globs = {"_recursive_repr": reprlib.recursive_repr()}
+        if recursion_safe:
+            import reprlib
+            globs = {"_recursive_repr": reprlib.recursive_repr()}
+        else:
+            globs = {}
 
         return code, globs
 
@@ -351,6 +381,7 @@ def get_asdict_maker():
 init_desc = get_init_maker()
 prefab_init_desc = get_init_maker(init_name=PREFAB_INIT_FUNC)
 repr_desc = get_repr_maker()
+recursive_repr_desc = get_repr_maker(recursion_safe=True)
 eq_desc = get_eq_maker()
 iter_desc = get_iter_maker()
 frozen_setattr_desc = get_frozen_setattr_maker()
@@ -506,6 +537,7 @@ def _make_prefab(
     kw_only=False,
     frozen=False,
     dict_method=False,
+    recursive_repr=False,
 ):
     """
     Generate boilerplate code for dunder methods in a class.
@@ -521,6 +553,7 @@ def _make_prefab(
                    (This does not prevent the modification of mutable attributes
                    such as lists)
     :param dict_method: Include an as_dict method for faster dictionary creation
+    :param recursive_repr: Safely handle repr in case of recursion
     :return: class with __ methods defined
     """
     cls_dict = cls.__dict__
@@ -547,7 +580,10 @@ def _make_prefab(
         methods.add(prefab_init_desc)
 
     if repr and "__repr__" not in cls_dict:
-        methods.add(repr_desc)
+        if recursive_repr:
+            methods.add(recursive_repr_desc)
+        else:
+            methods.add(repr_desc)
     if eq and "__eq__" not in cls_dict:
         methods.add(eq_desc)
     if iter and "__iter__" not in cls_dict:
@@ -685,6 +721,7 @@ def prefab(
     kw_only=False,
     frozen=False,
     dict_method=False,
+    recursive_repr=False,
 ):
     """
     Generate boilerplate code for dunder methods in a class.
@@ -701,6 +738,7 @@ def prefab(
     :param frozen: Prevent attribute values from being changed once defined
                    (This does not prevent the modification of mutable attributes such as lists)
     :param dict_method: Include an as_dict method for faster dictionary creation
+    :param recursive_repr: Safely handle repr in case of recursion
 
     :return: class with __ methods defined
     """
@@ -716,6 +754,7 @@ def prefab(
             kw_only=kw_only,
             frozen=frozen,
             dict_method=dict_method,
+            recursive_repr=recursive_repr,
         )
     else:
         return _make_prefab(
@@ -728,6 +767,7 @@ def prefab(
             kw_only=kw_only,
             frozen=frozen,
             dict_method=dict_method,
+            recursive_repr=recursive_repr,
         )
 
 
@@ -745,6 +785,7 @@ def build_prefab(
     kw_only=False,
     frozen=False,
     dict_method=False,
+    recursive_repr=False,
 ):
     """
     Dynamically construct a (dynamic) prefab.
@@ -764,6 +805,7 @@ def build_prefab(
     :param frozen: Prevent attribute values from being changed once defined
                    (This does not prevent the modification of mutable attributes such as lists)
     :param dict_method: Include an as_dict method for faster dictionary creation
+    :param recursive_repr: Safely handle repr in case of recursion
     :return: class with __ methods defined
     """
     class_dict = {} if class_dict is None else class_dict
@@ -781,6 +823,7 @@ def build_prefab(
         kw_only=kw_only,
         frozen=frozen,
         dict_method=dict_method,
+        recursive_repr=recursive_repr,
     )
 
     return cls
