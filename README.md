@@ -3,7 +3,8 @@
 A toolset for building class generators, for creating class boilerplate generators
 in a similar way to `attrs` or `dataclasses`.
 
-Included is a simple example class generator that works using `__slots__`
+Included is a simple example class generator that works using `__slots__` and a more
+complex class generator built on this in `prefab.py`.
 
 ## Slot Class Usage ##
 

@@ -1,7 +1,6 @@
 .idea
 .mypy_cache
 .pytest_cache
-env
 references
 .coverage
 scratch/
@@ -12,6 +11,11 @@ dist/
 htmlcov/
 *.lcov
 coverage.xml
+
+/env*/
+
+perftemp.py
+hyperfine_testfiles/
 
 .vscode/
 __pycache__/
