@@ -17,6 +17,144 @@ to be customisable.
 Assignment of method builders is where all of the functions that will lazily
 create `__init__` and other magic methods are added to the class.
 
+## Structure ##
+
+### The Builder Function ###
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder::builder
+  :noindex:
+```
+
+This function is the core class generator which takes your decorated class and
+analyses and collects valid fields and then attaches the method makers.
+
+The field information is stored in the `INTERNALS_DICT` attribute and can be
+accessed using the `get_internals` function provided. This returns a dictionary
+with 2 keys: `local_fields` and `fields`. 
+
+`"local_fields"` contains the field information obtained from **this class only**.
+
+`"fields"` contains the resolved information obtained from this class and subclasses.
+This can be obtained directly using the `get_fields` function.
+
+Now let's look at what the two keyword arguments need to be.
+
+#### Gatherers ####
+
+This covers the *'gather the fields'* step of the process.
+
+A `gatherer` in this case is a function which takes in the class and returns a dict
+of `{"field_name": Field(...)}` values based on some analysis of your class.
+
+An example gatherer is given in `slot_gatherer` which will take the keys and values
+from a dict subclass `SlotFields` and use that to prepare the field information for
+the attached methods to use.
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder::slot_gatherer
+  :noindex:
+```
+
+You can test and see what this class returns by simply calling it on an undecorated
+class.
+
+> Note: The `<NOTHING OBJECT>` values you see are a sentinel used to show no value was given
+> This is used instead of `None` where `None` might be a valid default value or type.
+
+```python
+from pprint import pprint
+from ducktools.classbuilder import slot_gatherer, SlotFields, Field
+
+class GatherExample:
+    __slots__ = SlotFields(
+       x=6,
+       y=9,
+       z=Field(
+          default=42,
+          doc="I always knew there was something fundamentally wrong with the universe."
+       )
+    )
+
+pprint(slot_gatherer(GatherExample))
+```
+
+#### Methods ####
+
+`methods` needs to be a set of `MethodMaker` instances which are descriptors that
+replace themselves with the required methods on first access.
+
+A `MethodMaker` takes two arguments:
+`funcname` - the name of the method to attach
+`code_generator` - a code generator function that returns a tuple of source code and globals dict.
+
+```{eval-rst}
+.. autoclass:: ducktools.classbuilder::MethodMaker
+  :noindex:
+```
+
+An example of these descriptors is the `init_desc` method maker that generates the `__init__`
+function. Their behaviour is best observed by looking at the class after it is generated.
+
+```python
+from ducktools.classbuilder import slotclass, SlotFields, Field, init_desc
+
+@slotclass
+class GatherExample:
+    __slots__ = SlotFields(
+       x=6,
+       y=9,
+       z=Field(
+          default=42,
+          doc="I always knew there was something fundamentally wrong with the universe."
+       )
+    )
+
+# Access through the __dict__ to avoid code generation
+print(f'Before generation: {GatherExample.__dict__["__init__"] = }')
+
+# Now generate the code by forcing python to call __init__
+ex = GatherExample()
+
+print(f'After generation: {GatherExample.__dict__["__init__"] = }')
+
+# Look at the contents of the maker
+print("\nDescriptor Contents: ")
+print(f"{init_desc.funcname = }")
+print(f"{init_desc.code_generator = }\n")
+
+# Look at the output of the code generator
+generated = init_desc.code_generator(GatherExample)
+print(f"Globals: {generated[1]!r}")
+print(f"Source:\n{generated[0]}")
+```
+
+### Extending `Field` ###
+
+When customising generator methods (or adding new ones) it may be useful to 
+extend the `Field` class which stores the information on named attributes for
+how to perform the generation. A convenient decorator `@fieldclass` is provided
+to allow simple extension by adding additional slots. By using this decorator
+the `__init__`, `__repr__` and `__eq__` methods will be generated for you.
+
+```python
+from ducktools.classbuilder import Field, SlotFields, fieldclass
+
+@fieldclass
+class WithInit(Field):
+    __slots__ = SlotFields(init=True)
+
+ex1 = WithInit(default=6, init=False)
+ex2 = WithInit(default=9, init=True)
+ex3 = WithInit(default=9)
+
+print(ex1)
+print(f"{ex1 == ex2 = }")
+print(f"{ex2 == ex3 = }")
+```
+
+## Examples ##
+
 This might be easier to understand by looking at examples so here are a few
 demonstrations of adding additional features to the builder.
 
@@ -26,6 +164,8 @@ To do this you need to write a code generator that returns source code
 along with a 'globals' dictionary of any names the code needs to refer 
 to, or an empty dictionary if none are needed. Many methods don't require
 any globals values, but it is essential for some.
+
+#### Iterable Classes ####
 
 Say you want to make the class iterable, so you want to add `__iter__`.
 
@@ -72,84 +212,7 @@ if __name__ == "__main__":
 
 You could also choose to yield tuples of `name, value` pairs in your implementation.
 
-### What if I want to exclude fields from a method? ###
-
-In order to exclude fields you first need to extend the `Field` class
-to add a new attribute. Thankfully the `@fieldclass` decorator can be used
-to extend `Field` in the same way as `@slotclass` works for regular classes.
-
-This special class builder is needed to treat `NOTHING` sentinel values as
-regular values in the `__init__` generator. As such this is only intended
-for use on `Field` subclasses.
-
-You also need to rewrite the code generator to check for the new attribute 
-and exclude the field if it is `False`.
-
-Here is an example of adding the ability to exclude fields from `__repr__`.
-
-```python
-from ducktools.classbuilder import (
-    eq_desc,
-    fieldclass,
-    get_fields,
-    init_desc,
-    slotclass,
-    Field,
-    SlotFields,
-    MethodMaker,
-)
-
-
-@fieldclass
-class FieldExt(Field):
-    __slots__ = SlotFields(repr=True)
-
-
-def repr_exclude_maker(cls):
-    fields = get_fields(cls)
-
-    # Use getattr with default True for the condition so
-    # regular fields without the 'repr' field still work
-    content = ", ".join(
-        f"{name}={{self.{name}!r}}"
-        for name, field in fields.items()
-        if getattr(field, "repr", True)
-    )
-    code = (
-        f"def __repr__(self):\n"
-        f"    return f'{{type(self).__qualname__}}({content})'\n"
-    )
-    globs = {}
-    return code, globs
-
-
-repr_desc = MethodMaker("__repr__", repr_exclude_maker)
-
-
-if __name__ == "__main__":
-
-    methods = frozenset({init_desc, eq_desc, repr_desc})
-
-    @slotclass(methods=methods)
-    class Example:
-        __slots__ = SlotFields(
-            the_answer=42,
-            the_question=Field(
-                default="What do you get if you multiply six by nine?",
-                doc="Life, the Universe, and Everything",
-            ),
-            the_book=FieldExt(
-                default="The Hitchhiker's Guide to the Galaxy",
-                repr=False,
-            )
-        )
-
-    ex = Example()
-    print(ex)
-    print(ex.the_book)
-```
-
-### How about Frozen Classes? ###
+#### Frozen Classes ####
 
 Here's an example of frozen slotted classes that only allow assignment once
 (which happens in the `__init__` method generated).
@@ -233,9 +296,89 @@ if __name__ == "__main__":
         print(e)
 ```
 
-### Positional Only Arguments? ###
+### Extending Field ###
 
-Also possible, but a little longer as we need to modify multiple methods
+#### Excluding Attributes ####
+
+In order to exclude fields you first need to extend the `Field` class
+to add a new attribute. Thankfully the `@fieldclass` decorator mentioned earlier
+can be used to extend `Field` in the same way as `@slotclass` works for 
+regular classes.
+
+This special class builder is needed to treat `NOTHING` sentinel values as
+regular values in the `__init__` generator. As such this is only intended
+for use on `Field` subclasses.
+
+You also need to rewrite the code generator to check for the new attribute 
+and exclude the field if it is `False`.
+
+Here is an example of adding the ability to exclude fields from `__repr__`.
+
+```python
+from ducktools.classbuilder import (
+    eq_desc,
+    fieldclass,
+    get_fields,
+    init_desc,
+    slotclass,
+    Field,
+    SlotFields,
+    MethodMaker,
+)
+
+
+@fieldclass
+class FieldExt(Field):
+    __slots__ = SlotFields(repr=True)
+
+
+def repr_exclude_maker(cls):
+    fields = get_fields(cls)
+
+    # Use getattr with default True for the condition so
+    # regular fields without the 'repr' field still work
+    content = ", ".join(
+        f"{name}={{self.{name}!r}}"
+        for name, field in fields.items()
+        if getattr(field, "repr", True)
+    )
+    code = (
+        f"def __repr__(self):\n"
+        f"    return f'{{type(self).__qualname__}}({content})'\n"
+    )
+    globs = {}
+    return code, globs
+
+
+repr_desc = MethodMaker("__repr__", repr_exclude_maker)
+
+
+if __name__ == "__main__":
+
+    methods = frozenset({init_desc, eq_desc, repr_desc})
+
+    @slotclass(methods=methods)
+    class Example:
+        __slots__ = SlotFields(
+            the_answer=42,
+            the_question=Field(
+                default="What do you get if you multiply six by nine?",
+                doc="Life, the Universe, and Everything",
+            ),
+            the_book=FieldExt(
+                default="The Hitchhiker's Guide to the Galaxy",
+                repr=False,
+            )
+        )
+
+    ex = Example()
+    print(ex)
+    print(ex.the_book)
+```
+
+#### Positional Only Arguments? ####
+
+Also possible, but a little longer as we also need to modify multiple methods
 along with adding a check to the builder.
 
 The additional check in the builder is needed to prevent more confusing
@@ -376,7 +519,7 @@ if __name__ == "__main__":
         print(e)
 ```
 
-### What if I wanted converters ###
+#### Converters ####
 
 Here's an implementation of basic converters that always convert when
 their attribute is set.
@@ -442,9 +585,10 @@ if __name__ == "__main__":
     print(ex)
 ```
 
-### What if I want to use type hints instead of slots? ###
+### Gatherers ###
+#### Using type hints/annotations instead of slots? ####
 
-Really? Have you heard of [dataclasses](https://docs.python.org/3/library/dataclasses.html)?
+Have you heard of [dataclasses](https://docs.python.org/3/library/dataclasses.html)?
 
 But we can also do that. These classes will not be slotted, however, 
 due to the issues mentioned in the readme.
@@ -524,7 +668,7 @@ if __name__ == "__main__":
     print(H2G2.the_author)
 ```
 
-### No attributes! Only Annotations! ###
+#### No attributes! Only Annotations! ####
 
 If you don't like your code to run quickly, but you do love type annotations.
 
