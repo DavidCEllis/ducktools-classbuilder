@@ -239,6 +239,8 @@ def get_repr_maker(*, recursion_safe=False):
     def __repr__(cls: "type") -> "tuple[str, dict]":
         attributes = get_attributes(cls)
 
+        globs = {}
+
         will_eval = True
         valid_names = []
         for name, attrib in attributes.items():
@@ -255,7 +257,12 @@ def get_repr_maker(*, recursion_safe=False):
             for name in valid_names
         )
 
-        recursion_func = "@_recursive_repr\n" if recursion_safe else ""
+        if recursion_safe:
+            import reprlib
+            globs["_recursive_repr"] = reprlib.recursive_repr()
+            recursion_func = "@_recursive_repr\n"
+        else:
+            recursion_func = ""
 
         if will_eval:
             code = (
@@ -276,12 +283,6 @@ def get_repr_maker(*, recursion_safe=False):
                     f"def __repr__(self):\n"
                     f"    return f'<prefab {{type(self).__qualname__}}>'\n"
                 )
-
-        if recursion_safe:
-            import reprlib
-            globs = {"_recursive_repr": reprlib.recursive_repr()}
-        else:
-            globs = {}
 
         return code, globs
 
