@@ -1,4 +1,4 @@
-# API Autodocs #
+# Builder API Autodocs #
 
 ## Slotclass example functions and classes ##
 
