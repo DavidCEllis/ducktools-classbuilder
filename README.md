@@ -12,6 +12,9 @@ customization of both the field collection and the method generation.
 
 `ducktools.classbuilder.prefab` includes a prebuilt implementation using these tools.
 
+Install from PyPI with:
+`python -m pip install ducktools-classbuilder`
+
 ## Slot Class Usage ##
 
 The building toolkit also includes a basic implementation that uses
