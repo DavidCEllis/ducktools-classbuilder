@@ -1,20 +1,20 @@
 # Ducktools: Class Builder #
 
 `ducktools-classbuilder` is *the* Python package that will bring you the **joy**
-of writing... **functions that write object protocols**...
+of writing... functions... that will bring back the **joy** of writing classes.
 
-Maybe that's just me.
+Maybe.
 
-This module provides a toolkit for building class generators, for creating
-your own implementation of the same concept as `dataclasses` or `attrs`.
+While `attrs` and `dataclasses` are class boilerplate generators, 
+`ducktools.classbuilder` is intended to be a dataclasses-like generator.
+The goal is to handle some of the basic functions and to allow for flexible
+customization of both the field collection and the method generation.
 
-`ducktools.classbuilder` contains the tools for building a class generator
-and `ducktools.classbuilder.prefab` includes a prebuilt implementation
-from this base.
+`ducktools.classbuilder.prefab` includes a prebuilt implementation using these tools.
 
 ## Slot Class Usage ##
 
-The building toolkit does include a basic implementation that uses
+The building toolkit also includes a basic implementation that uses
 `__slots__` to define the fields by assigning a `SlotFields` instance.
 
 ```python
@@ -111,27 +111,21 @@ field so they are present on the class if `help(...)` is called.
 If you want something with more features you can look at the `prefab.py`
 implementation which provides a 'prebuilt' implementation.
 
-## Customising and extending? ##
+For more information on creating class generators using the builder
+see [the docs](https://ducktools-classbuilder.readthedocs.io/en/latest/extension_examples.html)
 
-The core idea is that there are 3 main parts to the generation process:
+## Will you add \<feature\> to `classbuilder.prefab`? ##
 
-1. Gather the fields from the decorated class.
-2. Gather inherited fields from any parent classes in the standard 
-   method resolution order.
-3. Assign the method builders to the class.
+No. Not unless it's something I need or find interesting.
 
-The field gathering is done by a function that operates on the class and returns
-a dictionary of `field_name: field` values. `slot_gatherer` is an example of this.
-This function is provided to `builder` as the `gatherer` argument.
+The original version of `prefab_classes` was intended to have every feature
+anybody could possibly require, but this is no longer the case with this
+rebuilt version.
 
-The inheritance is handled by the `builder` function itself and should not need
-to be customisable.
+I will fix bugs (assuming they're not actually intended behaviour).
 
-Assignment of method builders is where all of the functions that will lazily
-create `__init__` and other magic methods are added to the class.
-
-There are some examples of customising and extending the code generator in 
-the documentation.
+However the whole goal of this module is if you want to have a class generator
+with a specific feature, you can create or add it yourself.
 
 ## Credit ##
 

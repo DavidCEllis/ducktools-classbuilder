@@ -8,20 +8,22 @@ hidden: true
 ---
 extension_examples
 api
-prefab/index
-prefab/api
 perf/performance_tests
+approach_vs_tool
+prefab/index
 ```
 
 `ducktools-classbuilder` is *the* Python package that will bring you the **joy**
-of writing... **functions that write classes**.
+of writing... functions... that will bring back the **joy** of writing classes.
 
-Maybe that's just me.
+Maybe.
 
 This specific idea came about after seeing people making multiple feature requests
 to `attrs` or `dataclasses` to add features or to merge feature PRs. This project
 is supposed to both provide users with some basic tools to allow them to make 
 custom class generators that work with the features they need.
+
+## A little history ##
 
 Previously I had a project - `PrefabClasses` - which came about while getting
 frustrated at the need to write converters or wrappers for multiple methods when
@@ -32,20 +34,34 @@ Further development came when I started investigating CLI tools and noticed the
 significant overhead of both `attrs` and `dataclasses` on import time, even before
 generating any classes.
 
+This module has largely been reimplemented as `ducktools.classbuilder.prefab` using
+the tools provided by the main `classbuilder` module.
+
 `classbuilder` and `prefab` have been intentionally written to avoid importing external
 modules, including stdlib ones that would have a significant impact on start time.
 (This is why all of the typing is done in a stub file).
 
-| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
-|:---|---:|---:|---:|---:|
-| `python -c "pass"` | 12.7 ± 1.5 | 11.4 | 16.7 | 1.00 |
-| `python -c "from ducktools.classbuilder import slotclass"` | 13.6 ± 1.6 | 12.0 | 18.1 | 1.08 ± 0.18 |
-| `python -c "from ducktools.classbuilder.prefab import prefab"` | 14.6 ± 2.5 | 12.5 | 21.4 | 1.16 ± 0.24 |
-| `python -c "from collections import namedtuple"` | 16.4 ± 2.2 | 13.7 | 22.5 | 1.29 ± 0.23 |
-| `python -c "from typing import NamedTuple"` | 29.0 ± 4.3 | 23.2 | 38.7 | 2.29 ± 0.43 |
-| `python -c "from dataclasses import dataclass"` | 37.2 ± 3.6 | 32.1 | 46.7 | 2.93 ± 0.44 |
-| `python -c "from attrs import define"` | 63.9 ± 7.7 | 54.7 | 79.8 | 5.04 ± 0.85 |
-| `python -c "from pydantic import BaseModel"` | 93.4 ± 12.0 | 78.8 | 117.3 | 7.38 ± 1.28 |
+## Slot Class Usage ##
+
+The building toolkit includes a basic implementation that uses
+`__slots__` to define the fields by assigning a `SlotFields` instance.
+
+```python
+from ducktools.classbuilder import slotclass, Field, SlotFields
+
+@slotclass
+class SlottedDC:
+    __slots__ = SlotFields(
+        the_answer=42,
+        the_question=Field(
+            default="What do you get if you multiply six by nine?",
+            doc="Life, the Universe, and Everything",
+        ),
+    )
+    
+ex = SlottedDC()
+print(ex)
+```
 
 ## Indices and tables ##
 

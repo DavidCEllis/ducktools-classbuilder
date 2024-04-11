@@ -447,7 +447,7 @@ if __name__ == "__main__":
 Really? Have you heard of [dataclasses](https://docs.python.org/3/library/dataclasses.html)?
 
 But we can also do that. These classes will not be slotted, however, 
-due to the issues mentioned earlier.
+due to the issues mentioned in the readme.
 
 ```python
 import sys
