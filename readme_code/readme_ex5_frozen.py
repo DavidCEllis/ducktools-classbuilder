@@ -24,7 +24,7 @@ def setattr_maker(cls):
         f"    if name in fields and not hasattr(self, name):\n"
         f"        object_setattr(self, name, value)\n"
         f"    else:\n"
-        f'        raise TypeError("{cls.__name__!r} object does not support attribute assignment")'
+        f'        raise TypeError(f"{{type(self).__name__!r}} object does not support attribute assignment")'
     )
     return code, globs
 
@@ -32,7 +32,7 @@ def setattr_maker(cls):
 def delattr_maker(cls):
     code = (
         f"def __delattr__(self, name):\n"
-        f'    raise TypeError("{cls.__name__!r} object does not support attribute deletion")'
+        f'    raise TypeError(f"{{type(self).__name__!r}} object does not support attribute deletion")'
     )
     globs = {}
     return code, globs
