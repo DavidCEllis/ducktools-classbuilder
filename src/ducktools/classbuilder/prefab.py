@@ -31,7 +31,7 @@ import sys
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
-    builder, fieldclass, get_fields, get_internals, slot_gatherer
+    builder, fieldclass, get_internals, slot_gatherer
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -69,8 +69,18 @@ def _is_classvar(hint):
     return False
 
 
-# Method Generators
+def get_attributes(cls):
+    """
+    Copy of get_fields, typed to return Attribute instead of Field.
+    This is used in the prefab methods.
 
+    :param cls: class built with _make_prefab
+    :return: dict[str, Attribute] of all gathered attributes
+    """
+    return getattr(cls, INTERNALS_DICT)["fields"]
+
+
+# Method Generators
 def get_init_maker(*, init_name="__init__"):
     def __init__(cls: "type") -> "tuple[str, dict]":
         globs = {}
@@ -227,7 +237,7 @@ def get_init_maker(*, init_name="__init__"):
 
 def get_repr_maker(*, recursion_safe=False):
     def __repr__(cls: "type") -> "tuple[str, dict]":
-        attributes = get_fields(cls)
+        attributes = get_attributes(cls)
 
         will_eval = True
         valid_names = []
@@ -281,7 +291,7 @@ def get_repr_maker(*, recursion_safe=False):
 def get_eq_maker():
     def __eq__(cls: "type") -> "tuple[str, dict]":
         class_comparison = "self.__class__ is other.__class__"
-        attribs = get_fields(cls)
+        attribs = get_attributes(cls)
         field_names = [
             name
             for name, attrib in attribs.items()
@@ -308,7 +318,7 @@ def get_eq_maker():
 
 def get_iter_maker():
     def __iter__(cls: "type") -> "tuple[str, dict]":
-        field_names = get_fields(cls).keys()
+        field_names = get_attributes(cls).keys()
 
         if field_names:
             values = "\n".join(f"    yield self.{name} " for name in field_names)
@@ -363,7 +373,7 @@ def get_frozen_delattr_maker():
 
 def get_asdict_maker():
     def as_dict_gen(cls: "type") -> "tuple[str, dict]":
-        fields = get_fields(cls)
+        fields = get_attributes(cls)
 
         vals = ", ".join(
             f"'{name}': self.{name}"
@@ -409,6 +419,7 @@ class Attribute(Field):
             )
 
 
+# noinspection PyShadowingBuiltins
 def attribute(
     *,
     default=NOTHING,
@@ -526,6 +537,7 @@ def attribute_gatherer(cls):
 
 
 # Class Builders
+# noinspection PyShadowingBuiltins
 def _make_prefab(
     cls,
     *,
@@ -711,6 +723,7 @@ def _make_prefab(
     return cls
 
 
+# noinspection PyShadowingBuiltins
 def prefab(
     cls=None,
     *,
@@ -772,6 +785,7 @@ def prefab(
         )
 
 
+# noinspection PyShadowingBuiltins
 def build_prefab(
     class_name,
     attributes,
@@ -874,7 +888,7 @@ def as_dict(o):
 
     cls = type(o)
     try:
-        flds = get_fields(cls)
+        flds = get_attributes(cls)
     except AttributeError:
         raise TypeError(f"inst should be a prefab instance, not {cls}")
 

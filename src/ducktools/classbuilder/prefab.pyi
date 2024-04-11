@@ -3,8 +3,8 @@ from collections.abc import Callable
 
 from . import (
     INTERNALS_DICT, NOTHING,
-    Field, MethodMaker, SlotFields,
-    builder, fieldclass, get_fields, get_internals, slot_gatherer
+    Field, MethodMaker, SlotFields as SlotFields,
+    builder, fieldclass, get_internals, slot_gatherer
 )
 
 PREFAB_FIELDS: str
@@ -12,6 +12,8 @@ PREFAB_INIT_FUNC: str
 PRE_INIT_FUNC: str
 POST_INIT_FUNC: str
 
+
+# noinspection PyPep8Naming
 class _KW_ONLY_TYPE:
     def __repr__(self) -> str: ...
 
@@ -20,6 +22,8 @@ KW_ONLY: _KW_ONLY_TYPE
 class PrefabError(Exception): ...
 
 def _is_classvar(hint: type | str) -> bool: ...
+
+def get_attributes(cls: type) -> dict[str, Attribute]: ...
 
 def get_init_maker(*, init_name: str="__init__") -> MethodMaker: ...
 
