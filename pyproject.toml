@@ -34,6 +34,13 @@ version = {attr = "ducktools.classbuilder.__version__"}
 
 [project.optional-dependencies]
 testing = ["pytest", "pytest-cov"]
+docs = ["sphinx", "myst-parser", "sphinx_rtd_theme"]
 
 [project.urls]
 "Homepage" = "https://github.com/davidcellis/ducktools-classbuilder"
+
+[tool.pytest.ini_options]
+addopts= "--cov=src/ --cov-report=term-missing"
+testpaths = [
+    "tests",
+]

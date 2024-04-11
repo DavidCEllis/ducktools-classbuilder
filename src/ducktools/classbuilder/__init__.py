@@ -25,9 +25,41 @@ __version__ = "v0.1.0"
 INTERNALS_DICT = "__classbuilder_internals__"
 
 
+def get_internals(cls):
+    """
+    Utility function to get the internals dictionary
+    or return None.
+
+    As generated classes will always have 'fields'
+    and 'local_fields' attributes this will always
+    evaluate as 'truthy' if this is a generated class.
+
+    Usage:
+       if internals := get_internals(cls):
+           ...
+
+    :param cls: generated class
+    :return: internals dictionary of the class or None
+    """
+    return getattr(cls, INTERNALS_DICT, None)
+
+
 def get_fields(cls):
-    """Utility function to gather the fields from the class internals"""
+    """
+    Utility function to gather the fields dictionary
+    from the class internals.
+
+    :param cls: generated class
+    :return: dictionary of keys and Field attribute info
+    """
     return getattr(cls, INTERNALS_DICT)["fields"]
+
+
+def get_inst_fields(inst):
+    return {
+        k: getattr(inst, k)
+        for k in get_fields(type(inst))
+    }
 
 
 # As 'None' can be a meaningful default we need a sentinel value
@@ -49,6 +81,10 @@ class MethodMaker:
     dictionary into a descriptor to assign on a generated class.
     """
     def __init__(self, funcname, code_generator):
+        """
+        :param funcname: name of the generated function eg `__init__`
+        :param code_generator: code generator function to operate on a class.
+        """
         self.funcname = funcname
         self.code_generator = code_generator
 
@@ -141,15 +177,13 @@ eq_desc = MethodMaker("__eq__", eq_maker)
 default_methods = frozenset({init_desc, repr_desc, eq_desc})
 
 
-def builder(cls=None, /, *, gatherer, methods, default_check=True):
+def builder(cls=None, /, *, gatherer, methods):
     """
     The main builder for class generation
 
     :param cls: Class to be analysed and have methods generated
     :param gatherer: Function to gather field information
     :param methods: MethodMakers to add to the class
-    :param default_check: Check if fields without default values have been
-                          defined *after* fields with defaults.
     :return: The modified class (the class itself is modified, but this is expected).
     """
     # Handle `None` to make wrapping with a decorator easier.
@@ -158,7 +192,6 @@ def builder(cls=None, /, *, gatherer, methods, default_check=True):
             cls_,
             gatherer=gatherer,
             methods=methods,
-            default_check=default_check
         )
 
     internals = {}
@@ -174,20 +207,9 @@ def builder(cls=None, /, *, gatherer, methods, default_check=True):
         fields = {}
         for c in reversed(mro):
             try:
-                fields.update(getattr(c, INTERNALS_DICT)["local_fields"])
+                fields.update(get_internals(c)["local_fields"])
             except AttributeError:
                 pass
-
-    if default_check:
-        used_default = False
-        for k, v in fields.items():
-            if v.default is NOTHING and v.default_factory is NOTHING:
-                if used_default:
-                    raise SyntaxError(
-                        f"non-default argument {k!r} follows default argument"
-                    )
-            else:
-                used_default = True
 
     internals["fields"] = fields
 
@@ -198,6 +220,9 @@ def builder(cls=None, /, *, gatherer, methods, default_check=True):
     return cls
 
 
+# The Field class can finally be defined.
+# The __init__ method has to be written manually so Fields can be created
+# However after this, the other methods can be generated.
 class Field:
     """
     A basic class to handle the assignment of defaults/factories with
@@ -232,6 +257,28 @@ class Field:
         self.type = type
         self.doc = doc
 
+        self.validate_field()
+
+    def validate_field(self):
+        if self.default is not NOTHING and self.default_factory is not NOTHING:
+            raise AttributeError(
+                "Cannot define both a default value and a default factory."
+            )
+
+    @classmethod
+    def from_field(cls, fld, /, **kwargs):
+        """
+        Create an instance of field or subclass from another field.
+        
+        This is intended to be used to convert a base 
+        Field into a subclass.
+        
+        :param fld: field class to convert
+        :param kwargs: Additional keyword arguments for subclasses
+        :return: new field subclass instance
+        """
+        return cls(**get_inst_fields(fld), **kwargs)
+
 
 # Use the builder to generate __repr__ and __eq__ methods
 # and pretend `Field` was a built class all along.
@@ -245,18 +292,32 @@ _field_internal = {
 builder(
     Field,
     gatherer=lambda cls_: _field_internal,
-    methods=frozenset({repr_desc, eq_desc}),
-    default_check=False
+    methods=frozenset({repr_desc, eq_desc})
 )
 
 
 # Subclass of dict to be identifiable by isinstance checks
 # For anything more complicated this could be made into a Mapping
 class SlotFields(dict):
-    pass
+    """
+    A plain dict subclass.
+
+    For declaring slotfields there are no additional features required
+    other than recognising that this is intended to be used as a class
+    generating dict and isn't a regular dictionary that ended up in
+    `__slots__`.
+
+    This should be replaced on `__slots__` after fields have been gathered.
+    """
 
 
 def slot_gatherer(cls):
+    """
+    Gather field information for class generation based on __slots__
+    
+    :param cls: Class to gather field information from
+    :return: dict of field_name: Field(...)
+    """
     cls_slots = cls.__dict__.get("__slots__", None)
 
     if not isinstance(cls_slots, SlotFields):
@@ -290,22 +351,34 @@ def slot_gatherer(cls):
     return cls_fields
 
 
-def slotclass(cls=None, /, *, methods=default_methods, default_check=True):
+def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     """
     Example of class builder in action using __slots__ to find fields.
 
     :param cls: Class to be analysed and modified
     :param methods: MethodMakers to be added to the class
-    :param default_check: check there are no arguments without defaults
-                          after arguments with defaults.
+    :param syntax_check: check there are no arguments without defaults
+                        after arguments with defaults.
     :return: Modified class
     """
-    return builder(
-        cls,
-        gatherer=slot_gatherer,
-        methods=methods,
-        default_check=default_check
-    )
+    if not cls:
+        return lambda cls_: slotclass(cls_, methods=methods, syntax_check=syntax_check)
+
+    cls = builder(cls, gatherer=slot_gatherer, methods=methods)
+
+    if syntax_check:
+        fields = get_fields(cls)
+        used_default = False
+        for k, v in fields.items():
+            if v.default is NOTHING and v.default_factory is NOTHING:
+                if used_default:
+                    raise SyntaxError(
+                        f"non-default argument {k!r} follows default argument"
+                    )
+            else:
+                used_default = True
+
+    return cls
 
 
 def fieldclass(cls):
@@ -317,16 +390,25 @@ def fieldclass(cls):
     :param cls: Field subclass
     :return: Modified subclass
     """
+
+    # Fields need a way to call their validate method
+    # So append it to the code from __init__.
+    def field_init_func(cls_):
+        code, globs = init_maker(cls_, null=field_nothing)
+        code += "    self.validate_field()\n"
+        return code, globs
+
     field_nothing = _NothingType()
     field_init_desc = MethodMaker(
         "__init__",
-        lambda cls_: init_maker(cls_, null=field_nothing)
+        field_init_func,
     )
     field_methods = frozenset({field_init_desc, repr_desc, eq_desc})
 
-    return builder(
+    cls = builder(
         cls,
         gatherer=slot_gatherer,
-        methods=field_methods,
-        default_check=False
+        methods=field_methods
     )
+
+    return cls
