@@ -131,11 +131,11 @@ slotclass_template = '''
 @slotclass
 class C{n}:
     __slots__ = SlotFields(
-        a=attribute(),
-        b=attribute(),
-        c=attribute(),
-        d=attribute(),
-        e=attribute(),
+        a=Field(),
+        b=Field(),
+        c=Field(),
+        d=Field(),
+        e=Field(),
     )
 '''
 
@@ -193,7 +193,7 @@ attr_header = "from attrs import define"
 pydantic_header = "from pydantic import BaseModel"
 cluegen_header = "from cluegen import Datum"
 dataklass_header = "from dataklasses import dataklass"
-slotclass_header = "from ducktools.classbuilder import slotclass, SlotFields"
+slotclass_header = "from ducktools.classbuilder import slotclass, SlotFields, Field"
 prefab_header = "from ducktools.classbuilder.prefab import prefab, attribute, SlotFields"
 
 
