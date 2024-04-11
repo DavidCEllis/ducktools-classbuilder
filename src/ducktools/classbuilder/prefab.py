@@ -446,8 +446,9 @@ def attribute(
     :param kw_only: Make this argument keyword only in init
     :param in_dict: Include this attribute in methods that serialise to dict
     :param exclude_field: Exclude this field from all magic method generation
-                          apart from __init__
+                          apart from __init__ signature
                           and do not include it in PREFAB_FIELDS
+                          Must be assigned in __prefab_post_init__
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
 

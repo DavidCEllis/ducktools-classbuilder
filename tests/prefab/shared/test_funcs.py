@@ -59,18 +59,30 @@ def test_as_dict_excludes():
             password=attribute(in_dict=False, type=str)
         )
 
+    @prefab(dict_method=True)
+    class ExcludeSpecific:
+        __slots__ = SlotFields(
+            name=attribute(type=str),
+            password=attribute(exclude_field=True, type=str)
+        )
+
+        def __prefab_post_init__(self, password):
+            self.password = password
+
     user1 = ExcludesUncached("Boris", "chair")
     user2 = ExcludesCached("Skroob", "1 2 3 4 5")
     user3 = ExcludesSlots("user", "password")
+    user4 = ExcludeSpecific("user", "password")
 
     user1_out = {"name": "Boris"}
     user2_out = {"name": "Skroob"}
     user3_out = {"name": "user"}
+    user4_out = {"name": "user"}
 
     assert as_dict(user1) == user1_out
     assert as_dict(user2) == user2_out
     assert as_dict(user3) == user3_out
-
+    assert as_dict(user4) == user4_out
 
 def test_picklable():
     from funcs_prefabs import PicklePrefab  # noqa

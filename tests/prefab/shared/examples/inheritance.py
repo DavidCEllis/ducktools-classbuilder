@@ -63,8 +63,3 @@ class Child2(Base):
 @prefab
 class GrandChild(Child1, Child2):
     pass
-
-
-from ducktools.classbuilder.prefab import get_fields
-
-print(get_fields(GrandChild))

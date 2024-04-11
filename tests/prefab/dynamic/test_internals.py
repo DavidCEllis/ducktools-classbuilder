@@ -1,5 +1,5 @@
 from ducktools.classbuilder.prefab import prefab, attribute
-from ducktools.classbuilder.prefab import INTERNALS_DICT
+from ducktools.classbuilder import INTERNALS_DICT
 
 
 def test_dynamic_internals():
