@@ -233,88 +233,6 @@ if __name__ == "__main__":
         print(e)
 ```
 
-### What if I want to use type hints instead of slots? ###
-
-Really? Have you heard of [dataclasses](https://docs.python.org/3/library/dataclasses.html)?
-
-But we can also do that. These classes will not be slotted, however, 
-due to the issues mentioned earlier.
-
-```python
-import sys
-from ducktools.classbuilder import builder, default_methods, Field, NOTHING
-
-
-def _is_classvar(hint):
-    # Avoid importing typing if it's not already used
-    _typing = sys.modules.get("typing")
-    if _typing:
-        if (
-            hint is _typing.ClassVar
-            or getattr(hint, "__origin__", None) is _typing.ClassVar
-        ):
-            return True
-        # String used as annotation
-        elif isinstance(hint, str) and "ClassVar" in hint:
-            return True
-    return False
-
-
-def annotation_gatherer(cls):
-    cls_annotations = cls.__dict__.get("__annotations__", {})
-    cls_fields = {}
-
-    for k, v in cls_annotations.items():
-        # Ignore ClassVar
-        if _is_classvar(v):
-            continue
-
-        attrib = getattr(cls, k, NOTHING)
-
-        if attrib is not NOTHING:
-            if isinstance(attrib, Field):
-                attrib.type = v
-            else:
-                attrib = Field(default=attrib)
-
-            # Remove the class variable
-            delattr(cls, k)
-
-        else:
-            attrib = Field()
-
-        cls_fields[k] = attrib
-
-    return cls_fields
-
-
-def annotation_class(cls=None, /, *, methods=default_methods):
-    return builder(cls, gatherer=annotation_gatherer, methods=methods)
-
-
-if __name__ == "__main__":
-    import typing
-
-    @annotation_class
-    class H2G2:
-        the_answer: int = 42
-        the_question: str = Field(
-            default="What do you get if you multiply six by nine?",
-        )
-        the_book: typing.ClassVar[str] = "The Hitchhiker's Guide to the Galaxy"
-        the_author: "typing.ClassVar[str]" = "Douglas Adams"
-
-    ex = H2G2()
-    print(ex)
-    ex2 = H2G2(
-        the_question="What is the ultimate answer to the meaning of life, the universe, and everything?"
-    )
-    print(ex2)
-
-    print(H2G2.the_book)
-    print(H2G2.the_author)
-```
-
 ### Positional Only Arguments? ###
 
 Also possible, but a little longer as we need to modify multiple methods
@@ -522,4 +440,146 @@ if __name__ == "__main__":
 
     ex = ConverterEx("42", "42")
     print(ex)
+```
+
+### What if I want to use type hints instead of slots? ###
+
+Really? Have you heard of [dataclasses](https://docs.python.org/3/library/dataclasses.html)?
+
+But we can also do that. These classes will not be slotted, however, 
+due to the issues mentioned earlier.
+
+```python
+import sys
+from ducktools.classbuilder import builder, default_methods, Field, NOTHING
+
+
+def _is_classvar(hint):
+    # Avoid importing typing if it's not already used
+    _typing = sys.modules.get("typing")
+    if _typing:
+        if (
+            hint is _typing.ClassVar
+            or getattr(hint, "__origin__", None) is _typing.ClassVar
+        ):
+            return True
+        # String used as annotation
+        elif isinstance(hint, str) and "ClassVar" in hint:
+            return True
+    return False
+
+
+def annotation_gatherer(cls):
+    cls_annotations = cls.__dict__.get("__annotations__", {})
+    cls_fields = {}
+
+    for k, v in cls_annotations.items():
+        # Ignore ClassVar
+        if _is_classvar(v):
+            continue
+
+        attrib = getattr(cls, k, NOTHING)
+
+        if attrib is not NOTHING:
+            if isinstance(attrib, Field):
+                attrib.type = v
+            else:
+                attrib = Field(default=attrib)
+
+            # Remove the class variable
+            delattr(cls, k)
+
+        else:
+            attrib = Field()
+
+        cls_fields[k] = attrib
+
+    return cls_fields
+
+
+def annotation_class(cls=None, /, *, methods=default_methods):
+    return builder(cls, gatherer=annotation_gatherer, methods=methods)
+
+
+if __name__ == "__main__":
+    import typing
+
+    @annotation_class
+    class H2G2:
+        the_answer: int = 42
+        the_question: str = Field(
+            default="What do you get if you multiply six by nine?",
+        )
+        the_book: typing.ClassVar[str] = "The Hitchhiker's Guide to the Galaxy"
+        the_author: "typing.ClassVar[str]" = "Douglas Adams"
+
+    ex = H2G2()
+    print(ex)
+    ex2 = H2G2(
+        the_question="What is the ultimate answer to the meaning of life, the universe, and everything?"
+    )
+    print(ex2)
+
+    print(H2G2.the_book)
+    print(H2G2.the_author)
+```
+
+### No attributes! Only Annotations! ###
+
+If you don't like your code to run quickly, but you do love type annotations.
+
+This does everything using `Annotated` and so requires Python 3.10 for both 
+this and get_annotations.
+
+```python
+import inspect
+from typing import Annotated, Any, ClassVar, get_origin
+
+from ducktools.classbuilder import builder, default_methods, Field
+
+
+def annotated_gatherer(cls: type) -> dict[str, Any]:
+    cls_annotations = inspect.get_annotations(cls, eval_str=True)
+    cls_fields = {}
+
+    for key, anno in cls_annotations.items():
+        # Is there another way to do this?
+        if get_origin(anno) is Annotated:
+            typ = anno.__args__[0]
+            meta = anno.__metadata__
+            for v in meta:
+                if isinstance(v, Field):
+                    fld = Field.from_field(v, type=typ)
+                    break
+            else:
+                fld = Field(type=typ)
+        elif anno is ClassVar or get_origin(anno) is ClassVar:
+            fld = None
+        else:
+            typ = anno
+            fld = Field(type=typ)
+
+        if fld:
+            cls_fields[key] = fld
+            if key in cls.__dict__ and "__slots__" not in cls.__dict__:
+                raise AttributeError("No attributes! Only Annotations!")
+
+    return cls_fields
+
+
+def annotationsclass(cls):
+    return builder(cls, gatherer=annotated_gatherer, methods=default_methods)
+
+
+@annotationsclass
+class X:
+    x: str
+    y: ClassVar[str] = "This is okay"
+    a: Annotated[int, Field(default=1)]
+    b: Annotated[str, Field(default="example")]
+    c: Annotated[list[str], Field(default_factory=list)]
+
+
+print(X("Testing"))
+print(X.y)
 ```
