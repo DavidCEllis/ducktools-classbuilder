@@ -277,7 +277,9 @@ class Field:
         :param kwargs: Additional keyword arguments for subclasses
         :return: new field subclass instance
         """
-        return cls(**get_inst_fields(fld), **kwargs)
+        argument_dict = {**get_inst_fields(fld), **kwargs}
+
+        return cls(**argument_dict)
 
 
 # Use the builder to generate __repr__ and __eq__ methods
