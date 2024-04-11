@@ -53,7 +53,7 @@ used as the attributes to create as slots. The values can then be used as
 the default values equivalently to how type hints are used in dataclasses.
 
 For example these two classes would be roughly equivalent, except 
-dataclasses has had to recreate the class from scratch while slotclasses
+`@dataclass` has had to recreate the class from scratch while `@slotclass`
 has simply added the methods on to the original class. This is easy to 
 demonstrate using another decorator.
 
@@ -121,7 +121,7 @@ The core idea is that there are 3 main parts to the generation process:
 3. Assign the method builders to the class.
 
 The field gathering is done by a function that operates on the class and returns
-a dictionary of field_name: field values. `slot_gatherer` is an example of this.
+a dictionary of `field_name: field` values. `slot_gatherer` is an example of this.
 This function is provided to `builder` as the `gatherer` argument.
 
 The inheritance is handled by the `builder` function itself and should not need
@@ -132,14 +132,6 @@ create `__init__` and other magic methods are added to the class.
 
 There are some examples of customising and extending the code generator in 
 the documentation.
-
-## How about... ##
-
-I think that's enough examples.
-
-You're encouraged to look at 
-[the source](https://github.com/DavidCEllis/ducktools-classbuilder/blob/main/src/ducktools/classbuilder/__init__.py)
-and build on it yourself at this point.
 
 ## Credit ##
 

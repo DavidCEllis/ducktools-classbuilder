@@ -7,7 +7,10 @@ caption: "Contents:"
 hidden: true
 ---
 extension_examples
+api
+prefab/index
 prefab/api
+perf/performance_tests
 ```
 
 `ducktools-classbuilder` is *the* Python package that will bring you the **joy**
@@ -43,7 +46,6 @@ modules, including stdlib ones that would have a significant impact on start tim
 | `python -c "from dataclasses import dataclass"` | 37.2 ± 3.6 | 32.1 | 46.7 | 2.93 ± 0.44 |
 | `python -c "from attrs import define"` | 63.9 ± 7.7 | 54.7 | 79.8 | 5.04 ± 0.85 |
 | `python -c "from pydantic import BaseModel"` | 93.4 ± 12.0 | 78.8 | 117.3 | 7.38 ± 1.28 |
-
 
 ## Indices and tables ##
 

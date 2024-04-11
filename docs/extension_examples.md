@@ -23,8 +23,9 @@ demonstrations of adding additional features to the builder.
 ### How can I add `<method>` to the class ###
 
 To do this you need to write a code generator that returns source code
-along with a dictionary of any variables the code needs to refer to, or
-an empty dictionary if none are needed.
+along with a 'globals' dictionary of any names the code needs to refer 
+to, or an empty dictionary if none are needed. Many methods don't require
+any globals values, but it is essential for some.
 
 Say you want to make the class iterable, so you want to add `__iter__`.
 
@@ -153,6 +154,9 @@ if __name__ == "__main__":
 Here's an example of frozen slotted classes that only allow assignment once
 (which happens in the `__init__` method generated).
 
+> Note that these methods use `type(self).__name__` instead of `cls.__name__`
+> when generated so the name remains correct even if the class name is changed.
+
 ```python
 from ducktools.classbuilder import (
     slotclass,
@@ -176,7 +180,7 @@ def setattr_maker(cls):
         f"    if name in fields and not hasattr(self, name):\n"
         f"        object_setattr(self, name, value)\n"
         f"    else:\n"
-        f'        raise TypeError("{cls.__name__!r} object does not support attribute assignment")'
+        f'        raise TypeError(f"{{type(self).__name__!r}} object does not support attribute assignment")'
     )
     return code, globs
 
@@ -184,7 +188,7 @@ def setattr_maker(cls):
 def delattr_maker(cls):
     code = (
         f"def __delattr__(self, name):\n"
-        f'    raise TypeError("{cls.__name__!r} object does not support attribute deletion")'
+        f'    raise TypeError(f"{{type(self).__name__!r}} object does not support attribute deletion")'
     )
     globs = {}
     return code, globs
