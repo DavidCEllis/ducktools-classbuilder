@@ -378,7 +378,7 @@ def get_asdict_maker():
         vals = ", ".join(
             f"'{name}': self.{name}"
             for name, attrib in fields.items()
-            if attrib.in_dict
+            if attrib.in_dict and not attrib.exclude_field
         )
         out_dict = f"{{{vals}}}"
         code = f"def as_dict(self): return {out_dict}"
@@ -895,5 +895,5 @@ def as_dict(o):
     return {
         name: getattr(o, name)
         for name, attrib in flds.items()
-        if attrib.in_dict
+        if attrib.in_dict and not attrib.exclude_field
     }
