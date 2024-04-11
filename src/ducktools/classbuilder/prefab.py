@@ -72,7 +72,7 @@ def _is_classvar(hint):
 # Method Generators
 
 def get_init_maker(*, init_name="__init__"):
-    def __init__(cls):
+    def __init__(cls: "type") -> "tuple[str, dict]":
         globs = {}
         internals = get_internals(cls)
         # Get the internals dictionary and prepare attributes
@@ -225,8 +225,8 @@ def get_init_maker(*, init_name="__init__"):
     return MethodMaker(init_name, __init__)
 
 
-def get_repr_maker(recursion_safe=False):
-    def __repr__(cls):
+def get_repr_maker(*, recursion_safe=False):
+    def __repr__(cls: "type") -> "tuple[str, dict]":
         attributes = get_fields(cls)
 
         will_eval = True
@@ -279,7 +279,7 @@ def get_repr_maker(recursion_safe=False):
 
 
 def get_eq_maker():
-    def __eq__(cls):
+    def __eq__(cls: "type") -> "tuple[str, dict]":
         class_comparison = "self.__class__ is other.__class__"
         attribs = get_fields(cls)
         field_names = [
@@ -307,7 +307,7 @@ def get_eq_maker():
 
 
 def get_iter_maker():
-    def __iter__(cls):
+    def __iter__(cls: "type") -> "tuple[str, dict]":
         field_names = get_fields(cls).keys()
 
         if field_names:
@@ -322,7 +322,7 @@ def get_iter_maker():
 
 
 def get_frozen_setattr_maker():
-    def __setattr__(cls):
+    def __setattr__(cls: "type") -> "tuple[str, dict]":
         globs = {}
         internals = get_internals(cls)
         field_names = internals["fields"].keys()
@@ -352,7 +352,7 @@ def get_frozen_setattr_maker():
 
 
 def get_frozen_delattr_maker():
-    def __delattr__(cls):
+    def __delattr__(cls: "type") -> "tuple[str, dict]":
         body = f'    raise TypeError("{cls.__name__!r} object does not support attribute deletion")\n'
         code = f"def __delattr__(self, name):\n{body}"
         globs = {}
@@ -362,7 +362,7 @@ def get_frozen_delattr_maker():
 
 
 def get_asdict_maker():
-    def as_dict_gen(cls):
+    def as_dict_gen(cls: "type") -> "tuple[str, dict]":
         fields = get_fields(cls)
 
         vals = ", ".join(
@@ -773,7 +773,7 @@ def prefab(
 
 
 def build_prefab(
-    class_name: str,
+    class_name,
     attributes,
     *,
     bases=(),
