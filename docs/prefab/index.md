@@ -116,13 +116,3 @@ Unfortunately this raises the base import time but it's still a lot faster than 
 So this is the tool I've created for my use using the approach I've come up with to suit my needs.
 You are welcome to use it if you wish - and if it suits your needs better than `attrs` or 
 `dataclasses` then good. I'm glad you found this useful.
-
-## Credit ##
-
-`autogen` function and some magic method definitions taken from 
-[David Beazley's Cluegen](https://github.com/dabeaz/cluegen)
-
-General design based on previous experience using
-[dataclasses](https://docs.python.org/3/library/dataclasses.html)
-and [attrs](https://www.attrs.org/en/stable/) and trying to match the 
-requirements for [PEP 681](https://peps.python.org/pep-0681/).
