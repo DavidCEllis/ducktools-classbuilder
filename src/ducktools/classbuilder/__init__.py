@@ -106,12 +106,15 @@ class MethodMaker:
         return method.__get__(instance, cls)
 
 
-def init_maker(cls, *, null=NOTHING):
+def init_maker(cls, *, null=NOTHING, kw_only=False):
     fields = get_fields(cls)
 
     arglist = []
     assignments = []
     globs = {}
+
+    if kw_only:
+        arglist.append("*")
 
     for k, v in fields.items():
         if v.default is not null:
@@ -183,7 +186,9 @@ def builder(cls=None, /, *, gatherer, methods):
 
     :param cls: Class to be analysed and have methods generated
     :param gatherer: Function to gather field information
+    :type gatherer: Callable[[type], dict[str, Field]]
     :param methods: MethodMakers to add to the class
+    :type methods: set[MethodMaker]
     :return: The modified class (the class itself is modified, but this is expected).
     """
     # Handle `None` to make wrapping with a decorator easier.
@@ -229,9 +234,6 @@ class Field:
     some metadata.
 
     Intended to be extendable by subclasses for additional features.
-
-    __repr__ and __eq__ methods will extend to include any additional
-    __slots__ values defined in subclasses.
     """
     __slots__ = {
         "default": "Standard default value to be used for attributes with"
@@ -396,7 +398,7 @@ def fieldclass(cls):
     # Fields need a way to call their validate method
     # So append it to the code from __init__.
     def field_init_func(cls_):
-        code, globs = init_maker(cls_, null=field_nothing)
+        code, globs = init_maker(cls_, null=field_nothing, kw_only=True)
         code += "    self.validate_field()\n"
         return code, globs
 
