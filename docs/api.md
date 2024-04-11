@@ -33,7 +33,7 @@
 ```
 
 ```{eval-rst}
-.. autofunction:: ducktools.classbuilder::slotgatherer
+.. autofunction:: ducktools.classbuilder::slot_gatherer
 ```
 
 ```{eval-rst}
