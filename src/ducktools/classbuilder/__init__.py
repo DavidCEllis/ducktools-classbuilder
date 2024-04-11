@@ -26,11 +26,32 @@ INTERNALS_DICT = "__classbuilder_internals__"
 
 
 def get_internals(cls):
+    """
+    Utility function to get the internals dictionary
+    or return None.
+
+    As generated classes will always have 'fields'
+    and 'local_fields' attributes this will always
+    evaluate as 'truthy' if this is a generated class.
+
+    Usage:
+       if internals := get_internals(cls):
+           ...
+
+    :param cls: generated class
+    :return: internals dictionary of the class or None
+    """
     return getattr(cls, INTERNALS_DICT, None)
 
 
 def get_fields(cls):
-    """Utility function to gather the fields from the class internals"""
+    """
+    Utility function to gather the fields dictionary
+    from the class internals.
+
+    :param cls: generated class
+    :return: dictionary of keys and Field attribute info
+    """
     return getattr(cls, INTERNALS_DICT)["fields"]
 
 
@@ -60,6 +81,10 @@ class MethodMaker:
     dictionary into a descriptor to assign on a generated class.
     """
     def __init__(self, funcname, code_generator):
+        """
+        :param funcname: name of the generated function eg `__init__`
+        :param code_generator: code generator function to operate on a class.
+        """
         self.funcname = funcname
         self.code_generator = code_generator
 
@@ -274,7 +299,16 @@ builder(
 # Subclass of dict to be identifiable by isinstance checks
 # For anything more complicated this could be made into a Mapping
 class SlotFields(dict):
-    pass
+    """
+    A plain dict subclass.
+
+    For declaring slotfields there are no additional features required
+    other than recognising that this is intended to be used as a class
+    generating dict and isn't a regular dictionary that ended up in
+    `__slots__`.
+
+    This should be replaced on `__slots__` after fields have been gathered.
+    """
 
 
 def slot_gatherer(cls):
