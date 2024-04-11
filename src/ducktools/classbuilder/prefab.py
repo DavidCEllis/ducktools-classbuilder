@@ -349,7 +349,10 @@ def get_frozen_setattr_maker():
 
         body = (
             f"    if hasattr(self, name) or name not in {field_set}:\n"
-            f'        raise TypeError("{cls.__name__!r} object does not support attribute assignment")\n'
+            f'        raise TypeError(\n'
+            f'            f"{{type(self).__name__!r}} object does not support "'
+            f'            f"attribute assignment"\n'
+            f'        )\n'
             f"    else:\n"
             f"        {setattr_method}\n"
         )
@@ -363,7 +366,12 @@ def get_frozen_setattr_maker():
 
 def get_frozen_delattr_maker():
     def __delattr__(cls: "type") -> "tuple[str, dict]":
-        body = f'    raise TypeError("{cls.__name__!r} object does not support attribute deletion")\n'
+        body = (
+            '    raise TypeError(\n'
+            '        f"{type(self).__name__!r} object "\n'
+            '        f"does not support attribute deletion"\n'
+            '    )\n'
+        )
         code = f"def __delattr__(self, name):\n{body}"
         globs = {}
         return code, globs
