@@ -1,4 +1,4 @@
-## Approaches and tools ##
+# Approaches and tools #
 
 As this module's code generation is inspired by the workings of [David Beazley's Cluegen](https://github.com/dabeaz/cluegen)
 I thought it was briefly worth discussing his note on learning an approach vs using a tool.
@@ -14,4 +14,3 @@ modified generator with features that work how **you** want them to work.
 
 The `prefab` module is the more fully featured powertool *I* built with these tools. 
 However, much like a prefabricated building, it may not be what you desire.
-
