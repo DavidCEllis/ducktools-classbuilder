@@ -1,5 +1,4 @@
 import typing
-import types
 from collections.abc import Callable
 
 _py_type = type  # Alias for type where it is used as a name
