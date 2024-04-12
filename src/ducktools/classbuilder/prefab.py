@@ -452,8 +452,7 @@ def attribute(
     type=NOTHING,
 ):
     """
-    Additional definition for how to generate standard methods
-    for an instance attribute.
+    Get an object to define a prefab Attribute
 
     :param default: Default value for this attribute
     :param default_factory: 0 argument callable to give a default value
