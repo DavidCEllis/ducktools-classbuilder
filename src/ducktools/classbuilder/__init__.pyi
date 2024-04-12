@@ -1,5 +1,8 @@
 import typing
+import types
 from collections.abc import Callable
+
+_py_type = type  # Alias for type where it is used as a name
 
 __version__: str
 INTERNALS_DICT: str
@@ -38,14 +41,16 @@ repr_desc: MethodMaker
 eq_desc: MethodMaker
 default_methods: frozenset[MethodMaker]
 
+_T = typing.TypeVar("_T")
+
 @typing.overload
 def builder(
-    cls: type,
+    cls: type[_T],
     /,
     *,
     gatherer: Callable[[type], dict[str, Field]],
     methods: frozenset[MethodMaker] | set[MethodMaker]
-) -> typing.Any: ...
+) -> type[_T]: ...
 
 @typing.overload
 def builder(
@@ -54,35 +59,30 @@ def builder(
     *,
     gatherer: Callable[[type], dict[str, Field]],
     methods: frozenset[MethodMaker] | set[MethodMaker]
-) -> Callable[[type], type]: ...
+) -> Callable[[type[_T]], type[_T]]: ...
 
-
-_Self = typing.TypeVar("_Self", bound="Field")
 
 class Field:
     default: _NothingType | typing.Any
     default_factory: _NothingType | typing.Any
-    type: _NothingType | type
+    type: _NothingType | _py_type
     doc: None | str
+
+    __classbuilder_internals__: dict
 
     def __init__(
         self,
         *,
         default: _NothingType | typing.Any = NOTHING,
         default_factory: _NothingType | typing.Any = NOTHING,
-        type: _NothingType | type = NOTHING,
+        type: _NothingType | _py_type = NOTHING,
         doc: None | str = None,
     ) -> None: ...
-    @property
-    def _inherited_slots(self) -> list[str]: ...
     def __repr__(self) -> str: ...
-    @typing.overload
-    def __eq__(self, other: _Self) -> bool: ...
-    @typing.overload
-    def __eq__(self, other: object) -> NotImplemented: ...
+    def __eq__(self, other: Field | object) -> bool | types.NotImplementedType: ...
     def validate_field(self) -> None: ...
     @classmethod
-    def from_field(cls, fld: Field, **kwargs: typing.Any) -> _Self: ...
+    def from_field(cls, fld: Field, /, **kwargs: typing.Any) -> Field: ...
 
 
 class SlotFields(dict):
@@ -100,6 +100,7 @@ def slotclass(
     syntax_check: bool = True
 ) -> typing.Any: ...
 
+@typing.overload
 def slotclass(
     cls: None = None,
     /,

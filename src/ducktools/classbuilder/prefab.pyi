@@ -1,4 +1,7 @@
+import types
 import typing
+from typing_extensions import dataclass_transform
+
 from collections.abc import Callable
 
 from . import (
@@ -6,6 +9,9 @@ from . import (
     Field, MethodMaker, SlotFields as SlotFields,
     builder, fieldclass, get_internals, slot_gatherer
 )
+
+# noinspection PyUnresolvedReferences
+from . import _NothingType
 
 PREFAB_FIELDS: str
 PREFAB_INIT_FUNC: str
@@ -63,9 +69,9 @@ class Attribute(Field):
     def __init__(
         self,
         *,
-        default: typing.Any | NOTHING =NOTHING,
-        default_factory: typing.Any | NOTHING = NOTHING,
-        type: type | NOTHING = NOTHING,
+        default: typing.Any | _NothingType =NOTHING,
+        default_factory: typing.Any | _NothingType = NOTHING,
+        type: type | _NothingType = NOTHING,
         doc: str | None = None,
         init: bool = True,
         repr: bool = True,
@@ -76,17 +82,14 @@ class Attribute(Field):
     ) -> None: ...
 
     def __repr__(self) -> str: ...
-    @typing.overload
-    def __eq__(self, other: Attribute) -> bool: ...
-    def __eq__(self, other: object) -> NotImplemented: ...
-
+    def __eq__(self, other: Attribute | object) -> bool | types.NotImplementedType: ...
     def validate_field(self) -> None: ...
 
 def attribute(
     *,
-    default: typing.Any | NOTHING = NOTHING,
-    default_factory: typing.Any | NOTHING = NOTHING,
-    type: type | NOTHING = NOTHING,
+    default: typing.Any | _NothingType = NOTHING,
+    default_factory: typing.Any | _NothingType = NOTHING,
+    type: type | _NothingType = NOTHING,
     doc: str | None = None,
     init: bool = True,
     repr: bool = True,
@@ -112,9 +115,14 @@ def _make_prefab(
     recursive_repr: bool = False,
 ) -> type: ...
 
-@typing.dataclass_transform
+_T = typing.TypeVar("_T")
+
+
+# For some reason PyCharm can't see 'attribute'?!?
+# noinspection PyUnresolvedReferences
+@dataclass_transform(field_specifiers=(Attribute, attribute))
 def prefab(
-    cls: type | None = None,
+    cls: type[_T] | None = None,
     *,
     init: bool = True,
     repr: bool = True,
@@ -125,7 +133,7 @@ def prefab(
     frozen: bool = False,
     dict_method: bool = False,
     recursive_repr: bool = False,
-) -> type | Callable[[type], type]: ...
+) -> type[_T] | Callable[[type[_T]], type[_T]]: ...
 
 def build_prefab(
     class_name: str,
