@@ -319,12 +319,19 @@ def get_eq_maker():
 
 def get_iter_maker():
     def __iter__(cls: "type") -> "tuple[str, dict]":
-        field_names = get_attributes(cls).keys()
+        fields = get_attributes(cls)
 
-        if field_names:
-            values = "\n".join(f"    yield self.{name} " for name in field_names)
-        else:
+        valid_fields = (
+            name for name, attrib in fields.items()
+            if attrib.iter and not attrib.exclude_field
+        )
+
+        values = "\n".join(f"    yield self.{name}" for name in valid_fields)
+
+        # if values is an empty string
+        if not values:
             values = "    yield from ()"
+
         code = f"def __iter__(self):\n{values}"
         globs = {}
         return code, globs
@@ -415,6 +422,7 @@ class Attribute(Field):
         init=True,
         repr=True,
         compare=True,
+        iter=True,
         kw_only=False,
         in_dict=True,
         exclude_field=False,
@@ -436,6 +444,7 @@ def attribute(
     init=True,
     repr=True,
     compare=True,
+    iter=True,
     kw_only=False,
     in_dict=True,
     exclude_field=False,
@@ -452,6 +461,7 @@ def attribute(
     :param init: Include this attribute in the __init__ parameters
     :param repr: Include this attribute in the class __repr__
     :param compare: Include this attribute in the class __eq__
+    :param iter: Include this attribute in the class __iter__ if generated
     :param kw_only: Make this argument keyword only in init
     :param in_dict: Include this attribute in methods that serialise to dict
     :param exclude_field: Exclude this field from all magic method generation
@@ -469,6 +479,7 @@ def attribute(
         init=init,
         repr=repr,
         compare=compare,
+        iter=iter,
         kw_only=kw_only,
         in_dict=in_dict,
         exclude_field=exclude_field,
@@ -706,7 +717,7 @@ def _make_prefab(
         if attrib.exclude_field:
             if name not in post_init_args:
                 raise PrefabError(
-                    f"{name} is an excluded attribute but is not passed to post_init"
+                    f"{name!r} is an excluded attribute but is not passed to post_init"
                 )
         else:
             valid_args.append(name)

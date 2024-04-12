@@ -61,6 +61,7 @@ class Attribute(Field):
     init: bool
     repr: bool
     compare: bool
+    iter: bool
     kw_only: bool
     in_dict: bool
     exclude_field: bool
@@ -68,13 +69,14 @@ class Attribute(Field):
     def __init__(
         self,
         *,
-        default: typing.Any | _NothingType =NOTHING,
+        default: typing.Any | _NothingType = NOTHING,
         default_factory: typing.Any | _NothingType = NOTHING,
         type: type | _NothingType = NOTHING,
         doc: str | None = None,
         init: bool = True,
         repr: bool = True,
         compare: bool = True,
+        iter: bool = True,
         kw_only: bool = False,
         in_dict: bool = True,
         exclude_field: bool = False,
@@ -93,6 +95,7 @@ def attribute(
     init: bool = True,
     repr: bool = True,
     compare: bool = True,
+    iter: bool = True,
     kw_only: bool = False,
     in_dict: bool = True,
     exclude_field: bool = False,

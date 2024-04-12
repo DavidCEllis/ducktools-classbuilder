@@ -1,6 +1,7 @@
 """Test the non-init dunder methods"""
 
 import pytest
+from ducktools.classbuilder.prefab import attribute, prefab, SlotFields
 
 
 def test_repr():
@@ -35,6 +36,31 @@ def test_iter():
 
     y = list(x)
     assert y == [1, 2]
+
+
+def test_iter_exclude():
+    @prefab(iter=True)
+    class IterExcludeEmpty:
+        x: int = attribute(default=6, exclude_field=True)
+        y: int = attribute(default=9, iter=False)
+
+        def __prefab_post_init__(self, x):
+            self.x = x
+
+    assert list(IterExcludeEmpty()) == []
+
+    @prefab(iter=True)
+    class IterExclude:
+        __slots__ = SlotFields(
+            x=attribute(default=6, exclude_field=True),
+            y=attribute(default=9, iter=False),
+            z=attribute(default="LTUE", iter=True),
+        )
+
+        def __prefab_post_init__(self, x):
+            self.x = x
+
+    assert list(IterExclude()) == ["LTUE"]
 
 
 def test_eq():
