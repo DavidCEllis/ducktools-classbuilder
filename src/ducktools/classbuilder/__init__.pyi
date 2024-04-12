@@ -92,12 +92,12 @@ def slot_gatherer(cls: type) -> dict[str, Field]:
 
 @typing.overload
 def slotclass(
-    cls: type,
+    cls: type[_T],
     /,
     *,
     methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
     syntax_check: bool = True
-) -> typing.Any: ...
+) -> type[_T]: ...
 
 @typing.overload
 def slotclass(
@@ -106,6 +106,6 @@ def slotclass(
     *,
     methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
     syntax_check: bool = True
-) -> Callable[[type], type]: ...
+) -> Callable[[type[_T]], type[_T]]: ...
 
-def fieldclass(cls: type) -> typing.Any: ...
+def fieldclass(cls: type[_T]) -> type[_T]: ...

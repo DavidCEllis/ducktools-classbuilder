@@ -373,6 +373,7 @@ def get_frozen_setattr_maker():
 
 
 def get_frozen_delattr_maker():
+    # noinspection PyUnusedLocal
     def __delattr__(cls: "type") -> "tuple[str, dict]":
         body = (
             '    raise TypeError(\n'
