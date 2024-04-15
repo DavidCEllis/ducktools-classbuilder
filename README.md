@@ -17,15 +17,21 @@ Install from PyPI with:
 
 ## Usage: building a class decorator ##
 
-There are 2 main parts to building a class decorator:
-* Define a `gatherer` function that collects all of the field definitions on
-  the existing class.
-* Create method generators to generate the code for the magic methods.
+The core idea is that there are 3 parts to the generation process:
 
-The `gatherer` function should take the original class as an argument and return
-a dictionary of `{key: Field(...)}` pairs. The method generators take the class
-as the only argument again and return a tuple of method source code, and globals
-to be provided to `exec(code, globs)` in order to generate the actual method.
+1. Gather the fields from the decorated class.
+2. Gather inherited fields from any parent classes in the standard 
+   method resolution order.
+3. Assign the method builders to the class.
+
+Gathering is handled by a `gatherer` function which should take the original class 
+as an argument and return a dictionary of `{key: Field(...)}` pairs. 
+
+Inheritance is handled by the `builder` function itself.
+
+The method generators take the class as the only argument again and return a tuple 
+of method source code, and globals to be provided to `exec(code, globs)` in order 
+to generate the actual method.
 
 `ducktools.classbuilder` provides a `slot_gatherer` as an example of the first
 and `init_maker`, `repr_maker` and `eq_maker` as examples of the second.
