@@ -17,34 +17,35 @@ Install from PyPI with:
 
 ## Usage: building a class decorator ##
 
-The core idea is that there are 3 parts to the generation process:
+In order to create a class decorator using `ducktools.classbuilder` there are
+a few things you need to prepare.
 
-1. Gather the fields from the decorated class.
-2. Gather inherited fields from any parent classes in the standard 
-   method resolution order.
-3. Assign the method builders to the class.
+1. A field gathering function to analyse the class and collect valid `Field`s.
+   * An example `slot_gatherer` is included.
+2. Code generators that can make use of the gathered `Field`s to create magic method
+   source code.
+   * Example `init_maker`, `repr_maker` and `eq_maker` generators are included.
+3. A function that calls the `builder` function to apply both of these steps.
 
-Gathering is handled by a `gatherer` function which should take the original class 
-as an argument and return a dictionary of `{key: Field(...)}` pairs. 
+A field gathering function needs to take the original class as an argument and 
+return a dictionary of `{key: Field(...)}` pairs.
 
-Inheritance is handled by the `builder` function itself.
+> [!NOTE]
+> The `builder` will handle inheritance so do not collect fields from parent classes.
 
-The method generators take the class as the only argument again and return a tuple 
-of method source code, and globals to be provided to `exec(code, globs)` in order 
-to generate the actual method.
-
-`ducktools.classbuilder` provides a `slot_gatherer` as an example of the first
-and `init_maker`, `repr_maker` and `eq_maker` as examples of the second.
+The code generators take the class as the only argument and return a tuple 
+of method source code and globals to be provided to `exec(code, globs)` in order 
+to generate the actual method. 
 
 The provided `slot_gatherer` looks for `__slots__` being assigned a `SlotFields` 
 class[^1] where keyword arguments define the names and values for the fields. 
 
-The method generators need to be converted to descriptors before being assigned
-to the class attributes. This is done using the provided `MethodMaker` descriptor
-class. ex: `init_desc = MethodMaker("__init__", init_maker)`
+Code generator functions need to be converted to descriptors before being used. 
+This is done using the provided `MethodMaker` descriptor class. 
+ex: `init_desc = MethodMaker("__init__", init_maker)`
 
-These can then be used to make a basic class boilerplate generator by providing them
-to the `builder` function.
+These parts can then be used to make a basic class boilerplate generator by 
+providing them to the `builder` function.
 
 ```python
 from ducktools.classbuilder import (
