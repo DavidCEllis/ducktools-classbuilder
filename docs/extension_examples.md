@@ -1,11 +1,15 @@
 # Building your own class generator #
 
-The core idea is that there are 3 main parts to the generation process:
+The core idea is that there are 3 parts to the process of generating
+the class boilerplate that need to be handled:
 
 1. Gather the fields from the decorated class.
 2. Gather inherited fields from any parent classes in the standard 
    method resolution order.
 3. Assign the method builders to the class.
+
+This tool handles the second step for you and tries to make it easy to apply
+the first and third steps.
 
 The field gathering is done by a function that operates on the class and returns
 a dictionary of field_name: field values. `slot_gatherer` is an example of this.
