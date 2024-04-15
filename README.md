@@ -6,7 +6,7 @@ of writing... functions... that will bring back the **joy** of writing classes.
 Maybe.
 
 While `attrs` and `dataclasses` are class boilerplate generators, 
-`ducktools.classbuilder` is intended to be a dataclasses-like generator.
+`ducktools.classbuilder` is intended to be a `@dataclass`-like generator.
 The goal is to handle some of the basic functions and to allow for flexible
 customization of both the field collection and the method generation.
 
@@ -15,13 +15,54 @@ customization of both the field collection and the method generation.
 Install from PyPI with:
 `python -m pip install ducktools-classbuilder`
 
-## Slot Class Usage ##
+## Usage: building a class decorator ##
 
-The building toolkit also includes a basic implementation that uses
-`__slots__` to define the fields by assigning a `SlotFields` instance.
+There are 2 main parts to building a class decorator:
+* Define a `gatherer` function that collects all of the field definitions on
+  the existing class.
+* Create method generators to generate the code for the magic methods.
+
+The `gatherer` function should take the original class as an argument and return
+a dictionary of `{key: Field(...)}` pairs. The method generators take the class
+as the only argument again and return a tuple of method source code, and globals
+to be provided to `exec(code, globs)` in order to generate the actual method.
+
+`ducktools.classbuilder` provides a `slot_gatherer` as an example of the first
+and `init_maker`, `repr_maker` and `eq_maker` as examples of the second.
+
+The provided `slot_gatherer` looks for `__slots__` being assigned a `SlotFields` 
+class[^1] where keyword arguments define the names and values for the fields. 
+
+The method generators need to be converted to descriptors before being assigned
+to the class attributes. This is done using the provided `MethodMaker` descriptor
+class. ex: `init_desc = MethodMaker("__init__", init_maker)`
+
+These can then be used to make a basic class boilerplate generator by providing them
+to the `builder` function.
 
 ```python
-from ducktools.classbuilder import slotclass, Field, SlotFields
+from ducktools.classbuilder import (
+    builder, 
+    slot_gatherer, 
+    init_maker, eq_maker, repr_maker,
+    MethodMaker,
+)
+
+init_desc = MethodMaker("__init__", init_maker)
+repr_desc = MethodMaker("__repr__", repr_maker)
+eq_desc = MethodMaker("__eq__", eq_maker)
+
+def slotclass(cls):
+    return builder(cls, gatherer=slot_gatherer, methods={init_desc, repr_desc, eq_desc})
+```
+
+## Slot Class Usage ##
+
+This created `slotclass` function can then be used as a decorator to generate classes in 
+a similar manner to the `@dataclass` decorator from `dataclasses`. 
+
+```python
+from ducktools.classbuilder import Field, SlotFields
 
 @slotclass
 class SlottedDC:
@@ -37,28 +78,35 @@ ex = SlottedDC()
 print(ex)
 ```
 
-## Why does the basic implementation use slots? ##
+> [!NOTE] 
+> `ducktools.classbuilder` includes a premade version of `slotclass` that can
+> be used directly. (The included version has some extra features).
 
-Dataclasses has a problem when you use `@dataclass(slots=True)`, 
-although this is not unique to dataclasses but inherent to the way both
-`__slots__` and decorators work.
+## Why does your example use `__slots__` instead of annotations? ##
 
-In order for this to *appear* to work, dataclasses has to make a new class 
-and attempt to copy over everything from the original. This is because 
-decorators operate on classes *after they have been created* while slots 
-need to be declared beforehand. While you can change the value of `__slots__` 
-after a class has been created, this will have no effect on the internal
-structure of the class.
+If you want to use `__slots__` in order to save memory you have to declare
+them when the class is originally created as you can't add them later.
+
+When you use `@dataclass(slots=True)`[^2] with `dataclasses` in order for 
+this to work, `dataclasses` has to make a new class and attempt to
+copy over everything from the original. 
+This is because decorators operate on classes *after they have been created* 
+while slots need to be declared beforehand. 
+While you can change the value of `__slots__` after a class has been created, 
+this will have no effect on the internal structure of the class.
 
 By declaring the class using `__slots__` on the other hand, we can take
 advantage of the fact that it accepts a mapping, where the keys will be
 used as the attributes to create as slots. The values can then be used as
-the default values equivalently to how type hints are used in dataclasses.
+the default values equivalently to how type hints are used in `dataclasses`.
 
-For example these two classes would be roughly equivalent, except 
+For example these two classes would be roughly equivalent, except that
 `@dataclass` has had to recreate the class from scratch while `@slotclass`
-has simply added the methods on to the original class. This is easy to 
-demonstrate using another decorator.
+has added the methods on to the original class. 
+This means that any references stored to the original class *before*
+`@dataclass` has rebuilt the class will not be pointing towards the 
+correct class. 
+This can be demonstrated using a simple class register decorator.
 
 > This example requires Python 3.10 as earlier versions of 
 > `dataclasses` did not support the `slots` argument.
@@ -96,7 +144,6 @@ print(SlotCoords())
 
 print(f"{DataCoords is class_register[DataCoords.__name__] = }")
 print(f"{SlotCoords is class_register[SlotCoords.__name__] = }")
-
 ```
 
 ## What features does this have? ##
@@ -133,3 +180,9 @@ with a specific feature, you can create or add it yourself.
 ## Credit ##
 
 Heavily inspired by [David Beazley's Cluegen](https://github.com/dabeaz/cluegen)
+
+[^1]: `SlotFields` is actually just a subclassed `dict` with no changes. `__slots__`
+      works with dictionaries using the values of the keys, while fields are normally
+      used for documentation.
+
+[^2]: or `@attrs.define`.

@@ -47,8 +47,6 @@ In either case the result behaves the same.
 Settings(hostname='localhost', template_folder='base/path', template_name='index')
 ```
 
-For further details see the `usage` pages in the documentation.
-
 ## Slots ##
 
 Classes can also be created using `__slots__` in the same way as `@slotclass` from the builder,
