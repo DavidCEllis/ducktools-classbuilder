@@ -61,6 +61,10 @@ def slotclass(cls):
 This created `slotclass` function can then be used as a decorator to generate classes in 
 a similar manner to the `@dataclass` decorator from `dataclasses`. 
 
+> [!NOTE] 
+> `ducktools.classbuilder` includes a premade version of `slotclass` that can
+> be used directly. (The included version has some extra features).
+
 ```python
 from ducktools.classbuilder import Field, SlotFields
 
@@ -78,9 +82,10 @@ ex = SlottedDC()
 print(ex)
 ```
 
-> [!NOTE] 
-> `ducktools.classbuilder` includes a premade version of `slotclass` that can
-> be used directly. (The included version has some extra features).
+> [!TIP]
+> For more information and examples of creating class generators with additional 
+> features using the builder see 
+> [the docs](https://ducktools-classbuilder.readthedocs.io/en/latest/extension_examples.html)
 
 ## Why does your example use `__slots__` instead of annotations? ##
 
@@ -160,9 +165,6 @@ field so they are present on the class if `help(...)` is called.
 
 If you want something with more features you can look at the `prefab.py`
 implementation which provides a 'prebuilt' implementation.
-
-For more information on creating class generators using the builder
-see [the docs](https://ducktools-classbuilder.readthedocs.io/en/latest/extension_examples.html)
 
 ## Will you add \<feature\> to `classbuilder.prefab`? ##
 
