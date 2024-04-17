@@ -33,16 +33,31 @@ create `__init__` and other magic methods are added to the class.
 This function is the core class generator which takes your decorated class and
 analyses and collects valid fields and then attaches the method makers.
 
-The field information is stored in the `INTERNALS_DICT` attribute and can be
-accessed using the `get_internals` function provided. This returns a dictionary
-with 2 keys: `local_fields` and `fields`. 
+The field information is stored in the `INTERNALS_DICT` attribute which should generally
+not need to be accessed directly. `get_fields` and `get_flags` functions are to be
+used to access the important keys.
 
-`"local_fields"` contains the field information obtained from **this class only**.
+`get_fields(cls)` will return the resolved information obtained from this class and subclasses.
 
-`"fields"` contains the resolved information obtained from this class and subclasses.
-This can be obtained directly using the `get_fields` function.
+`get_fields(cls, local=True)` will return the field information obtained from **this class only**.
 
-Now let's look at what the two keyword arguments need to be.
+Now let's look at what the keyword arguments to `builder` need to be.
+
+#### Flags ####
+
+Flags are information that defines how the entire class should be generated, for use by
+method generators when operating on the class.
+
+The default makers in `ducktools.classbuilder` make use of one flag - `"kw_only"` - 
+which indicates that a class `__init__` function should only take keyword arguments.
+
+Prefabs also make use of a `"slotted"` flag to indicate if the class has been generated
+with `__slots__` (checking for the existence of `__slots__` could find that a user has
+manually placed slots in the class).
+
+Flags are set using a dictionary with these keys and boolean values, for example:
+
+`cls = builder(cls, gatherer=..., methods=..., flags={"kw_only": True, "slotted": True})` 
 
 #### Gatherers ####
 
@@ -686,7 +701,7 @@ from ducktools.classbuilder import (
     builder,
     fieldclass,
     get_fields,
-    get_internals,
+    get_flags,
     Field,
     MethodMaker,
     SlotFields,
@@ -770,8 +785,8 @@ def annotated_gatherer(cls: type) -> dict[str, Any]:
 
 def init_maker(cls):
 
-    internals = get_internals(cls)
     fields = get_fields(cls)
+    flags = get_flags(cls)
 
     arglist = []
     kw_only_arglist = []
@@ -780,9 +795,7 @@ def init_maker(cls):
     globs = {}
 
     # Whole class kw_only
-    kw_only = internals.get("kw_only", False)
-    if kw_only:
-        arglist.append("*")
+    kw_only = flags.get("kw_only", False)
 
     for k, v in fields.items():
         if getattr(v, "init", True):
@@ -875,12 +888,12 @@ def annotationsclass(cls=None, *, kw_only=False):
     if not cls:
         return lambda cls_: annotationsclass(cls_, kw_only=kw_only)
 
-    cls = builder(cls, gatherer=annotated_gatherer, methods=methods)
-
-    internals = get_internals(cls)
-    internals["kw_only"] = kw_only
-
-    return cls
+    return builder(
+        cls,
+        gatherer=annotated_gatherer,
+        methods=methods,
+        flags={"slotted": False, "kw_only": kw_only}
+    )
 
 
 @annotationsclass

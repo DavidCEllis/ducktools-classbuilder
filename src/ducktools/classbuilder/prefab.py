@@ -31,7 +31,7 @@ import sys
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
-    builder, fieldclass, get_internals, slot_gatherer
+    builder, fieldclass, get_flags, get_fields, slot_gatherer
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -84,10 +84,11 @@ def get_attributes(cls):
 def get_init_maker(*, init_name="__init__"):
     def __init__(cls: "type") -> "tuple[str, dict]":
         globs = {}
-        internals = get_internals(cls)
         # Get the internals dictionary and prepare attributes
-        attributes = internals["fields"]
-        kw_only = internals["kw_only"]
+        attributes = get_attributes(cls)
+        flags = get_flags(cls)
+
+        kw_only = flags.get("kw_only", False)
 
         # Handle pre/post init first - post_init can change types for __init__
         # Get pre and post init arguments
@@ -342,14 +343,16 @@ def get_iter_maker():
 def get_frozen_setattr_maker():
     def __setattr__(cls: "type") -> "tuple[str, dict]":
         globs = {}
-        internals = get_internals(cls)
-        field_names = internals["fields"].keys()
+        attributes = get_attributes(cls)
+        flags = get_flags(cls)
 
         # Make the fields set literal
-        fields_delimited = ", ".join(f"{field!r}" for field in field_names)
+        fields_delimited = ", ".join(f"{field!r}" for field in attributes)
         field_set = f"{{ {fields_delimited} }}"
 
-        if internals["slotted"]:
+        # Better to be safe and use the method that works in both cases
+        # if somehow slotted has not been set.
+        if flags.get("slotted", True):
             globs["__prefab_setattr_func"] = object.__setattr__
             setattr_method = "__prefab_setattr_func(self, name, value)"
         else:
@@ -488,6 +491,14 @@ def attribute(
     )
 
 
+def slot_prefab_gatherer(cls):
+    # For prefabs it's easier if everything is an attribute
+    return {
+        name: Attribute.from_field(fld)
+        for name, fld in slot_gatherer(cls).items()
+    }
+
+
 # Gatherer for classes built on attributes or annotations
 def attribute_gatherer(cls):
     cls_annotations = cls.__dict__.get("__annotations__", {})
@@ -599,7 +610,7 @@ def _make_prefab(
 
     slots = cls_dict.get("__slots__")
     if isinstance(slots, SlotFields):
-        gatherer = slot_gatherer
+        gatherer = slot_prefab_gatherer
         slotted = True
     else:
         gatherer = attribute_gatherer
@@ -627,18 +638,20 @@ def _make_prefab(
     if dict_method:
         methods.add(asdict_desc)
 
+    flags = {
+        "kw_only": kw_only,
+        "slotted": slotted,
+    }
+
     cls = builder(
         cls,
         gatherer=gatherer,
         methods=methods,
+        flags=flags,
     )
 
-    # Add fields not covered by builder
-    internals = get_internals(cls)
-    internals["slotted"] = slotted
-    internals["kw_only"] = kw_only
-    fields = internals["fields"]
-    local_fields = internals["local_fields"]
+    # Get fields now the class has been built
+    fields = get_fields(cls)
 
     # Check pre_init and post_init functions if they exist
     try:
@@ -710,8 +723,6 @@ def _make_prefab(
         if not isinstance(attrib, Attribute):
             attrib = Attribute.from_field(attrib)
             fields[name] = attrib
-            if name in local_fields:
-                local_fields[name] = attrib
 
         # Excluded fields *MUST* be forwarded to post_init
         if attrib.exclude_field:
