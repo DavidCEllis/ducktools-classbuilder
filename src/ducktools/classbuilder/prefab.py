@@ -398,7 +398,7 @@ def get_asdict_maker():
         vals = ", ".join(
             f"'{name}': self.{name}"
             for name, attrib in fields.items()
-            if attrib.in_dict and not attrib.exclude_field
+            if attrib.serialize and not attrib.exclude_field
         )
         out_dict = f"{{{vals}}}"
         code = f"def as_dict(self): return {out_dict}"
@@ -428,7 +428,7 @@ class Attribute(Field):
         compare=True,
         iter=True,
         kw_only=False,
-        in_dict=True,
+        serialize=True,
         exclude_field=False,
     )
 
@@ -450,7 +450,7 @@ def attribute(
     compare=True,
     iter=True,
     kw_only=False,
-    in_dict=True,
+    serialize=True,
     exclude_field=False,
     doc=None,
     type=NOTHING,
@@ -466,7 +466,7 @@ def attribute(
     :param compare: Include this attribute in the class __eq__
     :param iter: Include this attribute in the class __iter__ if generated
     :param kw_only: Make this argument keyword only in init
-    :param in_dict: Include this attribute in methods that serialise to dict
+    :param serialize: Include this attribute in methods that serialize to dict
     :param exclude_field: Exclude this field from all magic method generation
                           apart from __init__ signature
                           and do not include it in PREFAB_FIELDS
@@ -484,7 +484,7 @@ def attribute(
         compare=compare,
         iter=iter,
         kw_only=kw_only,
-        in_dict=in_dict,
+        serialize=serialize,
         exclude_field=exclude_field,
         doc=doc,
         type=type,
@@ -906,7 +906,7 @@ def is_prefab_instance(o):
 
 def as_dict(o):
     """
-    Get the valid fields from a prefab respecting the in_dict
+    Get the valid fields from a prefab respecting the serialize
     values of attributes
 
     :param o: instance of a prefab class
@@ -927,5 +927,5 @@ def as_dict(o):
     return {
         name: getattr(o, name)
         for name, attrib in flds.items()
-        if attrib.in_dict and not attrib.exclude_field
+        if attrib.serialize and not attrib.exclude_field
     }
