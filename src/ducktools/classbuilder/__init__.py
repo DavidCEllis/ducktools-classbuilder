@@ -34,6 +34,9 @@ def get_internals(cls):
     and 'local_fields' attributes this will always
     evaluate as 'truthy' if this is a generated class.
 
+    Generally you should use the helper get_flags and
+    get_fields methods.
+
     Usage:
        if internals := get_internals(cls):
            ...
@@ -44,15 +47,28 @@ def get_internals(cls):
     return getattr(cls, INTERNALS_DICT, None)
 
 
-def get_fields(cls):
+def get_fields(cls, *, local=False):
     """
     Utility function to gather the fields dictionary
     from the class internals.
 
     :param cls: generated class
+    :param local: get only fields that were not inherited
     :return: dictionary of keys and Field attribute info
     """
-    return getattr(cls, INTERNALS_DICT)["fields"]
+    key = "local_fields" if local else "fields"
+    return getattr(cls, INTERNALS_DICT)[key]
+
+
+def get_flags(cls):
+    """
+    Utility function to gather the flags dictionary
+    from the class internals.
+
+    :param cls: generated class
+    :return: dictionary of keys and flag values
+    """
+    return getattr(cls, INTERNALS_DICT)["flags"]
 
 
 def get_inst_fields(inst):
@@ -106,14 +122,15 @@ class MethodMaker:
         return method.__get__(instance, cls)
 
 
-def init_maker(cls, *, null=NOTHING, kw_only=False):
+def init_maker(cls, *, null=NOTHING):
     fields = get_fields(cls)
+    flags = get_flags(cls)
 
     arglist = []
     assignments = []
     globs = {}
 
-    if kw_only:
+    if flags.get("kw_only", False):
         arglist.append("*")
 
     for k, v in fields.items():
@@ -180,7 +197,7 @@ eq_desc = MethodMaker("__eq__", eq_maker)
 default_methods = frozenset({init_desc, repr_desc, eq_desc})
 
 
-def builder(cls=None, /, *, gatherer, methods):
+def builder(cls=None, /, *, gatherer, methods, flags=None):
     """
     The main builder for class generation
 
@@ -189,6 +206,8 @@ def builder(cls=None, /, *, gatherer, methods):
     :type gatherer: Callable[[type], dict[str, Field]]
     :param methods: MethodMakers to add to the class
     :type methods: set[MethodMaker]
+    :param flags: additional flags to store in the internals dictionary
+                  for use by method generators.
     :return: The modified class (the class itself is modified, but this is expected).
     """
     # Handle `None` to make wrapping with a decorator easier.
@@ -197,6 +216,7 @@ def builder(cls=None, /, *, gatherer, methods):
             cls_,
             gatherer=gatherer,
             methods=methods,
+            flags=flags,
         )
 
     internals = {}
@@ -212,11 +232,12 @@ def builder(cls=None, /, *, gatherer, methods):
         fields = {}
         for c in reversed(mro):
             try:
-                fields.update(get_internals(c)["local_fields"])
+                fields.update(get_fields(c, local=True))
             except AttributeError:
                 pass
 
     internals["fields"] = fields
+    internals["flags"] = flags if flags is not None else {}
 
     # Assign all of the method generators
     for method in methods:
@@ -296,7 +317,8 @@ _field_internal = {
 builder(
     Field,
     gatherer=lambda cls_: _field_internal,
-    methods=frozenset({repr_desc, eq_desc})
+    methods=frozenset({repr_desc, eq_desc}),
+    flags={"slotted": True},
 )
 
 
@@ -368,7 +390,7 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     if not cls:
         return lambda cls_: slotclass(cls_, methods=methods, syntax_check=syntax_check)
 
-    cls = builder(cls, gatherer=slot_gatherer, methods=methods)
+    cls = builder(cls, gatherer=slot_gatherer, methods=methods, flags={"slotted": True})
 
     if syntax_check:
         fields = get_fields(cls)
@@ -398,7 +420,7 @@ def fieldclass(cls):
     # Fields need a way to call their validate method
     # So append it to the code from __init__.
     def field_init_func(cls_):
-        code, globs = init_maker(cls_, null=field_nothing, kw_only=True)
+        code, globs = init_maker(cls_, null=field_nothing)
         code += "    self.validate_field()\n"
         return code, globs
 
@@ -412,7 +434,8 @@ def fieldclass(cls):
     cls = builder(
         cls,
         gatherer=slot_gatherer,
-        methods=field_methods
+        methods=field_methods,
+        flags={"slotted": True, "kw_only": True}
     )
 
     return cls

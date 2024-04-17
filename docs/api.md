@@ -25,7 +25,7 @@
 ```
 
 ```{eval-rst}
-.. autofunction:: ducktools.classbuilder::get_internals
+.. autofunction:: ducktools.classbuilder::get_flags
 ```
 
 ```{eval-rst}

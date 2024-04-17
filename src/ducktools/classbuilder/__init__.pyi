@@ -8,7 +8,9 @@ INTERNALS_DICT: str
 
 def get_internals(cls) -> dict[str, typing.Any] | None: ...
 
-def get_fields(cls: type) -> dict[str, Field]: ...
+def get_fields(cls: type, *, local: bool = False) -> dict[str, Field]: ...
+
+def get_flags(cls:type) -> dict[str, bool]: ...
 
 def get_inst_fields(inst: typing.Any) -> dict[str, typing.Any]: ...
 
@@ -48,7 +50,8 @@ def builder(
     /,
     *,
     gatherer: Callable[[type], dict[str, Field]],
-    methods: frozenset[MethodMaker] | set[MethodMaker]
+    methods: frozenset[MethodMaker] | set[MethodMaker],
+    flags: dict[str, bool] | None = None,
 ) -> type[_T]: ...
 
 @typing.overload
@@ -57,7 +60,8 @@ def builder(
     /,
     *,
     gatherer: Callable[[type], dict[str, Field]],
-    methods: frozenset[MethodMaker] | set[MethodMaker]
+    methods: frozenset[MethodMaker] | set[MethodMaker],
+    flags: dict[str, bool] | None = None,
 ) -> Callable[[type[_T]], type[_T]]: ...
 
 

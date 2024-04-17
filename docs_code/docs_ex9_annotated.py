@@ -6,7 +6,7 @@ from ducktools.classbuilder import (
     builder,
     fieldclass,
     get_fields,
-    get_internals,
+    get_flags,
     Field,
     MethodMaker,
     SlotFields,
@@ -90,8 +90,8 @@ def annotated_gatherer(cls: type) -> dict[str, Any]:
 
 def init_maker(cls):
 
-    internals = get_internals(cls)
     fields = get_fields(cls)
+    flags = get_flags(cls)
 
     arglist = []
     kw_only_arglist = []
@@ -100,7 +100,7 @@ def init_maker(cls):
     globs = {}
 
     # Whole class kw_only
-    kw_only = internals.get("kw_only", False)
+    kw_only = flags.get("kw_only", False)
     if kw_only:
         arglist.append("*")
 
@@ -195,12 +195,12 @@ def annotationsclass(cls=None, *, kw_only=False):
     if not cls:
         return lambda cls_: annotationsclass(cls_, kw_only=kw_only)
 
-    cls = builder(cls, gatherer=annotated_gatherer, methods=methods)
-
-    internals = get_internals(cls)
-    internals["kw_only"] = kw_only
-
-    return cls
+    return builder(
+        cls,
+        gatherer=annotated_gatherer,
+        methods=methods,
+        flags={"slotted": False, "kw_only": kw_only}
+    )
 
 
 @annotationsclass
