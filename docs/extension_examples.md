@@ -48,6 +48,17 @@ Now let's look at what the keyword arguments to `builder` need to be.
 Flags are information that defines how the entire class should be generated, for use by
 method generators when operating on the class.
 
+The default makers in `ducktools.classbuilder` make use of one flag - `"kw_only"` - 
+which indicates that a class `__init__` function should only take keyword arguments.
+
+Prefabs also make use of a `"slotted"` flag to indicate if the class has been generated
+with `__slots__` (checking for the existence of `__slots__` could find that a user has
+manually placed slots in the class).
+
+Flags are set using a dictionary with these keys and boolean values, for example:
+
+`cls = builder(cls, gatherer=..., methods=..., flags={"kw_only": True, "slotted": True})` 
+
 #### Gatherers ####
 
 This covers the *'gather the fields'* step of the process.
@@ -785,8 +796,6 @@ def init_maker(cls):
 
     # Whole class kw_only
     kw_only = flags.get("kw_only", False)
-    if kw_only:
-        arglist.append("*")
 
     for k, v in fields.items():
         if getattr(v, "init", True):

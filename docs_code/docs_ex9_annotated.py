@@ -101,8 +101,6 @@ def init_maker(cls):
 
     # Whole class kw_only
     kw_only = flags.get("kw_only", False)
-    if kw_only:
-        arglist.append("*")
 
     for k, v in fields.items():
         if getattr(v, "init", True):
