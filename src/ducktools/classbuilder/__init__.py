@@ -318,7 +318,7 @@ builder(
     Field,
     gatherer=lambda cls_: _field_internal,
     methods=frozenset({repr_desc, eq_desc}),
-    flags={"slotted": True},
+    flags={"slotted": True, "kw_only": True},
 )
 
 
