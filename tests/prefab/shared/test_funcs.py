@@ -45,18 +45,18 @@ def test_as_dict_excludes():
     @prefab
     class ExcludesUncached:
         name: str
-        password: str = attribute(in_dict=False)
+        password: str = attribute(serialize=False)
 
     @prefab(dict_method=True)
     class ExcludesCached:
         name: str
-        password: str = attribute(in_dict=False)
+        password: str = attribute(serialize=False)
 
     @prefab(dict_method=True)
     class ExcludesSlots:
         __slots__ = SlotFields(
             name=attribute(type=str),
-            password=attribute(in_dict=False, type=str)
+            password=attribute(serialize=False, type=str)
         )
 
     @prefab(dict_method=True)

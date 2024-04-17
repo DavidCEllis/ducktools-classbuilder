@@ -63,7 +63,7 @@ class Attribute(Field):
     compare: bool
     iter: bool
     kw_only: bool
-    in_dict: bool
+    serialize: bool
     exclude_field: bool
 
     def __init__(
@@ -78,7 +78,7 @@ class Attribute(Field):
         compare: bool = True,
         iter: bool = True,
         kw_only: bool = False,
-        in_dict: bool = True,
+        serialize: bool = True,
         exclude_field: bool = False,
     ) -> None: ...
 
@@ -97,7 +97,7 @@ def attribute(
     compare: bool = True,
     iter: bool = True,
     kw_only: bool = False,
-    in_dict: bool = True,
+    serialize: bool = True,
     exclude_field: bool = False,
 ) -> Attribute: ...
 
