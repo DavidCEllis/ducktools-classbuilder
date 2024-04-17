@@ -746,7 +746,6 @@ def annotated_gatherer(cls: type) -> dict[str, Any]:
         if get_origin(anno) is Annotated:
             typ = anno.__args__[0]
             meta = anno.__metadata__
-            modifiers = {}
             for v in meta:
                 if isinstance(v, FieldModifier):
                     modifiers.update(v.modifiers)
