@@ -122,7 +122,7 @@ class MethodMaker:
         return method.__get__(instance, cls)
 
 
-def init_maker(cls, *, null=NOTHING):
+def init_maker(cls, *, null=NOTHING, extra_code=None):
     fields = get_fields(cls)
     flags = get_flags(cls)
 
@@ -155,6 +155,12 @@ def init_maker(cls, *, null=NOTHING):
         f"def __init__(self, {args}):\n" 
         f"    {assigns}\n"
     )
+    # Handle additional function calls
+    # Used for validate_field on fieldclasses
+    if extra_code:
+        for line in extra_code:
+            code += f"    {line}\n"
+
     return code, globs
 
 
@@ -410,6 +416,14 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     return cls
 
 
+def _field_init_func(cls):
+    # Fields need a different Nothing for their __init__ generation
+    # And an extra call to validate_field
+    field_nothing = _NothingType()
+    extra_calls = ["self.validate_field()"]
+    return init_maker(cls, null=field_nothing, extra_code=extra_calls)
+
+
 def fieldclass(cls):
     """
     This is a special decorator for making Field subclasses using __slots__.
@@ -420,18 +434,7 @@ def fieldclass(cls):
     :return: Modified subclass
     """
 
-    # Fields need a way to call their validate method
-    # So append it to the code from __init__.
-    def field_init_func(cls_):
-        code, globs = init_maker(cls_, null=field_nothing)
-        code += "    self.validate_field()\n"
-        return code, globs
-
-    field_nothing = _NothingType()
-    field_init_desc = MethodMaker(
-        "__init__",
-        field_init_func,
-    )
+    field_init_desc = MethodMaker("__init__", _field_init_func)
     field_methods = frozenset({field_init_desc, repr_desc, eq_desc})
 
     cls = builder(
