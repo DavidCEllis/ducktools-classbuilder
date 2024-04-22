@@ -150,7 +150,7 @@ def init_maker(cls, *, null=NOTHING, extra_code=None):
         assignments.append(assignment)
 
     args = ", ".join(arglist)
-    assigns = "\n    ".join(assignments)
+    assigns = "\n    ".join(assignments) if assignments else "pass\n"
     code = (
         f"def __init__(self, {args}):\n" 
         f"    {assigns}\n"
