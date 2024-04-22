@@ -134,7 +134,10 @@ def init_maker(cls, *, null=NOTHING, kw_only=False):
 
     args = ", ".join(arglist)
     assigns = "\n    ".join(assignments)
-    code = f"def __init__(self, {args}):\n" f"    {assigns}\n"
+    code = (
+        f"def __init__(self, {args}):\n" 
+        f"    {assigns}\n"
+    )
     return code, globs
 
 
