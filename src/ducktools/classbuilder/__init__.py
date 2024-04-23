@@ -49,7 +49,9 @@ def get_flags(cls):
     return getattr(cls, INTERNALS_DICT)["flags"]
 
 
-def get_inst_fields(inst):
+def _get_inst_fields(inst):
+    # This is an internal helper for constructing new
+    # 'Field' instances from existing ones.
     return {
         k: getattr(inst, k)
         for k in get_fields(type(inst))
@@ -287,7 +289,7 @@ class Field:
         :param kwargs: Additional keyword arguments for subclasses
         :return: new field subclass instance
         """
-        argument_dict = {**get_inst_fields(fld), **kwargs}
+        argument_dict = {**_get_inst_fields(fld), **kwargs}
 
         return cls(**argument_dict)
 
