@@ -85,7 +85,7 @@ class MethodMaker:
         self.code_generator = code_generator
 
     def __repr__(self):
-        return f"<MethodMaker for {self.funcname} method>"
+        return f"<MethodMaker for {self.funcname!r} method>"
 
     def __get__(self, instance, cls):
         local_vars = {}
