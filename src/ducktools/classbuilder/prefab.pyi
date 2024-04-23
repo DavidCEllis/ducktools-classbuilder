@@ -6,7 +6,7 @@ from collections.abc import Callable
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields as SlotFields,
-    builder, fieldclass, get_internals, slot_gatherer
+    builder, fieldclass, get_flags, get_fields, slot_gatherer
 )
 
 # noinspection PyUnresolvedReferences

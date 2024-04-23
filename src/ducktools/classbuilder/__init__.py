@@ -19,32 +19,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-__version__ = "v0.2.1"
+__version__ = "v0.3.0"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
-
-
-def get_internals(cls):
-    """
-    Utility function to get the internals dictionary
-    or return None.
-
-    As generated classes will always have 'fields'
-    and 'local_fields' attributes this will always
-    evaluate as 'truthy' if this is a generated class.
-
-    Generally you should use the helper get_flags and
-    get_fields methods.
-
-    Usage:
-       if internals := get_internals(cls):
-           ...
-
-    :param cls: generated class
-    :return: internals dictionary of the class or None
-    """
-    return getattr(cls, INTERNALS_DICT, None)
 
 
 def get_fields(cls, *, local=False):
@@ -71,7 +49,9 @@ def get_flags(cls):
     return getattr(cls, INTERNALS_DICT)["flags"]
 
 
-def get_inst_fields(inst):
+def _get_inst_fields(inst):
+    # This is an internal helper for constructing new
+    # 'Field' instances from existing ones.
     return {
         k: getattr(inst, k)
         for k in get_fields(type(inst))
@@ -105,7 +85,7 @@ class MethodMaker:
         self.code_generator = code_generator
 
     def __repr__(self):
-        return f"<MethodMaker for {self.funcname} method>"
+        return f"<MethodMaker for {self.funcname!r} method>"
 
     def __get__(self, instance, cls):
         local_vars = {}
@@ -309,7 +289,7 @@ class Field:
         :param kwargs: Additional keyword arguments for subclasses
         :return: new field subclass instance
         """
-        argument_dict = {**get_inst_fields(fld), **kwargs}
+        argument_dict = {**_get_inst_fields(fld), **kwargs}
 
         return cls(**argument_dict)
 
