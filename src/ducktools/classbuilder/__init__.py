@@ -25,28 +25,6 @@ __version__ = "v0.2.1"
 INTERNALS_DICT = "__classbuilder_internals__"
 
 
-def get_internals(cls):
-    """
-    Utility function to get the internals dictionary
-    or return None.
-
-    As generated classes will always have 'fields'
-    and 'local_fields' attributes this will always
-    evaluate as 'truthy' if this is a generated class.
-
-    Generally you should use the helper get_flags and
-    get_fields methods.
-
-    Usage:
-       if internals := get_internals(cls):
-           ...
-
-    :param cls: generated class
-    :return: internals dictionary of the class or None
-    """
-    return getattr(cls, INTERNALS_DICT, None)
-
-
 def get_fields(cls, *, local=False):
     """
     Utility function to gather the fields dictionary
