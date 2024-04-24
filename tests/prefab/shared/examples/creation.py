@@ -66,17 +66,19 @@ class IgnoreClassVars:
     actual: str = "Test"
 
 
-if sys.version_info >= (3, 9):
-    # Not testing Annotated under 3.8.
-    @prefab
-    class IgnoreAnnotatedClassVars:
-        # Ignore v, w, x, y and z - Include actual.
+# Not testing Annotated under 3.11 or earlier
+@prefab
+class IgnoreAnnotatedClassVars:
+    # Ignore v, w, x, y and z - Include actual.
+    # Ignore v and w for python 3.10 or earlier
+    # as plain classvar is an error there.
+    if sys.version_info >= (3, 11):
         v: Annotated[ClassVar, "v"] = 12
         w: "Annotated[ClassVar, 'w']" = 24
-        x: Annotated[typing.ClassVar[int], "x"] = 42
-        y: Annotated[ClassVar[str], "y"] = "Apple"
-        z: "Annotated[ClassVar[float], 'z']" = 3.14
-        actual: str = "Test"
+    x: Annotated[typing.ClassVar[int], "x"] = 42
+    y: Annotated[ClassVar[str], "y"] = "Apple"
+    z: "Annotated[ClassVar[float], 'z']" = 3.14
+    actual: str = "Test"
 
 
 @prefab

@@ -57,16 +57,24 @@ class PrefabError(Exception):
 
 def _is_classvar(hint):
     _typing = sys.modules.get("typing")
-    _typing_extensions = sys.modules.get("typing_extensions")
 
     if _typing:
-        # Handle Annotated[ClassVar[...], ...]
-        annotated = getattr(_typing, "Annotated", None)
-        if not annotated:
-            annotated = getattr(_typing_extensions, "Annotated", None)
+        # Annotated is a nightmare I'm never waking up from
+        # 3.8 and 3.9 need Annotated from typing_extensions
+        # 3.8 also needs get_origin from typing_extensions
+        if sys.version_info < (3, 10):
+            _typing_extensions = sys.modules.get("typing_extensions")
+            if _typing_extensions:
+                _Annotated = _typing_extensions.Annotated
+                _get_origin = _typing_extensions.get_origin
+            else:
+                _Annotated, _get_origin = None, None
+        else:
+            _Annotated = _typing.Annotated
+            _get_origin = _typing.get_origin
 
-        if annotated and _typing.get_origin(hint) is annotated:
-            hint = getattr(hint, "__origin__")
+        if _Annotated and _get_origin(hint) is _Annotated:
+            hint = hint.__origin__
 
         if (
             hint is _typing.ClassVar

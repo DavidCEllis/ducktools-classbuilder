@@ -120,23 +120,21 @@ class TestClassVar:
         assert "y" in getattr(IgnoreClassVars, "__dict__")
         assert "z" in getattr(IgnoreClassVars, "__dict__")
 
-    @pytest.mark.skipif(
-        sys.version_info < (3, 9),
-        reason="Annotated[ClassVar, ...] is an error in 3.8 or earlier"
-    )
     def test_skipped_annotated_classvars(self):
         from creation import IgnoreAnnotatedClassVars
 
         fields = IgnoreAnnotatedClassVars.PREFAB_FIELDS
-        assert "v" not in fields
-        assert "w" not in fields
+        if sys.version_info >= (3, 11):
+            assert "v" not in fields
+            assert "w" not in fields
         assert "x" not in fields
         assert "y" not in fields
         assert "z" not in fields
         assert "actual" in fields
 
-        assert "v" in getattr(IgnoreAnnotatedClassVars, "__dict__")
-        assert "w" in getattr(IgnoreAnnotatedClassVars, "__dict__")
+        if sys.version_info >= (3, 11):
+            assert "v" in getattr(IgnoreAnnotatedClassVars, "__dict__")
+            assert "w" in getattr(IgnoreAnnotatedClassVars, "__dict__")
         assert "x" in getattr(IgnoreAnnotatedClassVars, "__dict__")
         assert "y" in getattr(IgnoreAnnotatedClassVars, "__dict__")
         assert "z" in getattr(IgnoreAnnotatedClassVars, "__dict__")
