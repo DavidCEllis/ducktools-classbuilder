@@ -614,26 +614,28 @@ due to the issues mentioned in the readme.
 
 ```python
 import sys
+from inspect import get_annotations
+
 from ducktools.classbuilder import builder, default_methods, Field, NOTHING
 
 
 def _is_classvar(hint):
-    # Avoid importing typing if it's not already used
     _typing = sys.modules.get("typing")
     if _typing:
+        # Handle Annotated[ClassVar[...], ...]
+        if _typing.get_origin(hint) is _typing.Annotated:
+            hint = getattr(hint, "__origin__")
+
         if (
             hint is _typing.ClassVar
             or getattr(hint, "__origin__", None) is _typing.ClassVar
         ):
             return True
-        # String used as annotation
-        elif isinstance(hint, str) and "ClassVar" in hint:
-            return True
     return False
 
 
 def annotation_gatherer(cls):
-    cls_annotations = cls.__dict__.get("__annotations__", {})
+    cls_annotations = get_annotations(cls, eval_str=True)
     cls_fields = {}
 
     for k, v in cls_annotations.items():
