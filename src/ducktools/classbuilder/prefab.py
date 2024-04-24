@@ -58,6 +58,10 @@ class PrefabError(Exception):
 def _is_classvar(hint):
     _typing = sys.modules.get("typing")
     if _typing:
+        # Handle Annotated[ClassVar[...], ...]
+        if _typing.get_origin(hint) is _typing.Annotated:
+            hint = getattr(hint, "__origin__")
+        
         if (
             hint is _typing.ClassVar
             or getattr(hint, "__origin__", None) is _typing.ClassVar

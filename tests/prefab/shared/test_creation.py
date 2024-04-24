@@ -101,22 +101,40 @@ class TestKeepDefined:
         assert KeepDefinedMethods.__match_args__ == ("x",)
 
 
-def test_skipped_classvars():
-    from creation import IgnoreClassVars
+class TestClassVar:
+    def test_skipped_classvars(self):
+        from creation import IgnoreClassVars
 
-    fields = IgnoreClassVars.PREFAB_FIELDS
-    assert "v" not in fields
-    assert "w" not in fields
-    assert "x" not in fields
-    assert "y" not in fields
-    assert "z" not in fields
-    assert "actual" in fields
+        fields = IgnoreClassVars.PREFAB_FIELDS
+        assert "v" not in fields
+        assert "w" not in fields
+        assert "x" not in fields
+        assert "y" not in fields
+        assert "z" not in fields
+        assert "actual" in fields
 
-    assert "v" in getattr(IgnoreClassVars, "__dict__")
-    assert "w" in getattr(IgnoreClassVars, "__dict__")
-    assert "x" in getattr(IgnoreClassVars, "__dict__")
-    assert "y" in getattr(IgnoreClassVars, "__dict__")
-    assert "z" in getattr(IgnoreClassVars, "__dict__")
+        assert "v" in getattr(IgnoreClassVars, "__dict__")
+        assert "w" in getattr(IgnoreClassVars, "__dict__")
+        assert "x" in getattr(IgnoreClassVars, "__dict__")
+        assert "y" in getattr(IgnoreClassVars, "__dict__")
+        assert "z" in getattr(IgnoreClassVars, "__dict__")
+
+    def test_skipped_annotated_classvars(self):
+        from creation import IgnoreAnnotatedClassVars
+
+        fields = IgnoreAnnotatedClassVars.PREFAB_FIELDS
+        assert "v" not in fields
+        assert "w" not in fields
+        assert "x" not in fields
+        assert "y" not in fields
+        assert "z" not in fields
+        assert "actual" in fields
+
+        assert "v" in getattr(IgnoreAnnotatedClassVars, "__dict__")
+        assert "w" in getattr(IgnoreAnnotatedClassVars, "__dict__")
+        assert "x" in getattr(IgnoreAnnotatedClassVars, "__dict__")
+        assert "y" in getattr(IgnoreAnnotatedClassVars, "__dict__")
+        assert "z" in getattr(IgnoreAnnotatedClassVars, "__dict__")
 
 
 class TestExceptions:
