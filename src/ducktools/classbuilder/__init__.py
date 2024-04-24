@@ -326,44 +326,50 @@ class SlotFields(dict):
     """
 
 
-def slot_gatherer(cls):
-    """
-    Gather field information for class generation based on __slots__
-    
-    :param cls: Class to gather field information from
-    :return: dict of field_name: Field(...)
-    """
-    cls_slots = cls.__dict__.get("__slots__", None)
+def make_slot_gatherer(field_type=Field):
+    def field_slot_gatherer(cls):
+        """
+        Gather field information for class generation based on __slots__
 
-    if not isinstance(cls_slots, SlotFields):
-        raise TypeError(
-            "__slots__ must be an instance of SlotFields "
-            "in order to generate a slotclass"
-        )
+        :param cls: Class to gather field information from
+        :return: dict of field_name: Field(...)
+        """
+        cls_slots = cls.__dict__.get("__slots__", None)
 
-    cls_annotations = cls.__dict__.get("__annotations__", {})
-    cls_fields = {}
-    slot_replacement = {}
+        if not isinstance(cls_slots, SlotFields):
+            raise TypeError(
+                "__slots__ must be an instance of SlotFields "
+                "in order to generate a slotclass"
+            )
 
-    for k, v in cls_slots.items():
-        if isinstance(v, Field):
-            attrib = v
-            if v.type is not NOTHING:
-                cls_annotations[k] = attrib.type
-        else:
-            # Plain values treated as defaults
-            attrib = Field(default=v)
+        cls_annotations = cls.__dict__.get("__annotations__", {})
+        cls_fields = {}
+        slot_replacement = {}
 
-        slot_replacement[k] = attrib.doc
-        cls_fields[k] = attrib
+        for k, v in cls_slots.items():
+            if isinstance(v, field_type):
+                attrib = v
+                if v.type is not NOTHING:
+                    cls_annotations[k] = attrib.type
+            else:
+                # Plain values treated as defaults
+                attrib = field_type(default=v)
 
-    # Replace the SlotAttributes instance with a regular dict
-    # So that help() works
-    setattr(cls, "__slots__", slot_replacement)
+            slot_replacement[k] = attrib.doc
+            cls_fields[k] = attrib
 
-    # Update annotations with any types from the slots assignment
-    setattr(cls, "__annotations__", cls_annotations)
-    return cls_fields
+        # Replace the SlotAttributes instance with a regular dict
+        # So that help() works
+        setattr(cls, "__slots__", slot_replacement)
+
+        # Update annotations with any types from the slots assignment
+        setattr(cls, "__annotations__", cls_annotations)
+        return cls_fields
+
+    return field_slot_gatherer
+
+
+slot_gatherer = make_slot_gatherer()
 
 
 def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):

@@ -31,7 +31,7 @@ import sys
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
-    builder, fieldclass, get_flags, get_fields, slot_gatherer
+    builder, fieldclass, get_flags, get_fields, make_slot_gatherer,
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -491,12 +491,7 @@ def attribute(
     )
 
 
-def slot_prefab_gatherer(cls):
-    # For prefabs it's easier if everything is an attribute
-    return {
-        name: Attribute.from_field(fld)
-        for name, fld in slot_gatherer(cls).items()
-    }
+slot_prefab_gatherer = make_slot_gatherer(Attribute)
 
 
 # Gatherer for classes built on attributes or annotations
