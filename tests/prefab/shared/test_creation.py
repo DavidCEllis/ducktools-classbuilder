@@ -1,4 +1,5 @@
 """Tests for errors raised on class creation"""
+import sys
 
 from ducktools.classbuilder.prefab import PrefabError
 
@@ -119,6 +120,10 @@ class TestClassVar:
         assert "y" in getattr(IgnoreClassVars, "__dict__")
         assert "z" in getattr(IgnoreClassVars, "__dict__")
 
+    @pytest.mark.skipif(
+        sys.version_info < (3, 9),
+        reason="Annotated[ClassVar, ...] is an error in 3.8 or earlier"
+    )
     def test_skipped_annotated_classvars(self):
         from creation import IgnoreAnnotatedClassVars
 

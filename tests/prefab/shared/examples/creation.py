@@ -1,5 +1,12 @@
+import sys
 import typing
-from typing import ClassVar, Annotated
+from typing import ClassVar
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
 from ducktools.classbuilder.prefab import prefab, attribute
 
 
@@ -59,15 +66,17 @@ class IgnoreClassVars:
     actual: str = "Test"
 
 
-@prefab
-class IgnoreAnnotatedClassVars:
-    # Ignore v, w, x, y and z - Include actual.
-    v: Annotated[ClassVar, "v"] = 12
-    w: "Annotated[ClassVar, 'w']" = 24
-    x: Annotated[typing.ClassVar[int], "x"] = 42
-    y: Annotated[ClassVar[str], "y"] = "Apple"
-    z: "Annotated[ClassVar[float], 'z']" = 3.14
-    actual: str = "Test"
+if sys.version_info >= (3, 9):
+    # Not testing Annotated under 3.8.
+    @prefab
+    class IgnoreAnnotatedClassVars:
+        # Ignore v, w, x, y and z - Include actual.
+        v: Annotated[ClassVar, "v"] = 12
+        w: "Annotated[ClassVar, 'w']" = 24
+        x: Annotated[typing.ClassVar[int], "x"] = 42
+        y: Annotated[ClassVar[str], "y"] = "Apple"
+        z: "Annotated[ClassVar[float], 'z']" = 3.14
+        actual: str = "Test"
 
 
 @prefab
