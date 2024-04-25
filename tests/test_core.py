@@ -101,6 +101,7 @@ def test_from_field():
 
     for fld in [f1, f2, f3, f4, f5]:
         assert fld == Field.from_field(fld)
+        assert fld is not Field.from_field(fld)
 
 
 def test_repr_field():
@@ -123,6 +124,25 @@ def test_repr_field():
     assert repr(f3) == f3_repr
     assert repr(f4) == f4_repr
     assert repr(f5) == f5_repr
+
+
+def test_frozen_field():
+    f = Field(default=True)
+
+    attr_changes = {
+        "default": False,
+        "default_factory": list,
+        "type": bool,
+        "doc": "This should fail",
+    }
+
+    for k, v in attr_changes.items():
+        with pytest.raises(TypeError):
+            setattr(f, k, v)
+
+    for k in attr_changes:
+        with pytest.raises(TypeError):
+            delattr(f, k)
 
 
 def test_slot_gatherer_success():
@@ -279,6 +299,7 @@ def test_fieldclass():
     @fieldclass
     class NewField(Field):
         __slots__ = SlotFields(serialize=True)
+        serialize: bool
 
     f = NewField()
 
@@ -296,6 +317,38 @@ def test_fieldclass():
     with pytest.raises(TypeError):
         # All arguments are keyword only in fieldclasses
         NewField(42)
+
+
+def test_fieldclass_frozen():
+    @fieldclass
+    class NewField(Field):
+        __slots__ = SlotFields(serialize=True)
+        serialize: bool
+
+    f = NewField()
+
+    attr_changes = {
+        "default": False,
+        "default_factory": list,
+        "type": bool,
+        "doc": "This should fail",
+        "serialize": False,
+    }
+
+    for k, v in attr_changes.items():
+        with pytest.raises(TypeError):
+            setattr(f, k, v)
+
+    for k in attr_changes:
+        with pytest.raises(TypeError):
+            delattr(f, k)
+
+    # Even slotted fields raise TypeError as setattr happens first
+    with pytest.raises(TypeError):
+        setattr(f, "new_attribute", False)
+
+    with pytest.raises(TypeError):
+        delattr(f, "new_attribute")
 
 
 def test_builder_noclass():
