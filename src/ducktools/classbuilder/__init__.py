@@ -27,6 +27,11 @@ __version__ = "v0.4.0"
 INTERNALS_DICT = "__classbuilder_internals__"
 
 
+# If testing, make Field classes frozen to make sure attributes are not
+# overwritten. When running this is a performance penalty so it is not required.
+_UNDER_TESTING = "pytest" in sys.modules
+
+
 def get_fields(cls, *, local=False):
     """
     Utility function to gather the fields dictionary
@@ -354,10 +359,14 @@ _field_internal = {
     "doc": Field(default=None),
 }
 
+_field_methods = {repr_desc, eq_desc}
+if _UNDER_TESTING:
+    _field_methods.update({frozen_setattr_desc, frozen_delattr_desc})
+
 builder(
     Field,
     gatherer=lambda cls_: _field_internal,
-    methods={repr_desc, eq_desc, frozen_setattr_desc, frozen_delattr_desc},
+    methods=_field_methods,
     flags={"slotted": True, "kw_only": True},
 )
 
@@ -565,25 +574,25 @@ _field_init_desc = MethodMaker(
 )
 
 
-def fieldclass(cls):
+def fieldclass(cls=None, /, *, frozen=False):
     """
     This is a special decorator for making Field subclasses using __slots__.
     This works by forcing the __init__ method to treat NOTHING as a regular
     value. This means *all* instance attributes always have defaults.
 
     :param cls: Field subclass
+    :param frozen: Make the field class a frozen class.
+                   Not enabled by default for performance reasons.
     :return: Modified subclass
     """
+    if not cls:
+        return lambda cls_: fieldclass(cls_, frozen=frozen)
 
-    field_methods = frozenset(
-        {
-            _field_init_desc,
-            repr_desc,
-            eq_desc,
-            frozen_setattr_desc,
-            frozen_delattr_desc,
-        }
-    )
+    field_methods = {_field_init_desc, repr_desc, eq_desc}
+
+    # Always freeze when running tests
+    if frozen or _UNDER_TESTING:
+        field_methods.update({frozen_setattr_desc, frozen_delattr_desc})
 
     cls = builder(
         cls,

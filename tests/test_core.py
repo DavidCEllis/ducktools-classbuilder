@@ -127,6 +127,7 @@ def test_repr_field():
 
 
 def test_frozen_field():
+    # UNDER TESTING FIELD SHOULD BE FROZEN
     f = Field(default=True)
 
     attr_changes = {
@@ -320,7 +321,7 @@ def test_fieldclass():
 
 
 def test_fieldclass_frozen():
-    @fieldclass
+    @fieldclass(frozen=True)
     class NewField(Field):
         __slots__ = SlotFields(serialize=True)
         serialize: bool
