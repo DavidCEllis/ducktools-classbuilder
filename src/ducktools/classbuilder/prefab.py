@@ -546,37 +546,43 @@ def attribute_gatherer(cls):
                 # Copy attributes that are already defined to the new dict
                 # generate Attribute() values for those that are not defined.
 
+                # Extra parameters to pass to each Attribute
+                extras = {
+                    "type": cls_annotations[name]
+                }
+                if kw_flag:
+                    extras["kw_only"] = True
+
                 # If a field name is also declared in slots it can't have a real
                 # default value and the attr will be the slot descriptor.
                 if hasattr(cls, name) and name not in cls_slots:
                     if name in cls_attribute_names:
-                        attrib = cls_attributes[name]
+                        attrib = Attribute.from_field(
+                            cls_attributes[name],
+                            **extras,
+                        )
                     else:
                         attribute_default = getattr(cls, name)
-                        attrib = attribute(default=attribute_default)
+                        attrib = attribute(default=attribute_default, **extras)
 
                     # Clear the attribute from the class after it has been used
                     # in the definition.
                     delattr(cls, name)
                 else:
-                    attrib = attribute()
+                    attrib = attribute(**extras)
 
-                if kw_flag:
-                    attrib.kw_only = True
-
-                attrib.type = cls_annotations[name]
                 new_attributes[name] = attrib
 
         cls_attributes = new_attributes
     else:
-        for name, attrib in cls_attributes.items():
-            delattr(cls, name)
+        for name in cls_attributes.keys():
+            attrib = cls_attributes[name]
+            delattr(cls, name)  # clear attrib from class
 
             # Some items can still be annotated.
-            try:
-                attrib.type = cls_annotations[name]
-            except KeyError:
-                pass
+            if name in cls_annotations:
+                new_attrib = Attribute.from_field(attrib, type=cls_annotations[name])
+                cls_attributes[name] = new_attrib
 
     return cls_attributes
 
