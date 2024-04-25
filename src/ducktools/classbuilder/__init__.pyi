@@ -109,6 +109,8 @@ def make_annotation_gatherer(
 
 def annotation_gatherer(cls: type) -> dict[str, Field]: ...
 
+def check_argument_order(cls: type) -> None: ...
+
 @typing.overload
 def slotclass(
     cls: type[_T],

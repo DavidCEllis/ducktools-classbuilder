@@ -364,6 +364,7 @@ builder(
 )
 
 
+# Slot gathering tools
 # Subclass of dict to be identifiable by isinstance checks
 # For anything more complicated this could be made into a Mapping
 class SlotFields(dict):
@@ -425,6 +426,7 @@ def make_slot_gatherer(field_type=Field):
 slot_gatherer = make_slot_gatherer()
 
 
+# Annotation gathering tools
 def is_classvar(hint):
     _typing = sys.modules.get("typing")
 
@@ -504,6 +506,26 @@ def make_annotation_gatherer(field_type=Field, leave_default_values=True):
 annotation_gatherer = make_annotation_gatherer()
 
 
+def check_argument_order(cls):
+    """
+    Raise a SyntaxError if the argument order will be invalid for a generated
+    `__init__` function.
+
+    :param cls: class being built
+    """
+    fields = get_fields(cls)
+    used_default = False
+    for k, v in fields.items():
+        if v.default is NOTHING and v.default_factory is NOTHING:
+            if used_default:
+                raise SyntaxError(
+                    f"non-default argument {k!r} follows default argument"
+                )
+        else:
+            used_default = True
+
+
+# Class Decorators
 def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     """
     Example of class builder in action using __slots__ to find fields.
@@ -520,16 +542,18 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     cls = builder(cls, gatherer=slot_gatherer, methods=methods, flags={"slotted": True})
 
     if syntax_check:
-        fields = get_fields(cls)
-        used_default = False
-        for k, v in fields.items():
-            if v.default is NOTHING and v.default_factory is NOTHING:
-                if used_default:
-                    raise SyntaxError(
-                        f"non-default argument {k!r} follows default argument"
-                    )
-            else:
-                used_default = True
+        check_argument_order(cls)
+
+    return cls
+
+
+def annotationclass(cls=None, /, *, methods=default_methods):
+    if not cls:
+        return lambda cls_: annotationclass(cls_, methods=methods)
+
+    cls = builder(cls, gatherer=annotation_gatherer, methods=methods, flags={"slotted": False})
+
+    check_argument_order(cls)
 
     return cls
 
@@ -541,26 +565,6 @@ _field_init_desc = MethodMaker(
         extra_code=["self.validate_field()"],
     )
 )
-
-
-def annotationclass(cls=None, /, *, methods=default_methods):
-    if not cls:
-        return lambda cls_: annotationclass(cls_, methods=methods)
-
-    cls = builder(cls, gatherer=annotation_gatherer, methods=methods, flags={"slotted": False})
-
-    fields = get_fields(cls)
-    used_default = False
-    for k, v in fields.items():
-        if v.default is NOTHING and v.default_factory is NOTHING:
-            if used_default:
-                raise SyntaxError(
-                    f"non-default argument {k!r} follows default argument"
-                )
-        else:
-            used_default = True
-
-    return cls
 
 
 def fieldclass(cls):
