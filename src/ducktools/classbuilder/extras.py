@@ -1,17 +1,15 @@
 import sys
+import inspect
 
 from . import NOTHING, Field, builder, default_methods, get_fields
 
 
-class PythonVersionError(Exception):
-    pass
-
-
-try:
-    from inspect import get_annotations
-except AttributeError:
-    raise PythonVersionError(
-        "Classbuilder extras are only supported on Python 3.10 or later."
+# Python 3.10 was the first version that introduced get_annotations
+# It makes handling string annotations much simpler, especially for
+# ClassVar.
+if not hasattr(inspect, "get_annotations"):  # pragma: nocover
+    raise ImportError(
+        "Import failed: classbuilder extras are only supported on Python 3.10 or later."
     )
 
 
@@ -33,19 +31,18 @@ def _is_classvar(hint):
     return False
 
 
-def make_annotation_gatherer(field_type=Field, clear_class_values=True):
+def make_annotation_gatherer(field_type=Field, leave_default_values=True):
     """
     Create a new annotation gatherer that will work with `Field` instances
     of the creators definition.
 
     :param field_type: The `Field` classes to be used when gathering fields
-    :param clear_class_values: True if the gatherer remove the default values
-                               from the class variables after they have been
-                               gathered.
+    :param leave_default_values: Set to True if the gatherer should leave
+                                 default values in place as class variables.
     :return: An annotation gatherer with these settings.
     """
     def field_annotation_gatherer(cls):
-        cls_annotations = get_annotations(cls, eval_str=True)
+        cls_annotations = inspect.get_annotations(cls, eval_str=True)
 
         cls_fields: dict[str, Field] = {}
 
@@ -58,16 +55,18 @@ def make_annotation_gatherer(field_type=Field, clear_class_values=True):
 
             if attrib is not NOTHING:
                 if isinstance(attrib, field_type):
-                    attrib.type = v
+                    attrib = field_type.from_field(attrib, type=v)
+                    if attrib.default is not NOTHING and leave_default_values:
+                        setattr(cls, k, attrib.default)
+                    else:
+                        delattr(cls, k)
                 else:
-                    attrib = field_type(default=attrib)
-
-                if clear_class_values:
-                    # Remove the class variable
-                    delattr(cls, k)
+                    attrib = field_type(default=attrib, type=v)
+                    if not leave_default_values:
+                        delattr(cls, k)
 
             else:
-                attrib = field_type()
+                attrib = field_type(type=v)
 
             cls_fields[k] = attrib
 

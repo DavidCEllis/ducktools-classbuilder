@@ -13,7 +13,7 @@ def _is_classvar(hint: object) -> bool: ...
 
 def make_annotation_gatherer(
     field_type: type[Field] = Field,
-    clear_class_values: bool = True,
+    leave_default_values: bool = True,
 ) -> Callable[[type], dict[str, Field]]: ...
 
 
