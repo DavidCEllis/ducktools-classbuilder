@@ -300,6 +300,8 @@ class Field:
     some metadata.
 
     Intended to be extendable by subclasses for additional features.
+
+    Note: When run under `pytest`, Field instances are Frozen.
     """
     __slots__ = {
         "default": "Standard default value to be used for attributes with"
@@ -582,7 +584,7 @@ def fieldclass(cls=None, /, *, frozen=False):
 
     :param cls: Field subclass
     :param frozen: Make the field class a frozen class.
-                   Not enabled by default for performance reasons.
+                   Field classes are always frozen when running under `pytest`
     :return: Modified subclass
     """
     if not cls:

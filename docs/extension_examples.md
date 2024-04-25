@@ -156,6 +156,9 @@ how to perform the generation. A convenient decorator `@fieldclass` is provided
 to allow simple extension by adding additional slots. By using this decorator
 the `__init__`, `__repr__` and `__eq__` methods will be generated for you.
 
+> Note: Field classes will be frozen when running under pytest.
+>       They are not frozen normally for performance reasons.
+
 ```python
 from ducktools.classbuilder import Field, SlotFields, fieldclass
 
@@ -580,6 +583,10 @@ if __name__ == "__main__":
 
 This seems to be a feature people keep requesting for `dataclasses`.
 This is also doable.
+
+> Note: Field classes will be frozen when running under pytest.
+>       They should not be mutated by gatherers.
+>       If you need to change the value of a field use Field.from_field(...) to make a new instance.
 
 ```python
 import inspect
