@@ -32,7 +32,7 @@ from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
     builder, fieldclass, get_flags, get_fields, make_slot_gatherer,
-    frozen_setattr_desc, frozen_delattr_desc,
+    frozen_setattr_desc, frozen_delattr_desc, is_classvar,
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -54,38 +54,6 @@ KW_ONLY = _KW_ONLY_TYPE()
 
 class PrefabError(Exception):
     pass
-
-
-def _is_classvar(hint):
-    _typing = sys.modules.get("typing")
-
-    if _typing:
-        # Annotated is a nightmare I'm never waking up from
-        # 3.8 and 3.9 need Annotated from typing_extensions
-        # 3.8 also needs get_origin from typing_extensions
-        if sys.version_info < (3, 10):
-            _typing_extensions = sys.modules.get("typing_extensions")
-            if _typing_extensions:
-                _Annotated = _typing_extensions.Annotated
-                _get_origin = _typing_extensions.get_origin
-            else:
-                _Annotated, _get_origin = None, None
-        else:
-            _Annotated = _typing.Annotated
-            _get_origin = _typing.get_origin
-
-        if _Annotated and _get_origin(hint) is _Annotated:
-            hint = hint.__origin__
-
-        if (
-            hint is _typing.ClassVar
-            or getattr(hint, "__origin__", None) is _typing.ClassVar
-        ):
-            return True
-        # String used as annotation
-        elif isinstance(hint, str) and "ClassVar" in hint:
-            return True
-    return False
 
 
 def get_attributes(cls):
@@ -480,7 +448,7 @@ def attribute_gatherer(cls):
         new_attributes = {}
         for name, value in cls_annotations.items():
             # Ignore ClassVar hints
-            if _is_classvar(value):
+            if is_classvar(value):
                 continue
 
             # Look for the KW_ONLY annotation

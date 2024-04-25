@@ -72,7 +72,7 @@ This is separate because it relies on `inspect` to simplify the implementation
 but is a slow import.
 
 ```python
-from ducktools.classbuilder.extras import annotationclass
+from ducktools.classbuilder import annotationclass
 
 @annotationclass
 class AnnotatedDC:

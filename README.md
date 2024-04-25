@@ -161,13 +161,11 @@ print(f"{SlotCoords is class_register[SlotCoords.__name__] = }")
 ## Using annotations anyway ##
 
 For those that really want to use type annotations a basic `annotation_gatherer`
-function and `@annotationclass` decorator are included.
-
-> [!Note]
-> These features require Python >= 3.10 as they use inspect.get_annotations
+function and `@annotationclass` decorator are also included. Slots are not generated
+in this case.
 
 ```python
-from ducktools.classbuilder.extras import annotationclass
+from ducktools.classbuilder import annotationclass
 
 @annotationclass
 class AnnotatedDC:

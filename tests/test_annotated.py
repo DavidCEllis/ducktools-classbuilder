@@ -1,34 +1,28 @@
 import sys
 import pytest
 
+from typing import ClassVar
+from typing_extensions import Annotated
 
-if sys.version_info < (3, 10):
-    pytest.skip(
-        "Skipping extras tests on unsupported Python versions",
-        allow_module_level=True
-    )
-else:
-    import inspect
+from ducktools.classbuilder import Field, SlotFields, fieldclass
 
-    from ducktools.classbuilder import Field, SlotFields, fieldclass
+from ducktools.classbuilder import (
+    is_classvar,
+    annotationclass,
+    annotation_gatherer,
+    make_annotation_gatherer,
+)
 
-    from ducktools.classbuilder.extras import (
-        _is_classvar,
-        annotationclass,
-        annotation_gatherer,
-        make_annotation_gatherer,
-    )
-    from typing import Annotated, ClassVar
-    CV = ClassVar
+CV = ClassVar
 
 
 def test_is_classvar():
-    icv = _is_classvar
+    icv = is_classvar
 
     assert icv(ClassVar)
     assert icv(ClassVar[str])
 
-    # 3.10 does not support plain typing.ClassVar in Annotated
+    # 3.10 and earlier do not support plain typing.ClassVar in Annotated
     if sys.version_info >= (3, 11):
         assert icv(Annotated[ClassVar, ""])
 
@@ -48,7 +42,7 @@ def test_annotation_gatherer():
         e: Annotated[ClassVar[str], ""] = "e"
         f: "Annotated[ClassVar[str], '']" = "f"
         g: Annotated[Annotated[ClassVar[str], ""], ""] = "g"
-        h: "Annotated[CV[str], '']" = "h"
+        h: Annotated[CV[str], ''] = "h"
 
     annos = annotation_gatherer(ExampleAnnotated)
 
@@ -86,10 +80,10 @@ def test_make_annotation_gatherer():
         e: Annotated[ClassVar[str], ""] = "e"
         f: "Annotated[ClassVar[str], '']" = "f"
         g: Annotated[Annotated[ClassVar[str], ""], ""] = "g"
-        h: "Annotated[CV[str], '']" = "h"
+        h: Annotated[CV[str], ''] = "h"
 
     annos = gatherer(ExampleAnnotated)
-    annotations = inspect.get_annotations(ExampleAnnotated, eval_str=True)
+    annotations = ExampleAnnotated.__annotations__
 
     assert annos["blank_field"] == NewField(type=str)
 
@@ -118,7 +112,7 @@ def test_annotationclass():
         e: Annotated[ClassVar[str], ""] = "e"
         f: "Annotated[ClassVar[str], '']" = "f"
         g: Annotated[Annotated[ClassVar[str], ""], ""] = "g"
-        h: "Annotated[CV[str], '']" = "h"
+        h: Annotated[CV[str], ''] = "h"
 
     for key in "abcdefgh":
         assert key in ExampleAnnotated.__dict__

@@ -19,6 +19,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import sys
+
 __version__ = "v0.4.0"
 
 # Change this name if you make heavy modifications
@@ -423,6 +425,85 @@ def make_slot_gatherer(field_type=Field):
 slot_gatherer = make_slot_gatherer()
 
 
+def is_classvar(hint):
+    _typing = sys.modules.get("typing")
+
+    if _typing:
+        # Annotated is a nightmare I'm never waking up from
+        # 3.8 and 3.9 need Annotated from typing_extensions
+        # 3.8 also needs get_origin from typing_extensions
+        if sys.version_info < (3, 10):
+            _typing_extensions = sys.modules.get("typing_extensions")
+            if _typing_extensions:
+                _Annotated = _typing_extensions.Annotated
+                _get_origin = _typing_extensions.get_origin
+            else:
+                _Annotated, _get_origin = None, None
+        else:
+            _Annotated = _typing.Annotated
+            _get_origin = _typing.get_origin
+
+        if _Annotated and _get_origin(hint) is _Annotated:
+            hint = getattr(hint, "__origin__", None)
+
+        if (
+            hint is _typing.ClassVar
+            or getattr(hint, "__origin__", None) is _typing.ClassVar
+        ):
+            return True
+        # String used as annotation
+        elif isinstance(hint, str) and "ClassVar" in hint:
+            return True
+    return False
+
+
+def make_annotation_gatherer(field_type=Field, leave_default_values=True):
+    """
+    Create a new annotation gatherer that will work with `Field` instances
+    of the creators definition.
+
+    :param field_type: The `Field` classes to be used when gathering fields
+    :param leave_default_values: Set to True if the gatherer should leave
+                                 default values in place as class variables.
+    :return: An annotation gatherer with these settings.
+    """
+    def field_annotation_gatherer(cls):
+        cls_annotations = cls.__dict__.get("__annotations__", {})
+
+        cls_fields: dict[str, field_type] = {}
+
+        for k, v in cls_annotations.items():
+            # Ignore ClassVar
+            if is_classvar(v):
+                continue
+
+            attrib = getattr(cls, k, NOTHING)
+
+            if attrib is not NOTHING:
+                if isinstance(attrib, field_type):
+                    attrib = field_type.from_field(attrib, type=v)
+                    if attrib.default is not NOTHING and leave_default_values:
+                        setattr(cls, k, attrib.default)
+                    else:
+                        delattr(cls, k)
+                else:
+                    attrib = field_type(default=attrib, type=v)
+                    if not leave_default_values:
+                        delattr(cls, k)
+
+            else:
+                attrib = field_type(type=v)
+
+            cls_fields[k] = attrib
+
+        return cls_fields
+
+    return field_annotation_gatherer
+
+
+annotation_gatherer = make_annotation_gatherer()
+
+
 def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     """
     Example of class builder in action using __slots__ to find fields.
@@ -460,6 +541,26 @@ _field_init_desc = MethodMaker(
         extra_code=["self.validate_field()"],
     )
 )
+
+
+def annotationclass(cls=None, /, *, methods=default_methods):
+    if not cls:
+        return lambda cls_: annotationclass(cls_, methods=methods)
+
+    cls = builder(cls, gatherer=annotation_gatherer, methods=methods, flags={"slotted": False})
+
+    fields = get_fields(cls)
+    used_default = False
+    for k, v in fields.items():
+        if v.default is NOTHING and v.default_factory is NOTHING:
+            if used_default:
+                raise SyntaxError(
+                    f"non-default argument {k!r} follows default argument"
+                )
+        else:
+            used_default = True
+
+    return cls
 
 
 def fieldclass(cls):
