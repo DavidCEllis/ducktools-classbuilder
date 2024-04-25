@@ -184,6 +184,61 @@ along with a 'globals' dictionary of any names the code needs to refer
 to, or an empty dictionary if none are needed. Many methods don't require
 any globals values, but it is essential for some.
 
+#### Frozen Classes ####
+
+In order to make frozen classes you need to replace `__setattr__` and `__delattr__`
+
+The building blocks for this are actually already included as they're used to prevent 
+`fieldclass` instances from being mutated.
+
+These methods can be reused to make `slotclasses` 'frozen'.
+
+```python
+from ducktools.classbuilder import (
+    slotclass,
+    SlotFields,
+    default_methods,
+    frozen_setattr_desc,
+    frozen_delattr_desc,
+)
+
+
+new_methods = default_methods | {frozen_setattr_desc, frozen_delattr_desc}
+
+
+def frozen(cls, /):
+    return slotclass(cls, methods=new_methods)
+
+
+if __name__ == "__main__":
+    @frozen
+    class FrozenEx:
+        __slots__ = SlotFields(
+            x=6,
+            y=9,
+            product=42,
+        )
+
+
+    ex = FrozenEx()
+    print(ex)
+
+    try:
+        ex.y = 7
+    except TypeError as e:
+        print(e)
+
+    try:
+        ex.z = "new value"
+    except TypeError as e:
+        print(e)
+
+    try:
+        del ex.y
+    except TypeError as e:
+        print(e)
+```
+
 #### Iterable Classes ####
 
 Say you want to make the class iterable, so you want to add `__iter__`.
@@ -230,90 +285,6 @@ if __name__ == "__main__":
 ```
 
 You could also choose to yield tuples of `name, value` pairs in your implementation.
-
-#### Frozen Classes ####
-
-Here's an example of frozen slotted classes that only allow assignment once
-(which happens in the `__init__` method generated).
-
-> Note that these methods use `type(self).__name__` instead of `cls.__name__`
-> when generated so the name remains correct even if the class name is changed.
-
-```python
-from ducktools.classbuilder import (
-    slotclass,
-    get_fields,
-    SlotFields,
-    MethodMaker,
-    default_methods,
-)
-
-
-def setattr_maker(cls):
-    globs = {
-        "object_setattr": object.__setattr__
-    }
-
-    field_names = set(get_fields(cls).keys())
-
-    code = (
-        f"def __setattr__(self, name, value):\n"
-        f"    fields = {field_names!r}\n"
-        f"    if name in fields and not hasattr(self, name):\n"
-        f"        object_setattr(self, name, value)\n"
-        f"    else:\n"
-        f'        raise TypeError(f"{{type(self).__name__!r}} object does not support attribute assignment")'
-    )
-    return code, globs
-
-
-def delattr_maker(cls):
-    code = (
-        f"def __delattr__(self, name):\n"
-        f'    raise TypeError(f"{{type(self).__name__!r}} object does not support attribute deletion")'
-    )
-    globs = {}
-    return code, globs
-
-
-setattr_desc = MethodMaker("__setattr__", setattr_maker)
-delattr_desc = MethodMaker("__delattr__", delattr_maker)
-
-new_methods = frozenset(default_methods | {setattr_desc, delattr_desc})
-
-
-def frozen(cls, /):
-    return slotclass(cls, methods=new_methods)
-
-
-if __name__ == "__main__":
-    @frozen
-    class FrozenEx:
-        __slots__ = SlotFields(
-            x=6,
-            y=9,
-            product=42,
-        )
-
-
-    ex = FrozenEx()
-    print(ex)
-
-    try:
-        ex.y = 7
-    except TypeError as e:
-        print(e)
-
-    try:
-        ex.z = "new value"
-    except TypeError as e:
-        print(e)
-
-    try:
-        del ex.y
-    except TypeError as e:
-        print(e)
-```
 
 ### Extending Field ###
 
@@ -609,33 +580,38 @@ if __name__ == "__main__":
 
 Have you heard of [dataclasses](https://docs.python.org/3/library/dataclasses.html)?
 
-But we can also do that. These classes will not be slotted, however, 
-due to the issues mentioned in the readme.
+An `annotation_gatherer` is actually now provided by `ducktools.classbuilder.extras`, 
+however it relies on `inspect.get_annotations` which was only introduced in Python 3.10.
+
+If you need an annotations gatherer for Python 3.9 or earlier you can create something close
+like this:
 
 ```python
 import sys
-from inspect import get_annotations
 
 from ducktools.classbuilder import builder, default_methods, Field, NOTHING
 
 
+# Note: for simplicity this doesn't handle `Annotated[ClassVar[...` (except as a string)
+#       It's complicated to do so, see the `prefab` _is_classvar code if you need this
 def _is_classvar(hint):
     _typing = sys.modules.get("typing")
     if _typing:
-        # Handle Annotated[ClassVar[...], ...]
-        if _typing.get_origin(hint) is _typing.Annotated:
-            hint = getattr(hint, "__origin__")
-
         if (
             hint is _typing.ClassVar
             or getattr(hint, "__origin__", None) is _typing.ClassVar
         ):
             return True
+        # Attempt to just look for "ClassVar" in the string.
+        # Dataclasses does something much more complicated to catch renaming
+        elif isinstance(hint, str) and "ClassVar" in hint:
+            return True
+
     return False
 
 
 def annotation_gatherer(cls):
-    cls_annotations = get_annotations(cls, eval_str=True)
+    cls_annotations = cls.__dict__.get("__annotations__", {})
     cls_fields = {}
 
     for k, v in cls_annotations.items():
@@ -647,15 +623,18 @@ def annotation_gatherer(cls):
 
         if attrib is not NOTHING:
             if isinstance(attrib, Field):
-                attrib.type = v
+                attrib = Field.from_field(attrib, type=v)
+                # Set class attribute values to the default
+                # remove 'Field' instances as class attributes otherwise
+                if attrib.default is not NOTHING:
+                    setattr(cls, k, attrib.default)
+                else:
+                    delattr(cls, k)
             else:
-                attrib = Field(default=attrib)
-
-            # Remove the class variable
-            delattr(cls, k)
+                attrib = Field(default=attrib, type=v)
 
         else:
-            attrib = Field()
+            attrib = Field(type=v)
 
         cls_fields[k] = attrib
 

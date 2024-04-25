@@ -1,26 +1,28 @@
 import sys
-from inspect import get_annotations
 
 from ducktools.classbuilder import builder, default_methods, Field, NOTHING
 
 
+# Note: for simplicity this doesn't handle `Annotated[ClassVar[...` (except as a string)
+#       It's complicated to do so, see the `prefab` _is_classvar code if you need this
 def _is_classvar(hint):
     _typing = sys.modules.get("typing")
     if _typing:
-        # Handle Annotated[ClassVar[...], ...]
-        if _typing.get_origin(hint) is _typing.Annotated:
-            hint = getattr(hint, "__origin__")
-
         if (
             hint is _typing.ClassVar
             or getattr(hint, "__origin__", None) is _typing.ClassVar
         ):
             return True
+        # Attempt to just look for "ClassVar" in the string.
+        # Dataclasses does something much more complicated to catch renaming
+        elif isinstance(hint, str) and "ClassVar" in hint:
+            return True
+
     return False
 
 
 def annotation_gatherer(cls):
-    cls_annotations = get_annotations(cls, eval_str=True)
+    cls_annotations = cls.__dict__.get("__annotations__", {})
     cls_fields = {}
 
     for k, v in cls_annotations.items():
@@ -32,15 +34,18 @@ def annotation_gatherer(cls):
 
         if attrib is not NOTHING:
             if isinstance(attrib, Field):
-                attrib.type = v
+                attrib = Field.from_field(attrib, type=v)
+                # Set class attribute values to the default
+                # remove 'Field' instances as class attributes otherwise
+                if attrib.default is not NOTHING:
+                    setattr(cls, k, attrib.default)
+                else:
+                    delattr(cls, k)
             else:
-                attrib = Field(default=attrib)
-
-            # Remove the class variable
-            delattr(cls, k)
+                attrib = Field(default=attrib, type=v)
 
         else:
-            attrib = Field()
+            attrib = Field(type=v)
 
         cls_fields[k] = attrib
 
@@ -65,7 +70,9 @@ if __name__ == "__main__":
 
     ex = H2G2()
     print(ex)
-    ex2 = H2G2(the_question="What is the ultimate answer to the meaning of life, the universe, and everything?")
+    ex2 = H2G2(
+        the_question="What is the ultimate answer to the meaning of life, the universe, and everything?"
+    )
     print(ex2)
 
     print(H2G2.the_book)
