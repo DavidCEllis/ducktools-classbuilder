@@ -19,10 +19,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-__version__ = "v0.3.0"
+import sys
+
+__version__ = "v0.4.0"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
+
+
+# If testing, make Field classes frozen to make sure attributes are not
+# overwritten. When running this is a performance penalty so it is not required.
+_UNDER_TESTING = "pytest" in sys.modules
 
 
 def get_fields(cls, *, local=False):
@@ -102,46 +109,52 @@ class MethodMaker:
         return method.__get__(instance, cls)
 
 
-def init_maker(cls, *, null=NOTHING, extra_code=None):
-    fields = get_fields(cls)
-    flags = get_flags(cls)
+def get_init_maker(null=NOTHING, extra_code=None):
+    def cls_init_maker(cls):
+        fields = get_fields(cls)
+        flags = get_flags(cls)
 
-    arglist = []
-    assignments = []
-    globs = {}
+        arglist = []
+        assignments = []
+        globs = {}
 
-    if flags.get("kw_only", False):
-        arglist.append("*")
+        if flags.get("kw_only", False):
+            arglist.append("*")
 
-    for k, v in fields.items():
-        if v.default is not null:
-            globs[f"_{k}_default"] = v.default
-            arg = f"{k}=_{k}_default"
-            assignment = f"self.{k} = {k}"
-        elif v.default_factory is not null:
-            globs[f"_{k}_factory"] = v.default_factory
-            arg = f"{k}=None"
-            assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
-        else:
-            arg = f"{k}"
-            assignment = f"self.{k} = {k}"
+        for k, v in fields.items():
+            if v.default is not null:
+                globs[f"_{k}_default"] = v.default
+                arg = f"{k}=_{k}_default"
+                assignment = f"self.{k} = {k}"
+            elif v.default_factory is not null:
+                globs[f"_{k}_factory"] = v.default_factory
+                arg = f"{k}=None"
+                assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
+            else:
+                arg = f"{k}"
+                assignment = f"self.{k} = {k}"
 
-        arglist.append(arg)
-        assignments.append(assignment)
+            arglist.append(arg)
+            assignments.append(assignment)
 
-    args = ", ".join(arglist)
-    assigns = "\n    ".join(assignments) if assignments else "pass\n"
-    code = (
-        f"def __init__(self, {args}):\n" 
-        f"    {assigns}\n"
-    )
-    # Handle additional function calls
-    # Used for validate_field on fieldclasses
-    if extra_code:
-        for line in extra_code:
-            code += f"    {line}\n"
+        args = ", ".join(arglist)
+        assigns = "\n    ".join(assignments) if assignments else "pass\n"
+        code = (
+            f"def __init__(self, {args}):\n" 
+            f"    {assigns}\n"
+        )
+        # Handle additional function calls
+        # Used for validate_field on fieldclasses
+        if extra_code:
+            for line in extra_code:
+                code += f"    {line}\n"
 
-    return code, globs
+        return code, globs
+
+    return cls_init_maker
+
+
+init_maker = get_init_maker()
 
 
 def repr_maker(cls):
@@ -178,11 +191,54 @@ def eq_maker(cls):
     return code, globs
 
 
+def frozen_setattr_maker(cls):
+    globs = {}
+    field_names = set(get_fields(cls))
+    flags = get_flags(cls)
+
+    globs["__field_names"] = field_names
+
+    # Better to be safe and use the method that works in both cases
+    # if somehow slotted has not been set.
+    if flags.get("slotted", True):
+        globs["__setattr_func"] = object.__setattr__
+        setattr_method = "__setattr_func(self, name, value)"
+    else:
+        setattr_method = "self.__dict__[name] = value"
+
+    body = (
+        f"    if hasattr(self, name) or name not in __field_names:\n"
+        f'        raise TypeError(\n'
+        f'            f"{{type(self).__name__!r}} object does not support "'
+        f'            f"attribute assignment"\n'
+        f'        )\n'
+        f"    else:\n"
+        f"        {setattr_method}\n"
+    )
+    code = f"def __setattr__(self, name, value):\n{body}"
+
+    return code, globs
+
+
+def frozen_delattr_maker(cls):
+    body = (
+        '    raise TypeError(\n'
+        '        f"{type(self).__name__!r} object "\n'
+        '        f"does not support attribute deletion"\n'
+        '    )\n'
+    )
+    code = f"def __delattr__(self, name):\n{body}"
+    globs = {}
+    return code, globs
+
+
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
 init_desc = MethodMaker("__init__", init_maker)
 repr_desc = MethodMaker("__repr__", repr_maker)
 eq_desc = MethodMaker("__eq__", eq_maker)
+frozen_setattr_desc = MethodMaker("__setattr__", frozen_setattr_maker)
+frozen_delattr_desc = MethodMaker("__delattr__", frozen_delattr_maker)
 default_methods = frozenset({init_desc, repr_desc, eq_desc})
 
 
@@ -244,6 +300,8 @@ class Field:
     some metadata.
 
     Intended to be extendable by subclasses for additional features.
+
+    Note: When run under `pytest`, Field instances are Frozen.
     """
     __slots__ = {
         "default": "Standard default value to be used for attributes with"
@@ -303,14 +361,19 @@ _field_internal = {
     "doc": Field(default=None),
 }
 
+_field_methods = {repr_desc, eq_desc}
+if _UNDER_TESTING:
+    _field_methods.update({frozen_setattr_desc, frozen_delattr_desc})
+
 builder(
     Field,
     gatherer=lambda cls_: _field_internal,
-    methods=frozenset({repr_desc, eq_desc}),
+    methods=_field_methods,
     flags={"slotted": True, "kw_only": True},
 )
 
 
+# Slot gathering tools
 # Subclass of dict to be identifiable by isinstance checks
 # For anything more complicated this could be made into a Mapping
 class SlotFields(dict):
@@ -326,46 +389,152 @@ class SlotFields(dict):
     """
 
 
-def slot_gatherer(cls):
-    """
-    Gather field information for class generation based on __slots__
-    
-    :param cls: Class to gather field information from
-    :return: dict of field_name: Field(...)
-    """
-    cls_slots = cls.__dict__.get("__slots__", None)
+def make_slot_gatherer(field_type=Field):
+    def field_slot_gatherer(cls):
+        """
+        Gather field information for class generation based on __slots__
 
-    if not isinstance(cls_slots, SlotFields):
-        raise TypeError(
-            "__slots__ must be an instance of SlotFields "
-            "in order to generate a slotclass"
-        )
+        :param cls: Class to gather field information from
+        :return: dict of field_name: Field(...)
+        """
+        cls_slots = cls.__dict__.get("__slots__", None)
 
-    cls_annotations = cls.__dict__.get("__annotations__", {})
-    cls_fields = {}
-    slot_replacement = {}
+        if not isinstance(cls_slots, SlotFields):
+            raise TypeError(
+                "__slots__ must be an instance of SlotFields "
+                "in order to generate a slotclass"
+            )
 
-    for k, v in cls_slots.items():
-        if isinstance(v, Field):
-            attrib = v
-            if v.type is not NOTHING:
-                cls_annotations[k] = attrib.type
+        cls_annotations = cls.__dict__.get("__annotations__", {})
+        cls_fields = {}
+        slot_replacement = {}
+
+        for k, v in cls_slots.items():
+            if isinstance(v, field_type):
+                attrib = v
+                if attrib.type is not NOTHING:
+                    cls_annotations[k] = attrib.type
+            else:
+                # Plain values treated as defaults
+                attrib = field_type(default=v)
+
+            slot_replacement[k] = attrib.doc
+            cls_fields[k] = attrib
+
+        # Replace the SlotAttributes instance with a regular dict
+        # So that help() works
+        setattr(cls, "__slots__", slot_replacement)
+
+        # Update annotations with any types from the slots assignment
+        setattr(cls, "__annotations__", cls_annotations)
+        return cls_fields
+
+    return field_slot_gatherer
+
+
+slot_gatherer = make_slot_gatherer()
+
+
+# Annotation gathering tools
+def is_classvar(hint):
+    _typing = sys.modules.get("typing")
+
+    if _typing:
+        # Annotated is a nightmare I'm never waking up from
+        # 3.8 and 3.9 need Annotated from typing_extensions
+        # 3.8 also needs get_origin from typing_extensions
+        if sys.version_info < (3, 10):
+            _typing_extensions = sys.modules.get("typing_extensions")
+            if _typing_extensions:
+                _Annotated = _typing_extensions.Annotated
+                _get_origin = _typing_extensions.get_origin
+            else:
+                _Annotated, _get_origin = None, None
         else:
-            # Plain values treated as defaults
-            attrib = Field(default=v)
+            _Annotated = _typing.Annotated
+            _get_origin = _typing.get_origin
 
-        slot_replacement[k] = attrib.doc
-        cls_fields[k] = attrib
+        if _Annotated and _get_origin(hint) is _Annotated:
+            hint = getattr(hint, "__origin__", None)
 
-    # Replace the SlotAttributes instance with a regular dict
-    # So that help() works
-    setattr(cls, "__slots__", slot_replacement)
+        if (
+            hint is _typing.ClassVar
+            or getattr(hint, "__origin__", None) is _typing.ClassVar
+        ):
+            return True
+        # String used as annotation
+        elif isinstance(hint, str) and "ClassVar" in hint:
+            return True
+    return False
 
-    # Update annotations with any types from the slots assignment
-    setattr(cls, "__annotations__", cls_annotations)
-    return cls_fields
+
+def make_annotation_gatherer(field_type=Field, leave_default_values=True):
+    """
+    Create a new annotation gatherer that will work with `Field` instances
+    of the creators definition.
+
+    :param field_type: The `Field` classes to be used when gathering fields
+    :param leave_default_values: Set to True if the gatherer should leave
+                                 default values in place as class variables.
+    :return: An annotation gatherer with these settings.
+    """
+    def field_annotation_gatherer(cls):
+        cls_annotations = cls.__dict__.get("__annotations__", {})
+
+        cls_fields: dict[str, field_type] = {}
+
+        for k, v in cls_annotations.items():
+            # Ignore ClassVar
+            if is_classvar(v):
+                continue
+
+            attrib = getattr(cls, k, NOTHING)
+
+            if attrib is not NOTHING:
+                if isinstance(attrib, field_type):
+                    attrib = field_type.from_field(attrib, type=v)
+                    if attrib.default is not NOTHING and leave_default_values:
+                        setattr(cls, k, attrib.default)
+                    else:
+                        delattr(cls, k)
+                else:
+                    attrib = field_type(default=attrib, type=v)
+                    if not leave_default_values:
+                        delattr(cls, k)
+
+            else:
+                attrib = field_type(type=v)
+
+            cls_fields[k] = attrib
+
+        return cls_fields
+
+    return field_annotation_gatherer
 
 
+annotation_gatherer = make_annotation_gatherer()
+
+
+def check_argument_order(cls):
+    """
+    Raise a SyntaxError if the argument order will be invalid for a generated
+    `__init__` function.
+
+    :param cls: class being built
+    """
+    fields = get_fields(cls)
+    used_default = False
+    for k, v in fields.items():
+        if v.default is NOTHING and v.default_factory is NOTHING:
+            if used_default:
+                raise SyntaxError(
+                    f"non-default argument {k!r} follows default argument"
+                )
+        else:
+            used_default = True
+
+
+# Class Decorators
 def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     """
     Example of class builder in action using __slots__ to find fields.
@@ -382,40 +551,50 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     cls = builder(cls, gatherer=slot_gatherer, methods=methods, flags={"slotted": True})
 
     if syntax_check:
-        fields = get_fields(cls)
-        used_default = False
-        for k, v in fields.items():
-            if v.default is NOTHING and v.default_factory is NOTHING:
-                if used_default:
-                    raise SyntaxError(
-                        f"non-default argument {k!r} follows default argument"
-                    )
-            else:
-                used_default = True
+        check_argument_order(cls)
 
     return cls
 
 
-def _field_init_func(cls):
-    # Fields need a different Nothing for their __init__ generation
-    # And an extra call to validate_field
-    field_nothing = _NothingType()
-    extra_calls = ["self.validate_field()"]
-    return init_maker(cls, null=field_nothing, extra_code=extra_calls)
+def annotationclass(cls=None, /, *, methods=default_methods):
+    if not cls:
+        return lambda cls_: annotationclass(cls_, methods=methods)
+
+    cls = builder(cls, gatherer=annotation_gatherer, methods=methods, flags={"slotted": False})
+
+    check_argument_order(cls)
+
+    return cls
 
 
-def fieldclass(cls):
+_field_init_desc = MethodMaker(
+    funcname="__init__",
+    code_generator=get_init_maker(
+        null=_NothingType(),
+        extra_code=["self.validate_field()"],
+    )
+)
+
+
+def fieldclass(cls=None, /, *, frozen=False):
     """
     This is a special decorator for making Field subclasses using __slots__.
     This works by forcing the __init__ method to treat NOTHING as a regular
     value. This means *all* instance attributes always have defaults.
 
     :param cls: Field subclass
+    :param frozen: Make the field class a frozen class.
+                   Field classes are always frozen when running under `pytest`
     :return: Modified subclass
     """
+    if not cls:
+        return lambda cls_: fieldclass(cls_, frozen=frozen)
 
-    field_init_desc = MethodMaker("__init__", _field_init_func)
-    field_methods = frozenset({field_init_desc, repr_desc, eq_desc})
+    field_methods = {_field_init_desc, repr_desc, eq_desc}
+
+    # Always freeze when running tests
+    if frozen or _UNDER_TESTING:
+        field_methods.update({frozen_setattr_desc, frozen_delattr_desc})
 
     cls = builder(
         cls,

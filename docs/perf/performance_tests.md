@@ -1,63 +1,66 @@
 # Performance tests #
 
-Currently from an aging Dell XPS13 laptop running ubuntu 22.04 and Python 3.12.2.
-Windows tests with detailed specs soon.
+Rough specs: 2023 Windows 10 Desktop: Intel i5-13600KF, Crucial P3 1TB PCIe M.2 2280 SSD
 
 ## Import Times ##
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `python -c "pass"` | 12.2 ± 1.0 | 11.2 | 15.2 | 1.00 |
-| `python -c "from ducktools.classbuilder import slotclass"` | 12.6 ± 1.0 | 11.8 | 15.0 | 1.03 ± 0.12 |
-| `python -c "from ducktools.classbuilder.prefab import prefab"` | 13.0 ± 0.8 | 12.3 | 15.7 | 1.06 ± 0.11 |
-| `python -c "from collections import namedtuple"` | 14.0 ± 0.7 | 13.3 | 15.9 | 1.15 ± 0.11 |
-| `python -c "from typing import NamedTuple"` | 23.5 ± 1.0 | 22.3 | 25.7 | 1.92 ± 0.18 |
-| `python -c "from dataclasses import dataclass"` | 32.8 ± 1.0 | 30.9 | 35.4 | 2.69 ± 0.23 |
-| `python -c "from attrs import define"` | 50.9 ± 1.3 | 48.4 | 53.9 | 4.17 ± 0.35 |
-| `python -c "from pydantic import BaseModel"` | 75.9 ± 1.3 | 73.8 | 80.9 | 6.22 ± 0.51 |
+| `python -c "pass"` | 23.2 ± 0.8 | 21.8 | 25.3 | 1.00 |
+| `python -c "from ducktools.classbuilder import slotclass"` | 23.4 ± 1.8 | 22.3 | 32.8 | 1.01 ± 0.09 |
+| `python -c "from ducktools.classbuilder.prefab import prefab"` | 23.7 ± 0.9 | 22.8 | 27.6 | 1.02 ± 0.05 |
+| `python -c "from collections import namedtuple"` | 24.2 ± 0.8 | 23.3 | 27.5 | 1.04 ± 0.05 |
+| `python -c "from typing import NamedTuple"` | 32.2 ± 0.8 | 30.7 | 35.7 | 1.39 ± 0.06 |
+| `python -c "from dataclasses import dataclass"` | 39.6 ± 1.1 | 37.9 | 43.2 | 1.70 ± 0.08 |
+| `python -c "from attrs import define"` | 54.0 ± 1.8 | 51.4 | 60.1 | 2.32 ± 0.11 |
+| `python -c "from pydantic import BaseModel"` | 70.2 ± 1.2 | 68.3 | 72.7 | 3.02 ± 0.12 |
+
+
 
 ## Loading a module with 100 classes defined ##
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `python -c "pass"` | 11.6 ± 0.6 | 11.2 | 12.8 | 1.00 |
-| `python hyperfine_importers/native_classes_timer.py` | 13.9 ± 0.8 | 13.1 | 15.6 | 1.20 ± 0.09 |
-| `python hyperfine_importers/slotclasses_timer.py` | 15.0 ± 0.6 | 14.3 | 16.4 | 1.29 ± 0.08 |
-| `python hyperfine_importers/prefab_timer.py` | 16.9 ± 0.7 | 16.0 | 18.7 | 1.45 ± 0.09 |
-| `python hyperfine_importers/prefab_slots_timer.py` | 16.7 ± 0.7 | 15.8 | 17.8 | 1.43 ± 0.09 |
-| `python hyperfine_importers/prefab_eval_timer.py` | 41.0 ± 1.5 | 39.2 | 44.6 | 3.52 ± 0.21 |
-| `python hyperfine_importers/namedtuples_timer.py` | 22.3 ± 1.2 | 21.2 | 26.7 | 1.92 ± 0.14 |
-| `python hyperfine_importers/typed_namedtuples_timer.py` | 38.0 ± 1.2 | 36.2 | 41.3 | 3.27 ± 0.19 |
-| `python hyperfine_importers/dataclasses_timer.py` | 77.3 ± 3.5 | 74.5 | 93.1 | 6.65 ± 0.44 |
-| `python hyperfine_importers/attrs_noslots_timer.py` | 119.9 ± 1.6 | 117.1 | 122.5 | 10.32 ± 0.51 |
-| `python hyperfine_importers/attrs_slots_timer.py` | 123.4 ± 2.1 | 119.5 | 131.6 | 10.62 ± 0.54 |
-| `python hyperfine_importers/pydantic_timer.py` | 275.6 ± 6.3 | 267.8 | 304.8 | 23.72 ± 1.25 |
+| `python -c "pass"` | 22.9 ± 0.4 | 21.8 | 23.6 | 1.00 |
+| `python hyperfine_importers/native_classes_timer.py` | 24.2 ± 0.7 | 22.8 | 26.6 | 1.06 ± 0.04 |
+| `python hyperfine_importers/slotclasses_timer.py` | 24.9 ± 0.7 | 23.8 | 27.7 | 1.09 ± 0.04 |
+| `python hyperfine_importers/prefab_timer.py` | 25.8 ± 0.5 | 24.8 | 27.2 | 1.13 ± 0.03 |
+| `python hyperfine_importers/prefab_slots_timer.py` | 25.9 ± 0.6 | 24.9 | 27.5 | 1.13 ± 0.03 |
+| `python hyperfine_importers/prefab_eval_timer.py` | 35.1 ± 0.6 | 34.0 | 36.4 | 1.53 ± 0.04 |
+| `python hyperfine_importers/namedtuples_timer.py` | 28.3 ± 0.4 | 27.5 | 29.0 | 1.24 ± 0.03 |
+| `python hyperfine_importers/typed_namedtuples_timer.py` | 39.1 ± 0.9 | 37.4 | 41.8 | 1.71 ± 0.05 |
+| `python hyperfine_importers/dataclasses_timer.py` | 61.1 ± 2.1 | 58.1 | 69.1 | 2.67 ± 0.11 |
+| `python hyperfine_importers/attrs_noslots_timer.py` | 88.9 ± 2.2 | 86.7 | 98.3 | 3.88 ± 0.12 |
+| `python hyperfine_importers/attrs_slots_timer.py` | 90.9 ± 1.4 | 88.9 | 94.2 | 3.97 ± 0.10 |
+| `python hyperfine_importers/pydantic_timer.py` | 172.4 ± 5.3 | 164.5 | 181.5 | 7.53 ± 0.27 |
+
+
 
 ## Class Generation time without imports ##
 
 From `perf_profile.py`.
 
 ```
-Python Version: 3.12.1 (main, Dec 10 2023, 09:30:46) [GCC 11.4.0]
-Classbuilder version: v0.1.0
-Platform: Linux-5.15.0-91-generic-x86_64-with-glibc2.35
+Python Version: 3.12.2 (tags/v3.12.2:6abddd9, Feb  6 2024, 21:26:36) [MSC v.1937 64 bit (AMD64)]
+Classbuilder version: v0.4.0
+Platform: Windows-10-10.0.19045-SP0
 Time for 100 imports of 100 classes defined with 5 basic attributes
 ```
 
 | Method | Total Time (seconds) |
 | --- | --- |
-| standard classes | 0.13 |
-| namedtuple | 0.72 |
-| NamedTuple | 1.29 |
-| dataclasses | 4.24 |
-| attrs 23.2.0 | 7.04 |
-| pydantic 2.6.4 | 10.25 |
-| dabeaz/cluegen | 0.28 |
-| dabeaz/cluegen_eval | 2.50 |
-| dabeaz/dataklasses | 0.27 |
-| dabeaz/dataklasses_eval | 0.27 |
-| slotclass v0.1.0 | 0.28 |
-| prefab_slots v0.1.0 | 0.38 |
-| prefab v0.1.0 | 0.38 |
-| prefab_attributes v0.1.0 | 0.40 |
-| prefab_eval v0.1.0 | 2.98 |
+| standard classes | 0.07 |
+| namedtuple | 0.33 |
+| NamedTuple | 0.50 |
+| dataclasses | 2.05 |
+| attrs 23.2.0 | 3.73 |
+| pydantic 2.7.1 | 4.19 |
+| dabeaz/cluegen | 0.10 |
+| dabeaz/cluegen_eval | 0.91 |
+| dabeaz/dataklasses | 0.10 |
+| dabeaz/dataklasses_eval | 0.10 |
+| slotclass v0.4.0 | 0.12 |
+| prefab_slots v0.4.0 | 0.16 |
+| prefab v0.4.0 | 0.18 |
+| prefab_attributes v0.4.0 | 0.16 |
+| prefab_eval v0.4.0 | 1.12 |

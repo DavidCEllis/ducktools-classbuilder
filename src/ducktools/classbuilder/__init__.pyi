@@ -26,18 +26,24 @@ class MethodMaker:
     def __repr__(self) -> str: ...
     def __get__(self, instance, cls) -> Callable: ...
 
-def init_maker(
-    cls: type,
-    *,
+def get_init_maker(
     null: _NothingType = NOTHING,
     extra_code: None | list[str] = None
-) -> tuple[str, dict[str, typing.Any]]: ...
+) -> Callable[[type], tuple[str, dict[str, typing.Any]]]: ...
+
+def init_maker(cls: type) -> tuple[str, dict[str, typing.Any]]: ...
 def repr_maker(cls: type) -> tuple[str, dict[str, typing.Any]]: ...
 def eq_maker(cls: type) -> tuple[str, dict[str, typing.Any]]: ...
+
+def frozen_setattr_maker(cls: type) -> tuple[str, dict[str, typing.Any]]: ...
+
+def frozen_delattr_maker(cls: type) -> tuple[str, dict[str, typing.Any]]: ...
 
 init_desc: MethodMaker
 repr_desc: MethodMaker
 eq_desc: MethodMaker
+frozen_setattr_desc: MethodMaker
+frozen_delattr_desc: MethodMaker
 default_methods: frozenset[MethodMaker]
 
 _T = typing.TypeVar("_T")
@@ -89,8 +95,21 @@ class Field:
 class SlotFields(dict):
     ...
 
+def make_slot_gatherer(field_type: type[Field] = Field) -> Callable[[type], dict[str, Field]]: ...
+
 def slot_gatherer(cls: type) -> dict[str, Field]:
     ...
+
+def is_classvar(hint: object) -> bool: ...
+
+def make_annotation_gatherer(
+    field_type: type[Field] = Field,
+    leave_default_values: bool = True,
+) -> Callable[[type], dict[str, Field]]: ...
+
+def annotation_gatherer(cls: type) -> dict[str, Field]: ...
+
+def check_argument_order(cls: type) -> None: ...
 
 @typing.overload
 def slotclass(
@@ -110,4 +129,24 @@ def slotclass(
     syntax_check: bool = True
 ) -> Callable[[type[_T]], type[_T]]: ...
 
-def fieldclass(cls: type[_T]) -> type[_T]: ...
+@typing.overload
+def annotationclass(
+    cls: type[_T],
+    /,
+    *,
+    methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
+) -> type[_T]: ...
+
+@typing.overload
+def annotationclass(
+        cls: None = None,
+        /,
+        *,
+        methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
+) -> Callable[[type[_T]], type[_T]]: ...
+
+@typing.overload
+def fieldclass(cls: type[_T], /, *, frozen: bool = False) -> type[_T]: ...
+
+@typing.overload
+def fieldclass(cls: None = None, /, *, frozen: bool = False) -> Callable[[type[_T]], type[_T]]: ...

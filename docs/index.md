@@ -63,6 +63,27 @@ ex = SlottedDC()
 print(ex)
 ```
 
+## Annotation Class Usage ##
+
+> Annotation based classes via 'extras' are only supported on Python 3.10 or later!
+
+Building classes based on annotations requires the `extras` submodule.
+This is separate because it relies on `inspect` to simplify the implementation
+but is a slow import.
+
+```python
+from ducktools.classbuilder import annotationclass
+
+@annotationclass
+class AnnotatedDC:
+    the_answer: int = 42
+    the_question: str = "What do you get if you multiply six by nine?"
+
+    
+ex = AnnotatedDC()
+print(ex)
+```
+
 ## Indices and tables ##
 
 * {ref}`genindex`

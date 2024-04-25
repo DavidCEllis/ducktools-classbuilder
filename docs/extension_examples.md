@@ -156,6 +156,9 @@ how to perform the generation. A convenient decorator `@fieldclass` is provided
 to allow simple extension by adding additional slots. By using this decorator
 the `__init__`, `__repr__` and `__eq__` methods will be generated for you.
 
+> Note: Field classes will be frozen when running under pytest.
+>       They are not frozen normally for performance reasons.
+
 ```python
 from ducktools.classbuilder import Field, SlotFields, fieldclass
 
@@ -183,6 +186,61 @@ To do this you need to write a code generator that returns source code
 along with a 'globals' dictionary of any names the code needs to refer 
 to, or an empty dictionary if none are needed. Many methods don't require
 any globals values, but it is essential for some.
+
+#### Frozen Classes ####
+
+In order to make frozen classes you need to replace `__setattr__` and `__delattr__`
+
+The building blocks for this are actually already included as they're used to prevent 
+`fieldclass` instances from being mutated.
+
+These methods can be reused to make `slotclasses` 'frozen'.
+
+```python
+from ducktools.classbuilder import (
+    slotclass,
+    SlotFields,
+    default_methods,
+    frozen_setattr_desc,
+    frozen_delattr_desc,
+)
+
+
+new_methods = default_methods | {frozen_setattr_desc, frozen_delattr_desc}
+
+
+def frozen(cls, /):
+    return slotclass(cls, methods=new_methods)
+
+
+if __name__ == "__main__":
+    @frozen
+    class FrozenEx:
+        __slots__ = SlotFields(
+            x=6,
+            y=9,
+            product=42,
+        )
+
+
+    ex = FrozenEx()
+    print(ex)
+
+    try:
+        ex.y = 7
+    except TypeError as e:
+        print(e)
+
+    try:
+        ex.z = "new value"
+    except TypeError as e:
+        print(e)
+
+    try:
+        del ex.y
+    except TypeError as e:
+        print(e)
+```
 
 #### Iterable Classes ####
 
@@ -230,90 +288,6 @@ if __name__ == "__main__":
 ```
 
 You could also choose to yield tuples of `name, value` pairs in your implementation.
-
-#### Frozen Classes ####
-
-Here's an example of frozen slotted classes that only allow assignment once
-(which happens in the `__init__` method generated).
-
-> Note that these methods use `type(self).__name__` instead of `cls.__name__`
-> when generated so the name remains correct even if the class name is changed.
-
-```python
-from ducktools.classbuilder import (
-    slotclass,
-    get_fields,
-    SlotFields,
-    MethodMaker,
-    default_methods,
-)
-
-
-def setattr_maker(cls):
-    globs = {
-        "object_setattr": object.__setattr__
-    }
-
-    field_names = set(get_fields(cls).keys())
-
-    code = (
-        f"def __setattr__(self, name, value):\n"
-        f"    fields = {field_names!r}\n"
-        f"    if name in fields and not hasattr(self, name):\n"
-        f"        object_setattr(self, name, value)\n"
-        f"    else:\n"
-        f'        raise TypeError(f"{{type(self).__name__!r}} object does not support attribute assignment")'
-    )
-    return code, globs
-
-
-def delattr_maker(cls):
-    code = (
-        f"def __delattr__(self, name):\n"
-        f'    raise TypeError(f"{{type(self).__name__!r}} object does not support attribute deletion")'
-    )
-    globs = {}
-    return code, globs
-
-
-setattr_desc = MethodMaker("__setattr__", setattr_maker)
-delattr_desc = MethodMaker("__delattr__", delattr_maker)
-
-new_methods = frozenset(default_methods | {setattr_desc, delattr_desc})
-
-
-def frozen(cls, /):
-    return slotclass(cls, methods=new_methods)
-
-
-if __name__ == "__main__":
-    @frozen
-    class FrozenEx:
-        __slots__ = SlotFields(
-            x=6,
-            y=9,
-            product=42,
-        )
-
-
-    ex = FrozenEx()
-    print(ex)
-
-    try:
-        ex.y = 7
-    except TypeError as e:
-        print(e)
-
-    try:
-        ex.z = "new value"
-    except TypeError as e:
-        print(e)
-
-    try:
-        del ex.y
-    except TypeError as e:
-        print(e)
-```
 
 ### Extending Field ###
 
@@ -605,92 +579,14 @@ if __name__ == "__main__":
 ```
 
 ### Gatherers ###
-#### Using type hints/annotations instead of slots? ####
-
-Have you heard of [dataclasses](https://docs.python.org/3/library/dataclasses.html)?
-
-But we can also do that. These classes will not be slotted, however, 
-due to the issues mentioned in the readme.
-
-```python
-import sys
-from ducktools.classbuilder import builder, default_methods, Field, NOTHING
-
-
-def _is_classvar(hint):
-    # Avoid importing typing if it's not already used
-    _typing = sys.modules.get("typing")
-    if _typing:
-        if (
-            hint is _typing.ClassVar
-            or getattr(hint, "__origin__", None) is _typing.ClassVar
-        ):
-            return True
-        # String used as annotation
-        elif isinstance(hint, str) and "ClassVar" in hint:
-            return True
-    return False
-
-
-def annotation_gatherer(cls):
-    cls_annotations = cls.__dict__.get("__annotations__", {})
-    cls_fields = {}
-
-    for k, v in cls_annotations.items():
-        # Ignore ClassVar
-        if _is_classvar(v):
-            continue
-
-        attrib = getattr(cls, k, NOTHING)
-
-        if attrib is not NOTHING:
-            if isinstance(attrib, Field):
-                attrib.type = v
-            else:
-                attrib = Field(default=attrib)
-
-            # Remove the class variable
-            delattr(cls, k)
-
-        else:
-            attrib = Field()
-
-        cls_fields[k] = attrib
-
-    return cls_fields
-
-
-def annotation_class(cls=None, /, *, methods=default_methods):
-    return builder(cls, gatherer=annotation_gatherer, methods=methods)
-
-
-if __name__ == "__main__":
-    import typing
-
-    @annotation_class
-    class H2G2:
-        the_answer: int = 42
-        the_question: str = Field(
-            default="What do you get if you multiply six by nine?",
-        )
-        the_book: typing.ClassVar[str] = "The Hitchhiker's Guide to the Galaxy"
-        the_author: "typing.ClassVar[str]" = "Douglas Adams"
-
-    ex = H2G2()
-    print(ex)
-    ex2 = H2G2(
-        the_question="What is the ultimate answer to the meaning of life, the universe, and everything?"
-    )
-    print(ex2)
-
-    print(H2G2.the_book)
-    print(H2G2.the_author)
-```
-
 #### What about using annotations instead of `Field(init=False, ...)` ####
 
 This seems to be a feature people keep requesting for `dataclasses`.
 This is also doable.
+
+> Note: Field classes will be frozen when running under pytest.
+>       They should not be mutated by gatherers.
+>       If you need to change the value of a field use Field.from_field(...) to make a new instance.
 
 ```python
 import inspect

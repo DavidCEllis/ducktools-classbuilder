@@ -31,7 +31,8 @@ import sys
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
-    builder, fieldclass, get_flags, get_fields, slot_gatherer
+    builder, fieldclass, get_flags, get_fields, make_slot_gatherer,
+    frozen_setattr_desc, frozen_delattr_desc, is_classvar,
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -53,20 +54,6 @@ KW_ONLY = _KW_ONLY_TYPE()
 
 class PrefabError(Exception):
     pass
-
-
-def _is_classvar(hint):
-    _typing = sys.modules.get("typing")
-    if _typing:
-        if (
-            hint is _typing.ClassVar
-            or getattr(hint, "__origin__", None) is _typing.ClassVar
-        ):
-            return True
-        # String used as annotation
-        elif isinstance(hint, str) and "ClassVar" in hint:
-            return True
-    return False
 
 
 def get_attributes(cls):
@@ -340,57 +327,6 @@ def get_iter_maker():
     return MethodMaker("__iter__", __iter__)
 
 
-def get_frozen_setattr_maker():
-    def __setattr__(cls: "type") -> "tuple[str, dict]":
-        globs = {}
-        attributes = get_attributes(cls)
-        flags = get_flags(cls)
-
-        # Make the fields set literal
-        fields_delimited = ", ".join(f"{field!r}" for field in attributes)
-        field_set = f"{{ {fields_delimited} }}"
-
-        # Better to be safe and use the method that works in both cases
-        # if somehow slotted has not been set.
-        if flags.get("slotted", True):
-            globs["__prefab_setattr_func"] = object.__setattr__
-            setattr_method = "__prefab_setattr_func(self, name, value)"
-        else:
-            setattr_method = "self.__dict__[name] = value"
-
-        body = (
-            f"    if hasattr(self, name) or name not in {field_set}:\n"
-            f'        raise TypeError(\n'
-            f'            f"{{type(self).__name__!r}} object does not support "'
-            f'            f"attribute assignment"\n'
-            f'        )\n'
-            f"    else:\n"
-            f"        {setattr_method}\n"
-        )
-        code = f"def __setattr__(self, name, value):\n{body}"
-
-        return code, globs
-
-    # Pass the exception to exec
-    return MethodMaker("__setattr__", __setattr__)
-
-
-def get_frozen_delattr_maker():
-    # noinspection PyUnusedLocal
-    def __delattr__(cls: "type") -> "tuple[str, dict]":
-        body = (
-            '    raise TypeError(\n'
-            '        f"{type(self).__name__!r} object "\n'
-            '        f"does not support attribute deletion"\n'
-            '    )\n'
-        )
-        code = f"def __delattr__(self, name):\n{body}"
-        globs = {}
-        return code, globs
-
-    return MethodMaker("__delattr__", __delattr__)
-
-
 def get_asdict_maker():
     def as_dict_gen(cls: "type") -> "tuple[str, dict]":
         fields = get_attributes(cls)
@@ -414,8 +350,6 @@ repr_desc = get_repr_maker()
 recursive_repr_desc = get_repr_maker(recursion_safe=True)
 eq_desc = get_eq_maker()
 iter_desc = get_iter_maker()
-frozen_setattr_desc = get_frozen_setattr_maker()
-frozen_delattr_desc = get_frozen_delattr_maker()
 asdict_desc = get_asdict_maker()
 
 
@@ -491,12 +425,7 @@ def attribute(
     )
 
 
-def slot_prefab_gatherer(cls):
-    # For prefabs it's easier if everything is an attribute
-    return {
-        name: Attribute.from_field(fld)
-        for name, fld in slot_gatherer(cls).items()
-    }
+slot_prefab_gatherer = make_slot_gatherer(Attribute)
 
 
 # Gatherer for classes built on attributes or annotations
@@ -519,7 +448,7 @@ def attribute_gatherer(cls):
         new_attributes = {}
         for name, value in cls_annotations.items():
             # Ignore ClassVar hints
-            if _is_classvar(value):
+            if is_classvar(value):
                 continue
 
             # Look for the KW_ONLY annotation
@@ -533,37 +462,43 @@ def attribute_gatherer(cls):
                 # Copy attributes that are already defined to the new dict
                 # generate Attribute() values for those that are not defined.
 
+                # Extra parameters to pass to each Attribute
+                extras = {
+                    "type": cls_annotations[name]
+                }
+                if kw_flag:
+                    extras["kw_only"] = True
+
                 # If a field name is also declared in slots it can't have a real
                 # default value and the attr will be the slot descriptor.
                 if hasattr(cls, name) and name not in cls_slots:
                     if name in cls_attribute_names:
-                        attrib = cls_attributes[name]
+                        attrib = Attribute.from_field(
+                            cls_attributes[name],
+                            **extras,
+                        )
                     else:
                         attribute_default = getattr(cls, name)
-                        attrib = attribute(default=attribute_default)
+                        attrib = attribute(default=attribute_default, **extras)
 
                     # Clear the attribute from the class after it has been used
                     # in the definition.
                     delattr(cls, name)
                 else:
-                    attrib = attribute()
+                    attrib = attribute(**extras)
 
-                if kw_flag:
-                    attrib.kw_only = True
-
-                attrib.type = cls_annotations[name]
                 new_attributes[name] = attrib
 
         cls_attributes = new_attributes
     else:
-        for name, attrib in cls_attributes.items():
-            delattr(cls, name)
+        for name in cls_attributes.keys():
+            attrib = cls_attributes[name]
+            delattr(cls, name)  # clear attrib from class
 
             # Some items can still be annotated.
-            try:
-                attrib.type = cls_annotations[name]
-            except KeyError:
-                pass
+            if name in cls_annotations:
+                new_attrib = Attribute.from_field(attrib, type=cls_annotations[name])
+                cls_attributes[name] = new_attrib
 
     return cls_attributes
 
