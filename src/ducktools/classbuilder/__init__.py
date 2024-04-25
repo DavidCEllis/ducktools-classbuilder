@@ -188,12 +188,10 @@ def eq_maker(cls):
 
 def frozen_setattr_maker(cls):
     globs = {}
-    attributes = get_fields(cls)
+    field_names = set(get_fields(cls))
     flags = get_flags(cls)
 
-    # Make the fields set literal
-    fields_delimited = ", ".join(f"{field!r}" for field in attributes)
-    field_set = f"{{ {fields_delimited} }}"
+    globs["__field_names"] = field_names
 
     # Better to be safe and use the method that works in both cases
     # if somehow slotted has not been set.
@@ -204,7 +202,7 @@ def frozen_setattr_maker(cls):
         setattr_method = "self.__dict__[name] = value"
 
     body = (
-        f"    if hasattr(self, name) or name not in {field_set}:\n"
+        f"    if hasattr(self, name) or name not in __field_names:\n"
         f'        raise TypeError(\n'
         f'            f"{{type(self).__name__!r}} object does not support "'
         f'            f"attribute assignment"\n'
