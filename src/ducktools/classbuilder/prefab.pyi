@@ -51,8 +51,6 @@ repr_desc: MethodMaker
 recursive_repr_desc: MethodMaker
 eq_desc: MethodMaker
 iter_desc: MethodMaker
-frozen_setattr_desc: MethodMaker
-frozen_delattr_desc: MethodMaker
 asdict_desc: MethodMaker
 
 class Attribute(Field):

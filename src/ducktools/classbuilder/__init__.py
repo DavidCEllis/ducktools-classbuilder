@@ -102,46 +102,52 @@ class MethodMaker:
         return method.__get__(instance, cls)
 
 
-def init_maker(cls, *, null=NOTHING, extra_code=None):
-    fields = get_fields(cls)
-    flags = get_flags(cls)
+def get_init_maker(null=NOTHING, extra_code=None):
+    def cls_init_maker(cls):
+        fields = get_fields(cls)
+        flags = get_flags(cls)
 
-    arglist = []
-    assignments = []
-    globs = {}
+        arglist = []
+        assignments = []
+        globs = {}
 
-    if flags.get("kw_only", False):
-        arglist.append("*")
+        if flags.get("kw_only", False):
+            arglist.append("*")
 
-    for k, v in fields.items():
-        if v.default is not null:
-            globs[f"_{k}_default"] = v.default
-            arg = f"{k}=_{k}_default"
-            assignment = f"self.{k} = {k}"
-        elif v.default_factory is not null:
-            globs[f"_{k}_factory"] = v.default_factory
-            arg = f"{k}=None"
-            assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
-        else:
-            arg = f"{k}"
-            assignment = f"self.{k} = {k}"
+        for k, v in fields.items():
+            if v.default is not null:
+                globs[f"_{k}_default"] = v.default
+                arg = f"{k}=_{k}_default"
+                assignment = f"self.{k} = {k}"
+            elif v.default_factory is not null:
+                globs[f"_{k}_factory"] = v.default_factory
+                arg = f"{k}=None"
+                assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
+            else:
+                arg = f"{k}"
+                assignment = f"self.{k} = {k}"
 
-        arglist.append(arg)
-        assignments.append(assignment)
+            arglist.append(arg)
+            assignments.append(assignment)
 
-    args = ", ".join(arglist)
-    assigns = "\n    ".join(assignments) if assignments else "pass\n"
-    code = (
-        f"def __init__(self, {args}):\n" 
-        f"    {assigns}\n"
-    )
-    # Handle additional function calls
-    # Used for validate_field on fieldclasses
-    if extra_code:
-        for line in extra_code:
-            code += f"    {line}\n"
+        args = ", ".join(arglist)
+        assigns = "\n    ".join(assignments) if assignments else "pass\n"
+        code = (
+            f"def __init__(self, {args}):\n" 
+            f"    {assigns}\n"
+        )
+        # Handle additional function calls
+        # Used for validate_field on fieldclasses
+        if extra_code:
+            for line in extra_code:
+                code += f"    {line}\n"
 
-    return code, globs
+        return code, globs
+
+    return cls_init_maker
+
+
+init_maker = get_init_maker()
 
 
 def repr_maker(cls):
@@ -178,11 +184,56 @@ def eq_maker(cls):
     return code, globs
 
 
+def frozen_setattr_maker(cls):
+    globs = {}
+    attributes = get_fields(cls)
+    flags = get_flags(cls)
+
+    # Make the fields set literal
+    fields_delimited = ", ".join(f"{field!r}" for field in attributes)
+    field_set = f"{{ {fields_delimited} }}"
+
+    # Better to be safe and use the method that works in both cases
+    # if somehow slotted has not been set.
+    if flags.get("slotted", True):
+        globs["__setattr_func"] = object.__setattr__
+        setattr_method = "__setattr_func(self, name, value)"
+    else:
+        setattr_method = "self.__dict__[name] = value"
+
+    body = (
+        f"    if hasattr(self, name) or name not in {field_set}:\n"
+        f'        raise TypeError(\n'
+        f'            f"{{type(self).__name__!r}} object does not support "'
+        f'            f"attribute assignment"\n'
+        f'        )\n'
+        f"    else:\n"
+        f"        {setattr_method}\n"
+    )
+    code = f"def __setattr__(self, name, value):\n{body}"
+
+    return code, globs
+
+
+def frozen_delattr_maker(cls):
+    body = (
+        '    raise TypeError(\n'
+        '        f"{type(self).__name__!r} object "\n'
+        '        f"does not support attribute deletion"\n'
+        '    )\n'
+    )
+    code = f"def __delattr__(self, name):\n{body}"
+    globs = {}
+    return code, globs
+
+
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
 init_desc = MethodMaker("__init__", init_maker)
 repr_desc = MethodMaker("__repr__", repr_maker)
 eq_desc = MethodMaker("__eq__", eq_maker)
+frozen_setattr_desc = MethodMaker("__setattr__", frozen_setattr_maker)
+frozen_delattr_desc = MethodMaker("__delattr__", frozen_delattr_maker)
 default_methods = frozenset({init_desc, repr_desc, eq_desc})
 
 
@@ -306,7 +357,7 @@ _field_internal = {
 builder(
     Field,
     gatherer=lambda cls_: _field_internal,
-    methods=frozenset({repr_desc, eq_desc}),
+    methods={repr_desc, eq_desc, frozen_setattr_desc, frozen_delattr_desc},
     flags={"slotted": True, "kw_only": True},
 )
 
@@ -349,7 +400,7 @@ def make_slot_gatherer(field_type=Field):
         for k, v in cls_slots.items():
             if isinstance(v, field_type):
                 attrib = v
-                if v.type is not NOTHING:
+                if attrib.type is not NOTHING:
                     cls_annotations[k] = attrib.type
             else:
                 # Plain values treated as defaults
@@ -402,12 +453,13 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     return cls
 
 
-def _field_init_func(cls):
-    # Fields need a different Nothing for their __init__ generation
-    # And an extra call to validate_field
-    field_nothing = _NothingType()
-    extra_calls = ["self.validate_field()"]
-    return init_maker(cls, null=field_nothing, extra_code=extra_calls)
+_field_init_desc = MethodMaker(
+    funcname="__init__",
+    code_generator=get_init_maker(
+        null=_NothingType(),
+        extra_code=["self.validate_field()"],
+    )
+)
 
 
 def fieldclass(cls):
@@ -420,8 +472,15 @@ def fieldclass(cls):
     :return: Modified subclass
     """
 
-    field_init_desc = MethodMaker("__init__", _field_init_func)
-    field_methods = frozenset({field_init_desc, repr_desc, eq_desc})
+    field_methods = frozenset(
+        {
+            _field_init_desc,
+            repr_desc,
+            eq_desc,
+            frozen_setattr_desc,
+            frozen_delattr_desc,
+        }
+    )
 
     cls = builder(
         cls,

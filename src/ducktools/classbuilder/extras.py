@@ -44,7 +44,7 @@ def make_annotation_gatherer(field_type=Field, leave_default_values=True):
     def field_annotation_gatherer(cls):
         cls_annotations = inspect.get_annotations(cls, eval_str=True)
 
-        cls_fields: dict[str, Field] = {}
+        cls_fields: dict[str, field_type] = {}
 
         for k, v in cls_annotations.items():
             # Ignore ClassVar
@@ -54,7 +54,7 @@ def make_annotation_gatherer(field_type=Field, leave_default_values=True):
             attrib = getattr(cls, k, NOTHING)
 
             if attrib is not NOTHING:
-                if isinstance(attrib, Field):
+                if isinstance(attrib, field_type):
                     attrib = field_type.from_field(attrib, type=v)
                     if attrib.default is not NOTHING and leave_default_values:
                         setattr(cls, k, attrib.default)

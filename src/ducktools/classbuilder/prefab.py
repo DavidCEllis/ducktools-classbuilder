@@ -32,6 +32,7 @@ from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
     builder, fieldclass, get_flags, get_fields, make_slot_gatherer,
+    frozen_setattr_desc, frozen_delattr_desc,
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -358,57 +359,6 @@ def get_iter_maker():
     return MethodMaker("__iter__", __iter__)
 
 
-def get_frozen_setattr_maker():
-    def __setattr__(cls: "type") -> "tuple[str, dict]":
-        globs = {}
-        attributes = get_attributes(cls)
-        flags = get_flags(cls)
-
-        # Make the fields set literal
-        fields_delimited = ", ".join(f"{field!r}" for field in attributes)
-        field_set = f"{{ {fields_delimited} }}"
-
-        # Better to be safe and use the method that works in both cases
-        # if somehow slotted has not been set.
-        if flags.get("slotted", True):
-            globs["__prefab_setattr_func"] = object.__setattr__
-            setattr_method = "__prefab_setattr_func(self, name, value)"
-        else:
-            setattr_method = "self.__dict__[name] = value"
-
-        body = (
-            f"    if hasattr(self, name) or name not in {field_set}:\n"
-            f'        raise TypeError(\n'
-            f'            f"{{type(self).__name__!r}} object does not support "'
-            f'            f"attribute assignment"\n'
-            f'        )\n'
-            f"    else:\n"
-            f"        {setattr_method}\n"
-        )
-        code = f"def __setattr__(self, name, value):\n{body}"
-
-        return code, globs
-
-    # Pass the exception to exec
-    return MethodMaker("__setattr__", __setattr__)
-
-
-def get_frozen_delattr_maker():
-    # noinspection PyUnusedLocal
-    def __delattr__(cls: "type") -> "tuple[str, dict]":
-        body = (
-            '    raise TypeError(\n'
-            '        f"{type(self).__name__!r} object "\n'
-            '        f"does not support attribute deletion"\n'
-            '    )\n'
-        )
-        code = f"def __delattr__(self, name):\n{body}"
-        globs = {}
-        return code, globs
-
-    return MethodMaker("__delattr__", __delattr__)
-
-
 def get_asdict_maker():
     def as_dict_gen(cls: "type") -> "tuple[str, dict]":
         fields = get_attributes(cls)
@@ -432,8 +382,6 @@ repr_desc = get_repr_maker()
 recursive_repr_desc = get_repr_maker(recursion_safe=True)
 eq_desc = get_eq_maker()
 iter_desc = get_iter_maker()
-frozen_setattr_desc = get_frozen_setattr_maker()
-frozen_delattr_desc = get_frozen_delattr_maker()
 asdict_desc = get_asdict_maker()
 
 
