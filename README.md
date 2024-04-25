@@ -73,7 +73,7 @@ a similar manner to the `@dataclass` decorator from `dataclasses`.
 > be used directly. (The included version has some extra features).
 
 ```python
-from ducktools.classbuilder import Field, SlotFields
+from ducktools.classbuilder import Field, SlotFields, slotclass
 
 @slotclass
 class SlottedDC:
@@ -158,6 +158,27 @@ print(f"{DataCoords is class_register[DataCoords.__name__] = }")
 print(f"{SlotCoords is class_register[SlotCoords.__name__] = }")
 ```
 
+## Using annotations anyway ##
+
+For those that really want to use type annotations a basic `annotation_gatherer`
+function and `@annotationclass` decorator are included.
+
+> [!Note]
+> These features require Python >= 3.10 as they use inspect.get_annotations
+
+```python
+from ducktools.classbuilder.extras import annotationclass
+
+@annotationclass
+class AnnotatedDC:
+    the_answer: int = 42
+    the_question: str = "What do you get if you multiply six by nine?"
+
+    
+ex = AnnotatedDC()
+print(ex)
+```
+
 ## What features does this have? ##
 
 Included as an example implementation, the `slotclass` generator supports 
@@ -169,6 +190,10 @@ It will copy values provided as the `type` to `Field` into the
 `__annotations__` dictionary of the class. 
 Values provided to `doc` will be placed in the final `__slots__` 
 field so they are present on the class if `help(...)` is called.
+
+A fairly basic `annotations_gatherer` and `annotationclass` are included
+in `extras.py` which can be used to generate classbuilders that rely on 
+annotations.
 
 If you want something with more features you can look at the `prefab.py`
 implementation which provides a 'prebuilt' implementation.
