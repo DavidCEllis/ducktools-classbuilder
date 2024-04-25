@@ -54,7 +54,7 @@ def make_annotation_gatherer(field_type=Field, leave_default_values=True):
             attrib = getattr(cls, k, NOTHING)
 
             if attrib is not NOTHING:
-                if isinstance(attrib, field_type):
+                if isinstance(attrib, Field):
                     attrib = field_type.from_field(attrib, type=v)
                     if attrib.default is not NOTHING and leave_default_values:
                         setattr(cls, k, attrib.default)
