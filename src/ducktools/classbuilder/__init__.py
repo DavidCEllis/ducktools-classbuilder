@@ -21,7 +21,7 @@
 # SOFTWARE.
 import sys
 
-__version__ = "v0.4.0"
+__version__ = "v0.5.0"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
