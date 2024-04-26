@@ -63,8 +63,9 @@ Flags are set using a dictionary with these keys and boolean values, for example
 
 This covers the *'gather the fields'* step of the process.
 
-A `gatherer` in this case is a function which takes in the class and returns a dict
-of `{"field_name": Field(...)}` values based on some analysis of your class.
+A `gatherer` in this case is a function which takes in the class and returns both a dict
+of `{"field_name": Field(...)}` values based on some analysis of your class and a second
+dictionary of attributes to modify on the main class.
 
 An example gatherer is given in `slot_gatherer` which will take the keys and values
 from a dict subclass `SlotFields` and use that to prepare the field information for
@@ -91,12 +92,28 @@ class GatherExample:
        y=9,
        z=Field(
           default=42,
-          doc="I always knew there was something fundamentally wrong with the universe."
+          doc="I always knew there was something fundamentally wrong with the universe.",
+          type=int,
        )
     )
 
 pprint(slot_gatherer(GatherExample))
 ```
+
+Output:
+```
+({'x': Field(default=6, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None),
+  'y': Field(default=9, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None),
+  'z': Field(default=42, default_factory=<NOTHING OBJECT>, type=<class 'int'>, doc='I always knew there was something fundamentally wrong with the universe.')},
+ {'__annotations__': {'z': <class 'int'>},
+  '__slots__': {'x': None,
+                'y': None,
+                'z': 'I always knew there was something fundamentally wrong '
+                     'with the universe.'}})
+```
+
+Gatherer functions **should not** modify the class directly. All class modification should occur in the `builder`
+function.
 
 #### Methods ####
 
@@ -584,6 +601,8 @@ if __name__ == "__main__":
 This seems to be a feature people keep requesting for `dataclasses`.
 This is also doable.
 
+This is a long example but is designed to show how you can use these tools to implement such a thing.
+
 > Note: Field classes will be frozen when running under pytest.
 >       They should not be mutated by gatherers.
 >       If you need to change the value of a field use Field.from_field(...) to make a new instance.
@@ -605,8 +624,7 @@ from ducktools.classbuilder import (
 )
 
 
-# New equivalent to dataclasses "Field", these still need to be created
-# in order to generate the magic methods correctly.
+# First we need a new field that can store these modifications
 @fieldclass
 class AnnoField(Field):
     __slots__ = SlotFields(
@@ -617,9 +635,12 @@ class AnnoField(Field):
     )
 
 
-# Modifying objects
+# Our 'Annotated' tools need to be combinable and need to contain the keyword argument
+# and value they are intended to change.
+# To this end we make a FieldModifier class that stores the keyword values given in a
+# dictionary as 'modifiers'. This makes it easy to merge modifiers later.
 class FieldModifier:
-    __slots__ = ("modifiers", )
+    __slots__ = ("modifiers",)
     modifiers: dict[str, Any]
 
     def __init__(self, **modifiers):
@@ -637,6 +658,8 @@ class FieldModifier:
         return NotImplemented
 
 
+# Here we make the modifiers and give them the arguments to Field we
+# wish to change with their usage.
 KW_ONLY = FieldModifier(kw_only=True)
 NO_INIT = FieldModifier(init=False)
 NO_REPR = FieldModifier(repr=False)
@@ -644,43 +667,49 @@ NO_COMPARE = FieldModifier(compare=False)
 IGNORE_ALL = FieldModifier(init=False, repr=False, compare=False)
 
 
-def annotated_gatherer(cls: type) -> dict[str, Any]:
+# Analyse the class and create these new Fields based on the annotations
+def annotated_gatherer(cls: type) -> tuple[dict[str, AnnoField], dict[str, Any]]:
     # String annotations *MUST* be evaluated for this to work
-    # dataclasses currently does not require this
+    # Trying to parse the Annotations as strings would add a *lot* of extra work
     cls_annotations = inspect.get_annotations(cls, eval_str=True)
     cls_fields = {}
 
+    # This gatherer doesn't make any class modifications but still needs
+    # To have a dict as a return value
+    cls_modifications = {}
+
     for key, anno in cls_annotations.items():
         modifiers = {}
-        typ = NOTHING
 
         if get_origin(anno) is Annotated:
-            typ = anno.__args__[0]
             meta = anno.__metadata__
             for v in meta:
                 if isinstance(v, FieldModifier):
+                    # Merge the modifier arguments to pass to AnnoField
                     modifiers.update(v.modifiers)
 
-        elif not (anno is ClassVar or get_origin(anno) is ClassVar):
-            typ = anno
+            # Extract the actual annotation from the first argument
+            anno = anno.__origin__
 
-        if typ is not NOTHING:
-            if key in cls.__dict__ and "__slots__" not in cls.__dict__:
-                val = cls.__dict__[key]
-                if isinstance(val, Field):
-                    fld = AnnoField.from_field(val, type=typ, **modifiers)
-                else:
-                    fld = AnnoField(default=val, type=typ, **modifiers)
+        if anno is ClassVar or get_origin(anno) is ClassVar:
+            continue
+
+        if key in cls.__dict__ and "__slots__" not in cls.__dict__:
+            val = cls.__dict__[key]
+            if isinstance(val, Field):
+                # Make a new field - DO NOT MODIFY FIELDS IN PLACE
+                fld = AnnoField.from_field(val, type=anno, **modifiers)
             else:
-                fld = AnnoField(type=typ, **modifiers)
+                fld = AnnoField(default=val, type=anno, **modifiers)
+        else:
+            fld = AnnoField(type=anno, **modifiers)
 
-            cls_fields[key] = fld
+        cls_fields[key] = fld
 
-    return cls_fields
+    return cls_fields, cls_modifications
 
 
 def init_maker(cls):
-
     fields = get_fields(cls)
     flags = get_flags(cls)
 
@@ -795,7 +824,8 @@ def annotationsclass(cls=None, *, kw_only=False):
 @annotationsclass
 class X:
     x: str
-    y: ClassVar[str] = "This is okay"
+    y: ClassVar[str] = "This should be ignored"
+    z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"
     a: Annotated[int, NO_INIT] = "Not In __init__ signature"
     b: Annotated[str, NO_REPR] = "Not In Repr"
     c: Annotated[list[str], NO_COMPARE] = AnnoField(default_factory=list)
