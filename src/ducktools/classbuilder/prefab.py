@@ -849,17 +849,17 @@ def as_dict(o):
     :param o: instance of a prefab class
     :return: dictionary of {k: v} from fields
     """
+    cls = type(o)
+    if not hasattr(cls, PREFAB_FIELDS):
+        raise TypeError(f"{o!r} should be a prefab instance, not {cls}")
+
     # Attempt to use the generated method if available
     try:
         return o.as_dict()
     except AttributeError:
         pass
 
-    cls = type(o)
-    try:
-        flds = get_attributes(cls)
-    except AttributeError:
-        raise TypeError(f"inst should be a prefab instance, not {cls}")
+    flds = get_attributes(cls)
 
     return {
         name: getattr(o, name)
