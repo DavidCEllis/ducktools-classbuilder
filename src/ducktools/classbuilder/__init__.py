@@ -109,7 +109,7 @@ class MethodMaker:
         return method.__get__(instance, cls)
 
 
-def get_init_maker(null=NOTHING, extra_code=None):
+def get_init_generator(null=NOTHING, extra_code=None):
     def cls_init_maker(cls):
         fields = get_fields(cls)
         flags = get_flags(cls)
@@ -154,10 +154,10 @@ def get_init_maker(null=NOTHING, extra_code=None):
     return cls_init_maker
 
 
-init_maker = get_init_maker()
+init_generator = get_init_generator()
 
 
-def repr_maker(cls):
+def repr_generator(cls):
     fields = get_fields(cls)
     content = ", ".join(
         f"{name}={{self.{name}!r}}"
@@ -171,7 +171,7 @@ def repr_maker(cls):
     return code, globs
 
 
-def eq_maker(cls):
+def eq_generator(cls):
     class_comparison = "self.__class__ is other.__class__"
     field_names = get_fields(cls)
 
@@ -191,7 +191,7 @@ def eq_maker(cls):
     return code, globs
 
 
-def frozen_setattr_maker(cls):
+def frozen_setattr_generator(cls):
     globs = {}
     field_names = set(get_fields(cls))
     flags = get_flags(cls)
@@ -220,7 +220,7 @@ def frozen_setattr_maker(cls):
     return code, globs
 
 
-def frozen_delattr_maker(cls):
+def frozen_delattr_generator(cls):
     body = (
         '    raise TypeError(\n'
         '        f"{type(self).__name__!r} object "\n'
@@ -234,12 +234,12 @@ def frozen_delattr_maker(cls):
 
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
-init_desc = MethodMaker("__init__", init_maker)
-repr_desc = MethodMaker("__repr__", repr_maker)
-eq_desc = MethodMaker("__eq__", eq_maker)
-frozen_setattr_desc = MethodMaker("__setattr__", frozen_setattr_maker)
-frozen_delattr_desc = MethodMaker("__delattr__", frozen_delattr_maker)
-default_methods = frozenset({init_desc, repr_desc, eq_desc})
+init_maker = MethodMaker("__init__", init_generator)
+repr_maker = MethodMaker("__repr__", repr_generator)
+eq_maker = MethodMaker("__eq__", eq_generator)
+frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
+frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
+default_methods = frozenset({init_maker, repr_maker, eq_maker})
 
 
 def builder(cls=None, /, *, gatherer, methods, flags=None):
@@ -368,9 +368,9 @@ _field_internal = {
     "doc": Field(default=None),
 }
 
-_field_methods = {repr_desc, eq_desc}
+_field_methods = {repr_maker, eq_maker}
 if _UNDER_TESTING:
-    _field_methods.update({frozen_setattr_desc, frozen_delattr_desc})
+    _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
 
 builder(
     Field,
@@ -397,6 +397,14 @@ class SlotFields(dict):
 
 
 def make_slot_gatherer(field_type=Field):
+    """
+    Create a new annotation gatherer that will work with `Field` instances
+    of the creators definition.
+
+    :param field_type: The `Field` classes to be used when gathering fields
+    :return: A slot gatherer that will check for and generate Fields of
+             the type field_type.
+    """
     def field_slot_gatherer(cls):
         """
         Gather field information for class generation based on __slots__
@@ -586,7 +594,7 @@ def annotationclass(cls=None, /, *, methods=default_methods):
 
 _field_init_desc = MethodMaker(
     funcname="__init__",
-    code_generator=get_init_maker(
+    code_generator=get_init_generator(
         null=_NothingType(),
         extra_code=["self.validate_field()"],
     )
@@ -607,11 +615,11 @@ def fieldclass(cls=None, /, *, frozen=False):
     if not cls:
         return lambda cls_: fieldclass(cls_, frozen=frozen)
 
-    field_methods = {_field_init_desc, repr_desc, eq_desc}
+    field_methods = {_field_init_desc, repr_maker, eq_maker}
 
     # Always freeze when running tests
     if frozen or _UNDER_TESTING:
-        field_methods.update({frozen_setattr_desc, frozen_delattr_desc})
+        field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
 
     cls = builder(
         cls,

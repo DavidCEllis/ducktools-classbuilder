@@ -15,7 +15,7 @@ class ConverterField(Field):
     __slots__ = SlotFields(converter=None)
 
 
-def setattr_maker(cls):
+def setattr_generator(cls):
     fields = get_fields(cls)
     converters = {}
     for k, v in fields.items():
@@ -38,8 +38,8 @@ def setattr_maker(cls):
     return code, globs
 
 
-setattr_desc = MethodMaker("__setattr__", setattr_maker)
-methods = frozenset(default_methods | {setattr_desc})
+setattr_maker = MethodMaker("__setattr__", setattr_generator)
+methods = frozenset(default_methods | {setattr_maker})
 
 
 def converterclass(cls, /):

@@ -2,12 +2,12 @@ from ducktools.classbuilder import (
     slotclass,
     SlotFields,
     default_methods,
-    frozen_setattr_desc,
-    frozen_delattr_desc,
+    frozen_setattr_maker,
+    frozen_delattr_maker,
 )
 
 
-new_methods = default_methods | {frozen_setattr_desc, frozen_delattr_desc}
+new_methods = default_methods | {frozen_setattr_maker, frozen_delattr_maker}
 
 
 def frozen(cls, /):

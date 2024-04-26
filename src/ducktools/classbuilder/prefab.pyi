@@ -6,7 +6,7 @@ from collections.abc import Callable
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields as SlotFields,
-    builder, fieldclass, get_flags, get_fields, slot_gatherer
+    builder, fieldclass, get_flags, get_fields, make_slot_gatherer
 )
 
 # noinspection PyUnresolvedReferences
@@ -39,13 +39,13 @@ def get_iter_maker() -> MethodMaker: ...
 def get_asdict_maker() -> MethodMaker: ...
 
 
-init_desc: MethodMaker
-prefab_init_desc: MethodMaker
-repr_desc: MethodMaker
-recursive_repr_desc: MethodMaker
-eq_desc: MethodMaker
-iter_desc: MethodMaker
-asdict_desc: MethodMaker
+init_maker: MethodMaker
+prefab_init_maker: MethodMaker
+repr_maker: MethodMaker
+recursive_repr_maker: MethodMaker
+eq_maker: MethodMaker
+iter_maker: MethodMaker
+asdict_maker: MethodMaker
 
 class Attribute(Field):
     __slots__: dict

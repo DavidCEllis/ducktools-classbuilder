@@ -7,7 +7,7 @@ from ducktools.classbuilder import (
     get_fields,
     get_flags,
     MethodMaker,
-    init_desc,
+    init_maker,
     builder,
     Field,
     SlotFields,
@@ -287,7 +287,7 @@ def test_slotclass_ordering():
 
 
 def test_slotclass_norepr_noeq():
-    @slotclass(methods={init_desc})
+    @slotclass(methods={init_maker})
     class SlotClass:
         __slots__ = SlotFields(
             a=Field(),
@@ -356,7 +356,7 @@ def test_fieldclass_frozen():
 
 
 def test_builder_noclass():
-    mini_slotclass = builder(gatherer=slot_gatherer, methods={init_desc})
+    mini_slotclass = builder(gatherer=slot_gatherer, methods={init_maker})
 
     @mini_slotclass
     class SlotClass:

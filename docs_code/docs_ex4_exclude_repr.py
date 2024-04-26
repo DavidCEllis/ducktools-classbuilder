@@ -1,8 +1,8 @@
 from ducktools.classbuilder import (
-    eq_desc,
+    eq_maker,
     fieldclass,
     get_fields,
-    init_desc,
+    init_maker,
     slotclass,
     Field,
     SlotFields,
@@ -15,7 +15,7 @@ class FieldExt(Field):
     __slots__ = SlotFields(repr=True)
 
 
-def repr_exclude_maker(cls):
+def repr_exclude_generator(cls):
     fields = get_fields(cls)
 
     # Use getattr with default True for the condition so
@@ -33,12 +33,12 @@ def repr_exclude_maker(cls):
     return code, globs
 
 
-repr_desc = MethodMaker("__repr__", repr_exclude_maker)
+repr_exclude_maker = MethodMaker("__repr__", repr_exclude_generator)
 
 
 if __name__ == "__main__":
 
-    methods = frozenset({init_desc, eq_desc, repr_desc})
+    methods = frozenset({init_maker, eq_maker, repr_exclude_maker})
 
     @slotclass(methods=methods)
     class Example:

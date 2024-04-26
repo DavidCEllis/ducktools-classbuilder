@@ -99,7 +99,7 @@ def annotated_gatherer(cls: type) -> tuple[dict[str, AnnoField], dict[str, Any]]
     return cls_fields, cls_modifications
 
 
-def init_maker(cls):
+def init_generator(cls):
     fields = get_fields(cls)
     flags = get_flags(cls)
 
@@ -153,7 +153,7 @@ def init_maker(cls):
     return code, globs
 
 
-def repr_maker(cls):
+def repr_generator(cls):
     fields = get_fields(cls)
     content = ", ".join(
         f"{name}={{self.{name}!r}}"
@@ -168,7 +168,7 @@ def repr_maker(cls):
     return code, globs
 
 
-def eq_maker(cls):
+def eq_generator(cls):
     class_comparison = "self.__class__ is other.__class__"
     field_names = [
         name
@@ -192,11 +192,11 @@ def eq_maker(cls):
     return code, globs
 
 
-init_method = MethodMaker("__init__", init_maker)
-repr_method = MethodMaker("__repr__", repr_maker)
-eq_method = MethodMaker("__eq__", eq_maker)
+init_maker = MethodMaker("__init__", init_generator)
+repr_maker = MethodMaker("__repr__", repr_generator)
+eq_maker = MethodMaker("__eq__", eq_generator)
 
-methods = {init_method, repr_method, eq_method}
+methods = {init_maker, repr_maker, eq_maker}
 
 
 def annotationsclass(cls=None, *, kw_only=False):
@@ -229,6 +229,6 @@ print(ex, "\n")
 
 pp(get_fields(X))
 print("\nSource:")
-print(init_maker(X)[0])
-print(eq_maker(X)[0])
-print(repr_maker(X)[0])
+print(init_generator(X)[0])
+print(eq_generator(X)[0])
+print(repr_generator(X)[0])
