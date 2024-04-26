@@ -156,6 +156,8 @@ def test_slot_gatherer_success():
     }
 
     class SlotsExample:
+        a: int
+
         __slots__ = SlotFields(
             a=1,
             b=Field(default=2),
@@ -167,7 +169,8 @@ def test_slot_gatherer_success():
 
     assert slots == fields
     assert modifications["__slots__"] == {"a": None, "b": None, "c": "a list", "d": None}
-    assert modifications["__annotations__"] == {"d": str}
+    assert modifications["__annotations__"] == {"a": int, "d": str}
+    assert SlotsExample.__annotations__ == {"a": int}  # Original annotations dict unmodified
 
 
 def test_slot_gatherer_failure():
