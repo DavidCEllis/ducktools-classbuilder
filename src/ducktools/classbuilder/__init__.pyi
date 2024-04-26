@@ -53,7 +53,7 @@ def builder(
     cls: type[_T],
     /,
     *,
-    gatherer: Callable[[type], dict[str, Field]],
+    gatherer: Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]],
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
 ) -> type[_T]: ...
@@ -63,7 +63,7 @@ def builder(
     cls: None = None,
     /,
     *,
-    gatherer: Callable[[type], dict[str, Field]],
+    gatherer: Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]],
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
 ) -> Callable[[type[_T]], type[_T]]: ...
@@ -95,9 +95,11 @@ class Field:
 class SlotFields(dict):
     ...
 
-def make_slot_gatherer(field_type: type[Field] = Field) -> Callable[[type], dict[str, Field]]: ...
+def make_slot_gatherer(
+        field_type: type[Field] = Field
+) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
-def slot_gatherer(cls: type) -> dict[str, Field]:
+def slot_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]:
     ...
 
 def is_classvar(hint: object) -> bool: ...
@@ -105,9 +107,9 @@ def is_classvar(hint: object) -> bool: ...
 def make_annotation_gatherer(
     field_type: type[Field] = Field,
     leave_default_values: bool = True,
-) -> Callable[[type], dict[str, Field]]: ...
+) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
-def annotation_gatherer(cls: type) -> dict[str, Field]: ...
+def annotation_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 
 def check_argument_order(cls: type) -> None: ...
 

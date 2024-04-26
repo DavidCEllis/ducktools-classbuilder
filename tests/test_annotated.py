@@ -4,7 +4,7 @@ import pytest
 from typing import ClassVar
 from typing_extensions import Annotated
 
-from ducktools.classbuilder import Field, SlotFields, fieldclass
+from ducktools.classbuilder import Field, SlotFields, fieldclass, NOTHING
 
 from ducktools.classbuilder import (
     is_classvar,
@@ -44,7 +44,7 @@ def test_annotation_gatherer():
         g: Annotated[Annotated[ClassVar[str], ""], ""] = "g"
         h: Annotated[CV[str], ''] = "h"
 
-    annos = annotation_gatherer(ExampleAnnotated)
+    annos, modifications = annotation_gatherer(ExampleAnnotated)
 
     # ClassVar values ignored in gathering
     # Instance variables removed from class
@@ -56,8 +56,7 @@ def test_annotation_gatherer():
 
     # Instance variables not removed from class
     # Field replaced with default value on class
-    for key in "abcdefgh":
-        assert ExampleAnnotated.__dict__[key] == key
+    assert modifications["c"] == "c"
 
 
 def test_make_annotation_gatherer():
@@ -82,23 +81,20 @@ def test_make_annotation_gatherer():
         g: Annotated[Annotated[ClassVar[str], ""], ""] = "g"
         h: Annotated[CV[str], ''] = "h"
 
-    annos = gatherer(ExampleAnnotated)
+    annos, modifications = gatherer(ExampleAnnotated)
     annotations = ExampleAnnotated.__annotations__
 
     assert annos["blank_field"] == NewField(type=str)
 
-    # ClassVar values ignored in gathering
+    # ABC should be present in annos but removed from the class
     for key in "abc":
         assert annos[key] == NewField(default=key, type=annotations[key])
-        assert key not in ExampleAnnotated.__dict__
+        assert modifications[key] is NOTHING
 
+    # Opposite for classvar
     for key in "defgh":
         assert key not in annos
-
-    # Instance variables not removed from class
-    # NewField replaced with default value on class
-    for key in "defgh":
-        assert ExampleAnnotated.__dict__[key] == key
+        assert key not in modifications
 
 
 def test_annotationclass():

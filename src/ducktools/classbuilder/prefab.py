@@ -441,6 +441,8 @@ def attribute_gatherer(cls):
 
     cls_attribute_names = cls_attributes.keys()
 
+    cls_modifications = {}
+
     if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
         # replace the classes' attributes dict with one with the correct
         # order from the annotations.
@@ -483,7 +485,7 @@ def attribute_gatherer(cls):
 
                     # Clear the attribute from the class after it has been used
                     # in the definition.
-                    delattr(cls, name)
+                    cls_modifications[name] = NOTHING
                 else:
                     attrib = attribute(**extras)
 
@@ -493,14 +495,14 @@ def attribute_gatherer(cls):
     else:
         for name in cls_attributes.keys():
             attrib = cls_attributes[name]
-            delattr(cls, name)  # clear attrib from class
+            cls_modifications[name] = NOTHING
 
             # Some items can still be annotated.
             if name in cls_annotations:
                 new_attrib = Attribute.from_field(attrib, type=cls_annotations[name])
                 cls_attributes[name] = new_attrib
 
-    return cls_attributes
+    return cls_attributes, cls_modifications
 
 
 # Class Builders

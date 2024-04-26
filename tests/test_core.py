@@ -163,11 +163,11 @@ def test_slot_gatherer_success():
             d=Field(type=str),
         )
 
-    slots = slot_gatherer(SlotsExample)
+    slots, modifications = slot_gatherer(SlotsExample)
 
     assert slots == fields
-    assert SlotsExample.__slots__ == {"a": None, "b": None, "c": "a list", "d": None}
-    assert SlotsExample.__annotations__ == {"d": str}
+    assert modifications["__slots__"] == {"a": None, "b": None, "c": "a list", "d": None}
+    assert modifications["__annotations__"] == {"d": str}
 
 
 def test_slot_gatherer_failure():
