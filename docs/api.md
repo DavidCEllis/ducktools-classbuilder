@@ -14,6 +14,11 @@
 .. autofunction:: ducktools.classbuilder::slotclass
 ```
 
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder::annotationclass
+```
+
+
 ## Builder functions and classes ##
 
 ```{eval-rst}
@@ -33,7 +38,11 @@
 ```
 
 ```{eval-rst}
-.. autofunction:: ducktools.classbuilder::slot_gatherer
+.. autofunction:: ducktools.classbuilder::make_slot_gatherer
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder::make_annotation_gatherer
 ```
 
 ```{eval-rst}
