@@ -1,4 +1,4 @@
-from ducktools.classbuilder import slotclass, Field, SlotFields, get_fields
+from ducktools.classbuilder import slotclass, Field, SlotFields
 
 
 @slotclass

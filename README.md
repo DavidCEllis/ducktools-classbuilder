@@ -20,11 +20,12 @@ Install from PyPI with:
 In order to create a class decorator using `ducktools.classbuilder` there are
 a few things you need to prepare.
 
-1. A field gathering function to analyse the class and collect valid `Field`s.
+1. A field gathering function to analyse the class and collect valid `Field`s and provide
+   any modifications that need to be applied to the class attributes.
    * An example `slot_gatherer` is included.
 2. Code generators that can make use of the gathered `Field`s to create magic method
-   source code.
-   * Example `init_maker`, `repr_maker` and `eq_maker` generators are included.
+   source code. To be made into descriptors by `MethodMaker`.
+   * Example `init_generator`, `repr_generator` and `eq_generator` generators are included.
 3. A function that calls the `builder` function to apply both of these steps.
 
 A field gathering function needs to take the original class as an argument and 
@@ -42,25 +43,26 @@ class[^1] where keyword arguments define the names and values for the fields.
 
 Code generator functions need to be converted to descriptors before being used. 
 This is done using the provided `MethodMaker` descriptor class. 
-ex: `init_desc = MethodMaker("__init__", init_maker)`
+ex: `init_maker = MethodMaker("__init__", init_generator)`.
 
 These parts can then be used to make a basic class boilerplate generator by 
 providing them to the `builder` function.
 
 ```python
 from ducktools.classbuilder import (
-    builder, 
-    slot_gatherer, 
-    init_maker, eq_maker, repr_maker,
+    builder,
+    slot_gatherer,
+    init_generator, eq_generator, repr_generator,
     MethodMaker,
 )
 
-init_desc = MethodMaker("__init__", init_maker)
-repr_desc = MethodMaker("__repr__", repr_maker)
-eq_desc = MethodMaker("__eq__", eq_maker)
+init_maker = MethodMaker("__init__", init_generator)
+repr_maker = MethodMaker("__repr__", repr_generator)
+eq_maker = MethodMaker("__eq__", eq_generator)
+
 
 def slotclass(cls):
-    return builder(cls, gatherer=slot_gatherer, methods={init_desc, repr_desc, eq_desc})
+    return builder(cls, gatherer=slot_gatherer, methods={init_maker, repr_maker, eq_maker})
 ```
 
 ## Slot Class Usage ##
@@ -189,9 +191,8 @@ It will copy values provided as the `type` to `Field` into the
 Values provided to `doc` will be placed in the final `__slots__` 
 field so they are present on the class if `help(...)` is called.
 
-A fairly basic `annotations_gatherer` and `annotationclass` are included
-in `extras.py` which can be used to generate classbuilders that rely on 
-annotations.
+A fairly basic `annotations_gatherer` and `annotationclass` are also included
+and can be used to generate classbuilders that rely on annotations.
 
 If you want something with more features you can look at the `prefab.py`
 implementation which provides a 'prebuilt' implementation.

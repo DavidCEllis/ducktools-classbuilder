@@ -1,6 +1,6 @@
 from ducktools.classbuilder import (
     builder,
-    eq_desc,
+    eq_maker,
     fieldclass,
     get_fields,
     slot_gatherer,
@@ -16,7 +16,7 @@ class PosOnlyField(Field):
     __slots__ = SlotFields(pos_only=True)
 
 
-def init_maker(cls):
+def init_generator(cls):
     fields = get_fields(cls)
 
     arglist = []
@@ -54,7 +54,7 @@ def init_maker(cls):
     return code, globs
 
 
-def repr_maker(cls):
+def repr_generator(cls):
     fields = get_fields(cls)
     content_list = []
     for name, field in fields.items():
@@ -73,9 +73,9 @@ def repr_maker(cls):
     return code, globs
 
 
-init_desc = MethodMaker("__init__", init_maker)
-repr_desc = MethodMaker("__repr__", repr_maker)
-new_methods = frozenset({init_desc, repr_desc, eq_desc})
+init_maker = MethodMaker("__init__", init_generator)
+repr_maker = MethodMaker("__repr__", repr_generator)
+new_methods = frozenset({init_maker, repr_maker, eq_maker})
 
 
 def pos_slotclass(cls, /):

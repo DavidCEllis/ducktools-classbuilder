@@ -32,7 +32,7 @@ from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields,
     builder, fieldclass, get_flags, get_fields, make_slot_gatherer,
-    frozen_setattr_desc, frozen_delattr_desc, is_classvar,
+    frozen_setattr_maker, frozen_delattr_maker, is_classvar,
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -344,13 +344,13 @@ def get_asdict_maker():
     return MethodMaker("as_dict", as_dict_gen)
 
 
-init_desc = get_init_maker()
-prefab_init_desc = get_init_maker(init_name=PREFAB_INIT_FUNC)
-repr_desc = get_repr_maker()
-recursive_repr_desc = get_repr_maker(recursion_safe=True)
-eq_desc = get_eq_maker()
-iter_desc = get_iter_maker()
-asdict_desc = get_asdict_maker()
+init_maker = get_init_maker()
+prefab_init_maker = get_init_maker(init_name=PREFAB_INIT_FUNC)
+repr_maker = get_repr_maker()
+recursive_repr_maker = get_repr_maker(recursion_safe=True)
+eq_maker = get_eq_maker()
+iter_maker = get_iter_maker()
+asdict_maker = get_asdict_maker()
 
 
 # Updated field with additional attributes
@@ -441,6 +441,8 @@ def attribute_gatherer(cls):
 
     cls_attribute_names = cls_attributes.keys()
 
+    cls_modifications = {}
+
     if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
         # replace the classes' attributes dict with one with the correct
         # order from the annotations.
@@ -483,7 +485,7 @@ def attribute_gatherer(cls):
 
                     # Clear the attribute from the class after it has been used
                     # in the definition.
-                    delattr(cls, name)
+                    cls_modifications[name] = NOTHING
                 else:
                     attrib = attribute(**extras)
 
@@ -493,14 +495,14 @@ def attribute_gatherer(cls):
     else:
         for name in cls_attributes.keys():
             attrib = cls_attributes[name]
-            delattr(cls, name)  # clear attrib from class
+            cls_modifications[name] = NOTHING
 
             # Some items can still be annotated.
             if name in cls_annotations:
                 new_attrib = Attribute.from_field(attrib, type=cls_annotations[name])
                 cls_attributes[name] = new_attrib
 
-    return cls_attributes
+    return cls_attributes, cls_modifications
 
 
 # Class Builders
@@ -554,24 +556,24 @@ def _make_prefab(
     methods = set()
 
     if init and "__init__" not in cls_dict:
-        methods.add(init_desc)
+        methods.add(init_maker)
     else:
-        methods.add(prefab_init_desc)
+        methods.add(prefab_init_maker)
 
     if repr and "__repr__" not in cls_dict:
         if recursive_repr:
-            methods.add(recursive_repr_desc)
+            methods.add(recursive_repr_maker)
         else:
-            methods.add(repr_desc)
+            methods.add(repr_maker)
     if eq and "__eq__" not in cls_dict:
-        methods.add(eq_desc)
+        methods.add(eq_maker)
     if iter and "__iter__" not in cls_dict:
-        methods.add(iter_desc)
+        methods.add(iter_maker)
     if frozen:
-        methods.add(frozen_setattr_desc)
-        methods.add(frozen_delattr_desc)
+        methods.add(frozen_setattr_maker)
+        methods.add(frozen_delattr_maker)
     if dict_method:
-        methods.add(asdict_desc)
+        methods.add(asdict_maker)
 
     flags = {
         "kw_only": kw_only,
@@ -847,17 +849,17 @@ def as_dict(o):
     :param o: instance of a prefab class
     :return: dictionary of {k: v} from fields
     """
+    cls = type(o)
+    if not hasattr(cls, PREFAB_FIELDS):
+        raise TypeError(f"{o!r} should be a prefab instance, not {cls}")
+
     # Attempt to use the generated method if available
     try:
         return o.as_dict()
     except AttributeError:
         pass
 
-    cls = type(o)
-    try:
-        flds = get_attributes(cls)
-    except AttributeError:
-        raise TypeError(f"inst should be a prefab instance, not {cls}")
+    flds = get_attributes(cls)
 
     return {
         name: getattr(o, name)

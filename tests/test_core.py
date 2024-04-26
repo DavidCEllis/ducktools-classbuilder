@@ -7,7 +7,7 @@ from ducktools.classbuilder import (
     get_fields,
     get_flags,
     MethodMaker,
-    init_desc,
+    init_maker,
     builder,
     Field,
     SlotFields,
@@ -156,6 +156,8 @@ def test_slot_gatherer_success():
     }
 
     class SlotsExample:
+        a: int
+
         __slots__ = SlotFields(
             a=1,
             b=Field(default=2),
@@ -163,11 +165,12 @@ def test_slot_gatherer_success():
             d=Field(type=str),
         )
 
-    slots = slot_gatherer(SlotsExample)
+    slots, modifications = slot_gatherer(SlotsExample)
 
     assert slots == fields
-    assert SlotsExample.__slots__ == {"a": None, "b": None, "c": "a list", "d": None}
-    assert SlotsExample.__annotations__ == {"d": str}
+    assert modifications["__slots__"] == {"a": None, "b": None, "c": "a list", "d": None}
+    assert modifications["__annotations__"] == {"a": int, "d": str}
+    assert SlotsExample.__annotations__ == {"a": int}  # Original annotations dict unmodified
 
 
 def test_slot_gatherer_failure():
@@ -284,7 +287,7 @@ def test_slotclass_ordering():
 
 
 def test_slotclass_norepr_noeq():
-    @slotclass(methods={init_desc})
+    @slotclass(methods={init_maker})
     class SlotClass:
         __slots__ = SlotFields(
             a=Field(),
@@ -353,7 +356,7 @@ def test_fieldclass_frozen():
 
 
 def test_builder_noclass():
-    mini_slotclass = builder(gatherer=slot_gatherer, methods={init_desc})
+    mini_slotclass = builder(gatherer=slot_gatherer, methods={init_maker})
 
     @mini_slotclass
     class SlotClass:

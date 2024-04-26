@@ -21,50 +21,15 @@ to be customisable.
 Assignment of method builders is where all of the functions that will lazily
 create `__init__` and other magic methods are added to the class.
 
-## Structure ##
+## Creating a generator ##
 
-### The Builder Function ###
-
-```{eval-rst}
-.. autofunction:: ducktools.classbuilder::builder
-  :noindex:
-```
-
-This function is the core class generator which takes your decorated class and
-analyses and collects valid fields and then attaches the method makers.
-
-The field information is stored in the `INTERNALS_DICT` attribute which should generally
-not need to be accessed directly. `get_fields` and `get_flags` functions are to be
-used to access the important keys.
-
-`get_fields(cls)` will return the resolved information obtained from this class and subclasses.
-
-`get_fields(cls, local=True)` will return the field information obtained from **this class only**.
-
-Now let's look at what the keyword arguments to `builder` need to be.
-
-#### Flags ####
-
-Flags are information that defines how the entire class should be generated, for use by
-method generators when operating on the class.
-
-The default makers in `ducktools.classbuilder` make use of one flag - `"kw_only"` - 
-which indicates that a class `__init__` function should only take keyword arguments.
-
-Prefabs also make use of a `"slotted"` flag to indicate if the class has been generated
-with `__slots__` (checking for the existence of `__slots__` could find that a user has
-manually placed slots in the class).
-
-Flags are set using a dictionary with these keys and boolean values, for example:
-
-`cls = builder(cls, gatherer=..., methods=..., flags={"kw_only": True, "slotted": True})` 
-
-#### Gatherers ####
+### Gatherers ###
 
 This covers the *'gather the fields'* step of the process.
 
-A `gatherer` in this case is a function which takes in the class and returns a dict
-of `{"field_name": Field(...)}` values based on some analysis of your class.
+A `gatherer` in this case is a function which takes in the class and returns both a dict
+of `{"field_name": Field(...)}` values based on some analysis of your class and a second
+dictionary of attributes to modify on the main class.
 
 An example gatherer is given in `slot_gatherer` which will take the keys and values
 from a dict subclass `SlotFields` and use that to prepare the field information for
@@ -91,62 +56,185 @@ class GatherExample:
        y=9,
        z=Field(
           default=42,
-          doc="I always knew there was something fundamentally wrong with the universe."
+          doc="I always knew there was something fundamentally wrong with the universe.",
+          type=int,
        )
     )
 
 pprint(slot_gatherer(GatherExample))
 ```
 
-#### Methods ####
+Output:
+```
+({'x': Field(default=6, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None),
+  'y': Field(default=9, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None),
+  'z': Field(default=42, default_factory=<NOTHING OBJECT>, type=<class 'int'>, doc='I always knew there was something fundamentally wrong with the universe.')},
+ {'__annotations__': {'z': <class 'int'>},
+  '__slots__': {'x': None,
+                'y': None,
+                'z': 'I always knew there was something fundamentally wrong '
+                     'with the universe.'}})
+```
+
+The first dictionary shows the field names and the information that will be used by
+the code generators attached to the class to create any required magic methods.
+
+The second dictionary shows which values on the original class are going to be replaced.
+Replacing the value of `__slots__` at this point wont change the actual internal slots
+but will provide the strings given as additional documentation to `help(GatherExample)`.
+
+Here's a similar example using the `annotations_gatherer`
+
+```python
+from pprint import pprint
+from ducktools.classbuilder import annotation_gatherer, Field
+
+
+class GatherExample:
+    x: int
+    y: list[str] = Field(default_factory=list)
+    z: int = Field(default=42, doc="Unused in non slot classes.")
+
+
+pprint(annotation_gatherer(GatherExample))
+```
+
+Output:
+```
+({'x': Field(default=<NOTHING OBJECT>, default_factory=<NOTHING OBJECT>, type=<class 'int'>, doc=None),
+  'y': Field(default=<NOTHING OBJECT>, default_factory=<class 'list'>, type=list[str], doc=None),
+  'z': Field(default=42, default_factory=<NOTHING OBJECT>, type=<class 'int'>, doc='Unused in non slot classes.')},
+ {'y': <NOTHING OBJECT>, 'z': 42})
+```
+
+Here we can see that the type values have been filled in based on the annotations provided.
+The value of 'z' on the class is being replaced by the default value and the value of 'y'
+appears to be set to a `<NOTHING OBJECT>`. The use of `NOTHING` here is actually an indicator
+to the builder to remove this attribute from the class.
+
+> Gatherer functions **should not** modify the class directly.
+> All class modification should occur in the `builder` function.
+
+### Methods ###
 
 `methods` needs to be a set of `MethodMaker` instances which are descriptors that
 replace themselves with the required methods on first access.
 
 A `MethodMaker` takes two arguments:
-`funcname` - the name of the method to attach
-`code_generator` - a code generator function that returns a tuple of source code and globals dict.
+`funcname` - the name of the method to attach - such as `__init__` or `__repr__`
+`code_generator` - a code generator function.
 
 ```{eval-rst}
 .. autoclass:: ducktools.classbuilder::MethodMaker
   :noindex:
 ```
 
-An example of these descriptors is the `init_desc` method maker that generates the `__init__`
-function. Their behaviour is best observed by looking at the class after it is generated.
+The `code_generator` function to be provided needs to take the prepared class as the only argument 
+and return a tuple of source code and a globals dictionary in which to execute the code.
+These can be examined by looking at the output of any of the `<method>_generator` functions.
+For example the included `init_generator`.
 
 ```python
-from ducktools.classbuilder import slotclass, SlotFields, Field, init_desc
+from ducktools.classbuilder import annotationclass, init_generator
 
-@slotclass
-class GatherExample:
-    __slots__ = SlotFields(
-       x=6,
-       y=9,
-       z=Field(
-          default=42,
-          doc="I always knew there was something fundamentally wrong with the universe."
-       )
-    )
+@annotationclass
+class InitExample:
+   a: str
+   b: str = "b"
+   obj: object = object()
+   
+output = init_generator(InitExample)
+print(output[0])
+print(output[1])
+```
+
+Output:
+```
+def __init__(self, a, b=_b_default, obj=_obj_default):
+    self.a = a
+    self.b = b
+    self.obj = obj
+
+{'_b_default': 'b', '_obj_default': <object object at ...>}
+```
+
+> Note: The values are replaced by `_name_default` for defaults in the parameters
+> in order to make sure that the defaults are the exact objects provided at generation.
+
+To convert these into the actual functions these generators are provided to a
+`MethodMaker` descriptor class. The `funcname` provided must match the name of 
+the function in the generated code and will also be the attribute to which the 
+descriptor is attached. `init_maker = MethodMaker('__init__', init_generator)`
+in this case.
+
+The `MethodMaker` descriptors actions can be observed by looking at the class
+dictionary before and after `__init__` is first called.
+
+```python
+from ducktools.classbuilder import annotationclass
+
+
+@annotationclass
+class InitExample:
+   a: str
+   b: str = "b"
+
 
 # Access through the __dict__ to avoid code generation
-print(f'Before generation: {GatherExample.__dict__["__init__"] = }')
+print(f'Before generation: {InitExample.__dict__["__init__"] = }')
 
 # Now generate the code by forcing python to call __init__
-ex = GatherExample()
+ex = InitExample("a")
 
-print(f'After generation: {GatherExample.__dict__["__init__"] = }')
-
-# Look at the contents of the maker
-print("\nDescriptor Contents: ")
-print(f"{init_desc.funcname = }")
-print(f"{init_desc.code_generator = }\n")
-
-# Look at the output of the code generator
-generated = init_desc.code_generator(GatherExample)
-print(f"Globals: {generated[1]!r}")
-print(f"Source:\n{generated[0]}")
+print(f'After generation: {InitExample.__dict__["__init__"] = }')
 ```
+
+Output:
+```
+Before generation: InitExample.__dict__["__init__"] = <MethodMaker for '__init__' method>
+After generation: InitExample.__dict__["__init__"] = <function InitExample.__init__ at 0x0000027D256D51C0>
+```
+
+### Flags ###
+
+Flags are information that defines how the entire class should be generated, for use by
+method generators when operating on the class.
+
+The default makers in `ducktools.classbuilder` make use of one flag - `"kw_only"` - 
+which indicates that a class `__init__` function should only take keyword arguments.
+
+Prefabs also make use of a `"slotted"` flag to indicate if the class has been generated
+with `__slots__` (checking for the existence of `__slots__` could find that a user has
+manually placed slots in the class).
+
+Flags are set using a dictionary with these keys and boolean values, for example:
+
+`cls = builder(cls, gatherer=..., methods=..., flags={"kw_only": True, "slotted": True})` 
+
+### The Builder Function ###
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder::builder
+  :noindex:
+```
+
+Once all these pieces are in place they can be provided to the `builder` function.
+
+This uses the provided `gatherer` to get the field information and attribute changes
+that need to be made to the class.
+
+When applying the attribute changes, any attribute values which are given as `NOTHING` are 
+deleted. 
+Afterwards it looks through parent classes and gathers a full set of inherited fields.
+
+An internals dictionary is generated which contains the full inherited fields as `fields`,
+the fields from the decorated class only as `local_fields` and any flags passed through
+as `flags`. This is then stored in a `__classbuilder_internals__` attribute. These can be
+accessed using the `get_fields` and `get_flags` functions provided.
+
+`get_fields(cls)` will return the resolved information obtained from this class and subclasses.
+
+`get_fields(cls, local=True)` will return the field information obtained from **this class only**.
 
 ### Extending `Field` ###
 
@@ -198,48 +286,47 @@ These methods can be reused to make `slotclasses` 'frozen'.
 
 ```python
 from ducktools.classbuilder import (
-    slotclass,
-    SlotFields,
-    default_methods,
-    frozen_setattr_desc,
-    frozen_delattr_desc,
+   slotclass,
+   SlotFields,
+   default_methods,
+   frozen_setattr_maker,
+   frozen_delattr_maker,
 )
 
-
-new_methods = default_methods | {frozen_setattr_desc, frozen_delattr_desc}
+new_methods = default_methods | {frozen_setattr_maker, frozen_delattr_maker}
 
 
 def frozen(cls, /):
-    return slotclass(cls, methods=new_methods)
+   return slotclass(cls, methods=new_methods)
 
 
 if __name__ == "__main__":
-    @frozen
-    class FrozenEx:
-        __slots__ = SlotFields(
-            x=6,
-            y=9,
-            product=42,
-        )
+   @frozen
+   class FrozenEx:
+      __slots__ = SlotFields(
+         x=6,
+         y=9,
+         product=42,
+      )
 
 
-    ex = FrozenEx()
-    print(ex)
+   ex = FrozenEx()
+   print(ex)
 
-    try:
-        ex.y = 7
-    except TypeError as e:
-        print(e)
+   try:
+      ex.y = 7
+   except TypeError as e:
+      print(e)
 
-    try:
-        ex.z = "new value"
-    except TypeError as e:
-        print(e)
+   try:
+      ex.z = "new value"
+   except TypeError as e:
+      print(e)
 
-    try:
-        del ex.y
-    except TypeError as e:
-        print(e)
+   try:
+      del ex.y
+   except TypeError as e:
+      print(e)
 ```
 
 #### Iterable Classes ####
@@ -248,23 +335,24 @@ Say you want to make the class iterable, so you want to add `__iter__`.
 
 ```python
 from ducktools.classbuilder import (
-    default_methods, get_fields, slotclass, MethodMaker, SlotFields
+    default_methods,
+    get_fields,
+    slotclass,
+    MethodMaker,
+    SlotFields,
 )
 
 
-def iter_maker(cls):
+def iter_generator(cls):
     field_names = get_fields(cls).keys()
     field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
-    code = (
-        f"def __iter__(self):\n"
-        f"{field_yield}"
-    )
+    code = f"def __iter__(self):\n" f"{field_yield}"
     globs = {}
     return code, globs
 
 
-iter_desc = MethodMaker("__iter__", iter_maker)
-new_methods = frozenset(default_methods | {iter_desc})
+iter_maker = MethodMaker("__iter__", iter_generator)
+new_methods = frozenset(default_methods | {iter_maker})
 
 
 def iterclass(cls=None, /):
@@ -281,7 +369,6 @@ if __name__ == "__main__":
             d=4,
             e=5,
         )
-
 
     ex = IterDemo()
     print([item for item in ex])
@@ -309,10 +396,10 @@ Here is an example of adding the ability to exclude fields from `__repr__`.
 
 ```python
 from ducktools.classbuilder import (
-    eq_desc,
+    eq_maker,
     fieldclass,
     get_fields,
-    init_desc,
+    init_maker,
     slotclass,
     Field,
     SlotFields,
@@ -325,7 +412,7 @@ class FieldExt(Field):
     __slots__ = SlotFields(repr=True)
 
 
-def repr_exclude_maker(cls):
+def repr_exclude_generator(cls):
     fields = get_fields(cls)
 
     # Use getattr with default True for the condition so
@@ -343,12 +430,12 @@ def repr_exclude_maker(cls):
     return code, globs
 
 
-repr_desc = MethodMaker("__repr__", repr_exclude_maker)
+repr_exclude_maker = MethodMaker("__repr__", repr_exclude_generator)
 
 
 if __name__ == "__main__":
 
-    methods = frozenset({init_desc, eq_desc, repr_desc})
+    methods = frozenset({init_maker, eq_maker, repr_exclude_maker})
 
     @slotclass(methods=methods)
     class Example:
@@ -380,7 +467,7 @@ errors when the `__init__` method is generated.
 ```python
 from ducktools.classbuilder import (
     builder,
-    eq_desc,
+    eq_maker,
     fieldclass,
     get_fields,
     slot_gatherer,
@@ -396,7 +483,7 @@ class PosOnlyField(Field):
     __slots__ = SlotFields(pos_only=True)
 
 
-def init_maker(cls):
+def init_generator(cls):
     fields = get_fields(cls)
 
     arglist = []
@@ -434,7 +521,7 @@ def init_maker(cls):
     return code, globs
 
 
-def repr_maker(cls):
+def repr_generator(cls):
     fields = get_fields(cls)
     content_list = []
     for name, field in fields.items():
@@ -453,9 +540,9 @@ def repr_maker(cls):
     return code, globs
 
 
-init_desc = MethodMaker("__init__", init_maker)
-repr_desc = MethodMaker("__repr__", repr_maker)
-new_methods = frozenset({init_desc, repr_desc, eq_desc})
+init_maker = MethodMaker("__init__", init_generator)
+repr_maker = MethodMaker("__repr__", repr_generator)
+new_methods = frozenset({init_maker, repr_maker, eq_maker})
 
 
 def pos_slotclass(cls, /):
@@ -535,7 +622,7 @@ class ConverterField(Field):
     __slots__ = SlotFields(converter=None)
 
 
-def setattr_maker(cls):
+def setattr_generator(cls):
     fields = get_fields(cls)
     converters = {}
     for k, v in fields.items():
@@ -558,8 +645,8 @@ def setattr_maker(cls):
     return code, globs
 
 
-setattr_desc = MethodMaker("__setattr__", setattr_maker)
-methods = frozenset(default_methods | {setattr_desc})
+setattr_maker = MethodMaker("__setattr__", setattr_generator)
+methods = frozenset(default_methods | {setattr_maker})
 
 
 def converterclass(cls, /):
@@ -576,6 +663,7 @@ if __name__ == "__main__":
 
     ex = ConverterEx("42", "42")
     print(ex)
+
 ```
 
 ### Gatherers ###
@@ -583,6 +671,8 @@ if __name__ == "__main__":
 
 This seems to be a feature people keep requesting for `dataclasses`.
 This is also doable.
+
+This is a long example but is designed to show how you can use these tools to implement such a thing.
 
 > Note: Field classes will be frozen when running under pytest.
 >       They should not be mutated by gatherers.
@@ -605,8 +695,7 @@ from ducktools.classbuilder import (
 )
 
 
-# New equivalent to dataclasses "Field", these still need to be created
-# in order to generate the magic methods correctly.
+# First we need a new field that can store these modifications
 @fieldclass
 class AnnoField(Field):
     __slots__ = SlotFields(
@@ -617,9 +706,12 @@ class AnnoField(Field):
     )
 
 
-# Modifying objects
+# Our 'Annotated' tools need to be combinable and need to contain the keyword argument
+# and value they are intended to change.
+# To this end we make a FieldModifier class that stores the keyword values given in a
+# dictionary as 'modifiers'. This makes it easy to merge modifiers later.
 class FieldModifier:
-    __slots__ = ("modifiers", )
+    __slots__ = ("modifiers",)
     modifiers: dict[str, Any]
 
     def __init__(self, **modifiers):
@@ -637,6 +729,8 @@ class FieldModifier:
         return NotImplemented
 
 
+# Here we make the modifiers and give them the arguments to Field we
+# wish to change with their usage.
 KW_ONLY = FieldModifier(kw_only=True)
 NO_INIT = FieldModifier(init=False)
 NO_REPR = FieldModifier(repr=False)
@@ -644,43 +738,49 @@ NO_COMPARE = FieldModifier(compare=False)
 IGNORE_ALL = FieldModifier(init=False, repr=False, compare=False)
 
 
-def annotated_gatherer(cls: type) -> dict[str, Any]:
+# Analyse the class and create these new Fields based on the annotations
+def annotated_gatherer(cls: type) -> tuple[dict[str, AnnoField], dict[str, Any]]:
     # String annotations *MUST* be evaluated for this to work
-    # dataclasses currently does not require this
+    # Trying to parse the Annotations as strings would add a *lot* of extra work
     cls_annotations = inspect.get_annotations(cls, eval_str=True)
     cls_fields = {}
 
+    # This gatherer doesn't make any class modifications but still needs
+    # To have a dict as a return value
+    cls_modifications = {}
+
     for key, anno in cls_annotations.items():
         modifiers = {}
-        typ = NOTHING
 
         if get_origin(anno) is Annotated:
-            typ = anno.__args__[0]
             meta = anno.__metadata__
             for v in meta:
                 if isinstance(v, FieldModifier):
+                    # Merge the modifier arguments to pass to AnnoField
                     modifiers.update(v.modifiers)
 
-        elif not (anno is ClassVar or get_origin(anno) is ClassVar):
-            typ = anno
+            # Extract the actual annotation from the first argument
+            anno = anno.__origin__
 
-        if typ is not NOTHING:
-            if key in cls.__dict__ and "__slots__" not in cls.__dict__:
-                val = cls.__dict__[key]
-                if isinstance(val, Field):
-                    fld = AnnoField.from_field(val, type=typ, **modifiers)
-                else:
-                    fld = AnnoField(default=val, type=typ, **modifiers)
+        if anno is ClassVar or get_origin(anno) is ClassVar:
+            continue
+
+        if key in cls.__dict__ and "__slots__" not in cls.__dict__:
+            val = cls.__dict__[key]
+            if isinstance(val, Field):
+                # Make a new field - DO NOT MODIFY FIELDS IN PLACE
+                fld = AnnoField.from_field(val, type=anno, **modifiers)
             else:
-                fld = AnnoField(type=typ, **modifiers)
+                fld = AnnoField(default=val, type=anno, **modifiers)
+        else:
+            fld = AnnoField(type=anno, **modifiers)
 
-            cls_fields[key] = fld
+        cls_fields[key] = fld
 
-    return cls_fields
+    return cls_fields, cls_modifications
 
 
-def init_maker(cls):
-
+def init_generator(cls):
     fields = get_fields(cls)
     flags = get_flags(cls)
 
@@ -734,7 +834,7 @@ def init_maker(cls):
     return code, globs
 
 
-def repr_maker(cls):
+def repr_generator(cls):
     fields = get_fields(cls)
     content = ", ".join(
         f"{name}={{self.{name}!r}}"
@@ -749,7 +849,7 @@ def repr_maker(cls):
     return code, globs
 
 
-def eq_maker(cls):
+def eq_generator(cls):
     class_comparison = "self.__class__ is other.__class__"
     field_names = [
         name
@@ -773,11 +873,11 @@ def eq_maker(cls):
     return code, globs
 
 
-init_method = MethodMaker("__init__", init_maker)
-repr_method = MethodMaker("__repr__", repr_maker)
-eq_method = MethodMaker("__eq__", eq_maker)
+init_maker = MethodMaker("__init__", init_generator)
+repr_maker = MethodMaker("__repr__", repr_generator)
+eq_maker = MethodMaker("__eq__", eq_generator)
 
-methods = {init_method, repr_method, eq_method}
+methods = {init_maker, repr_maker, eq_maker}
 
 
 def annotationsclass(cls=None, *, kw_only=False):
@@ -795,7 +895,8 @@ def annotationsclass(cls=None, *, kw_only=False):
 @annotationsclass
 class X:
     x: str
-    y: ClassVar[str] = "This is okay"
+    y: ClassVar[str] = "This should be ignored"
+    z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"
     a: Annotated[int, NO_INIT] = "Not In __init__ signature"
     b: Annotated[str, NO_REPR] = "Not In Repr"
     c: Annotated[list[str], NO_COMPARE] = AnnoField(default_factory=list)
@@ -809,7 +910,7 @@ print(ex, "\n")
 
 pp(get_fields(X))
 print("\nSource:")
-print(init_maker(X)[0])
-print(eq_maker(X)[0])
-print(repr_maker(X)[0])
+print(init_generator(X)[0])
+print(eq_generator(X)[0])
+print(repr_generator(X)[0])
 ```

@@ -21,7 +21,7 @@
 # SOFTWARE.
 import sys
 
-__version__ = "v0.4.0"
+__version__ = "v0.5.0"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -65,7 +65,7 @@ def _get_inst_fields(inst):
     }
 
 
-# As 'None' can be a meaningful default we need a sentinel value
+# As 'None' can be a meaningful value we need a sentinel value
 # to use to show no value has been provided.
 class _NothingType:
     def __repr__(self):
@@ -109,7 +109,7 @@ class MethodMaker:
         return method.__get__(instance, cls)
 
 
-def get_init_maker(null=NOTHING, extra_code=None):
+def get_init_generator(null=NOTHING, extra_code=None):
     def cls_init_maker(cls):
         fields = get_fields(cls)
         flags = get_flags(cls)
@@ -154,10 +154,10 @@ def get_init_maker(null=NOTHING, extra_code=None):
     return cls_init_maker
 
 
-init_maker = get_init_maker()
+init_generator = get_init_generator()
 
 
-def repr_maker(cls):
+def repr_generator(cls):
     fields = get_fields(cls)
     content = ", ".join(
         f"{name}={{self.{name}!r}}"
@@ -171,7 +171,7 @@ def repr_maker(cls):
     return code, globs
 
 
-def eq_maker(cls):
+def eq_generator(cls):
     class_comparison = "self.__class__ is other.__class__"
     field_names = get_fields(cls)
 
@@ -191,7 +191,7 @@ def eq_maker(cls):
     return code, globs
 
 
-def frozen_setattr_maker(cls):
+def frozen_setattr_generator(cls):
     globs = {}
     field_names = set(get_fields(cls))
     flags = get_flags(cls)
@@ -220,7 +220,7 @@ def frozen_setattr_maker(cls):
     return code, globs
 
 
-def frozen_delattr_maker(cls):
+def frozen_delattr_generator(cls):
     body = (
         '    raise TypeError(\n'
         '        f"{type(self).__name__!r} object "\n'
@@ -234,12 +234,12 @@ def frozen_delattr_maker(cls):
 
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
-init_desc = MethodMaker("__init__", init_maker)
-repr_desc = MethodMaker("__repr__", repr_maker)
-eq_desc = MethodMaker("__eq__", eq_maker)
-frozen_setattr_desc = MethodMaker("__setattr__", frozen_setattr_maker)
-frozen_delattr_desc = MethodMaker("__delattr__", frozen_delattr_maker)
-default_methods = frozenset({init_desc, repr_desc, eq_desc})
+init_maker = MethodMaker("__init__", init_generator)
+repr_maker = MethodMaker("__repr__", repr_generator)
+eq_maker = MethodMaker("__eq__", eq_generator)
+frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
+frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
+default_methods = frozenset({init_maker, repr_maker, eq_maker})
 
 
 def builder(cls=None, /, *, gatherer, methods, flags=None):
@@ -248,7 +248,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
 
     :param cls: Class to be analysed and have methods generated
     :param gatherer: Function to gather field information
-    :type gatherer: Callable[[type], dict[str, Field]]
+    :type gatherer: Callable[[type], tuple[dict[str, Field], dict[str, Any]]]
     :param methods: MethodMakers to add to the class
     :type methods: set[MethodMaker]
     :param flags: additional flags to store in the internals dictionary
@@ -267,7 +267,14 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
     internals = {}
     setattr(cls, INTERNALS_DICT, internals)
 
-    cls_fields = gatherer(cls)
+    cls_fields, modifications = gatherer(cls)
+
+    for name, value in modifications.items():
+        if value is NOTHING:
+            delattr(cls, name)
+        else:
+            setattr(cls, name, value)
+
     internals["local_fields"] = cls_fields
 
     mro = cls.__mro__[:-1]  # skip 'object' base class
@@ -361,13 +368,13 @@ _field_internal = {
     "doc": Field(default=None),
 }
 
-_field_methods = {repr_desc, eq_desc}
+_field_methods = {repr_maker, eq_maker}
 if _UNDER_TESTING:
-    _field_methods.update({frozen_setattr_desc, frozen_delattr_desc})
+    _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
 
 builder(
     Field,
-    gatherer=lambda cls_: _field_internal,
+    gatherer=lambda cls_: (_field_internal, {}),
     methods=_field_methods,
     flags={"slotted": True, "kw_only": True},
 )
@@ -390,6 +397,14 @@ class SlotFields(dict):
 
 
 def make_slot_gatherer(field_type=Field):
+    """
+    Create a new annotation gatherer that will work with `Field` instances
+    of the creators definition.
+
+    :param field_type: The `Field` classes to be used when gathering fields
+    :return: A slot gatherer that will check for and generate Fields of
+             the type field_type.
+    """
     def field_slot_gatherer(cls):
         """
         Gather field information for class generation based on __slots__
@@ -405,7 +420,12 @@ def make_slot_gatherer(field_type=Field):
                 "in order to generate a slotclass"
             )
 
-        cls_annotations = cls.__dict__.get("__annotations__", {})
+        # Don't want to mutate original annotations so make a copy if it exists
+        # Looking at the dict is a Python3.9 or earlier requirement
+        cls_annotations = {
+            **cls.__dict__.get("__annotations__", {})
+        }
+
         cls_fields = {}
         slot_replacement = {}
 
@@ -421,13 +441,15 @@ def make_slot_gatherer(field_type=Field):
             slot_replacement[k] = attrib.doc
             cls_fields[k] = attrib
 
-        # Replace the SlotAttributes instance with a regular dict
-        # So that help() works
-        setattr(cls, "__slots__", slot_replacement)
+        # Send the modifications to the builder for what should be changed
+        # On the class.
+        # In this case, slots with documentation and new annotations.
+        modifications = {
+            "__slots__": slot_replacement,
+            "__annotations__": cls_annotations,
+        }
 
-        # Update annotations with any types from the slots assignment
-        setattr(cls, "__annotations__", cls_annotations)
-        return cls_fields
+        return cls_fields, modifications
 
     return field_slot_gatherer
 
@@ -483,6 +505,8 @@ def make_annotation_gatherer(field_type=Field, leave_default_values=True):
 
         cls_fields: dict[str, field_type] = {}
 
+        modifications = {}
+
         for k, v in cls_annotations.items():
             # Ignore ClassVar
             if is_classvar(v):
@@ -494,20 +518,21 @@ def make_annotation_gatherer(field_type=Field, leave_default_values=True):
                 if isinstance(attrib, field_type):
                     attrib = field_type.from_field(attrib, type=v)
                     if attrib.default is not NOTHING and leave_default_values:
-                        setattr(cls, k, attrib.default)
+                        modifications[k] = attrib.default
                     else:
-                        delattr(cls, k)
+                        # NOTHING sentinel indicates a value should be removed
+                        modifications[k] = NOTHING
                 else:
                     attrib = field_type(default=attrib, type=v)
                     if not leave_default_values:
-                        delattr(cls, k)
+                        modifications[k] = NOTHING
 
             else:
                 attrib = field_type(type=v)
 
             cls_fields[k] = attrib
 
-        return cls_fields
+        return cls_fields, modifications
 
     return field_annotation_gatherer
 
@@ -569,7 +594,7 @@ def annotationclass(cls=None, /, *, methods=default_methods):
 
 _field_init_desc = MethodMaker(
     funcname="__init__",
-    code_generator=get_init_maker(
+    code_generator=get_init_generator(
         null=_NothingType(),
         extra_code=["self.validate_field()"],
     )
@@ -590,11 +615,11 @@ def fieldclass(cls=None, /, *, frozen=False):
     if not cls:
         return lambda cls_: fieldclass(cls_, frozen=frozen)
 
-    field_methods = {_field_init_desc, repr_desc, eq_desc}
+    field_methods = {_field_init_desc, repr_maker, eq_maker}
 
     # Always freeze when running tests
     if frozen or _UNDER_TESTING:
-        field_methods.update({frozen_setattr_desc, frozen_delattr_desc})
+        field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
 
     cls = builder(
         cls,

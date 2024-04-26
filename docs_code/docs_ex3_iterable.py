@@ -1,21 +1,29 @@
 from ducktools.classbuilder import (
-    default_methods, get_fields, slotclass, MethodMaker, SlotFields
+    default_methods,
+    get_fields,
+    slotclass,
+    MethodMaker,
+    SlotFields,
 )
 
 
-def iter_maker(cls):
+def iter_generator(cls):
     field_names = get_fields(cls).keys()
-    field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
+    if field_names:
+        field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
+    else:
+        field_yield = "    yield from ()"
+
     code = (
         f"def __iter__(self):\n"
-        f"{field_yield}"
+        f"{field_yield}\n"
     )
     globs = {}
     return code, globs
 
 
-iter_desc = MethodMaker("__iter__", iter_maker)
-new_methods = frozenset(default_methods | {iter_desc})
+iter_maker = MethodMaker("__iter__", iter_generator)
+new_methods = frozenset(default_methods | {iter_maker})
 
 
 def iterclass(cls=None, /):
@@ -32,7 +40,6 @@ if __name__ == "__main__":
             d=4,
             e=5,
         )
-
 
     ex = IterDemo()
     print([item for item in ex])
