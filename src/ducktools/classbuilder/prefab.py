@@ -578,6 +578,7 @@ def _make_prefab(
     flags = {
         "kw_only": kw_only,
         "slotted": slotted,
+        "frozen": frozen,
     }
 
     cls = builder(

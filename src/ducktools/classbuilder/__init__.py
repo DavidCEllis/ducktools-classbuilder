@@ -368,15 +368,21 @@ _field_internal = {
     "doc": Field(default=None),
 }
 
+_field_frozen = False
 _field_methods = {repr_maker, eq_maker}
 if _UNDER_TESTING:
     _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+    _field_frozen = True
 
 builder(
     Field,
     gatherer=lambda cls_: (_field_internal, {}),
     methods=_field_methods,
-    flags={"slotted": True, "kw_only": True},
+    flags={
+        "slotted": True,
+        "kw_only": True,
+        "frozen": _field_frozen,
+    },
 )
 
 
@@ -619,13 +625,14 @@ def fieldclass(cls=None, /, *, frozen=False):
 
     # Always freeze when running tests
     if frozen or _UNDER_TESTING:
+        frozen = True
         field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
 
     cls = builder(
         cls,
         gatherer=slot_gatherer,
         methods=field_methods,
-        flags={"slotted": True, "kw_only": True}
+        flags={"slotted": True, "kw_only": True, "frozen": frozen}
     )
 
     return cls
