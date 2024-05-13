@@ -30,7 +30,7 @@ import sys
 
 from . import (
     INTERNALS_DICT, NOTHING,
-    Field, MethodMaker, SlotFields,
+    Field, MethodMaker, SlotFields, GatheredFields,
     builder, fieldclass, get_flags, get_fields, make_slot_gatherer,
     frozen_setattr_maker, frozen_delattr_maker, is_classvar,
 )
@@ -519,6 +519,7 @@ def _make_prefab(
     frozen=False,
     dict_method=False,
     recursive_repr=False,
+    gathered_fields=None,
 ):
     """
     Generate boilerplate code for dunder methods in a class.
@@ -535,6 +536,7 @@ def _make_prefab(
                    such as lists)
     :param dict_method: Include an as_dict method for faster dictionary creation
     :param recursive_repr: Safely handle repr in case of recursion
+    :param gathered_fields: Pre-gathered fields callable, to skip re-collecting attributes
     :return: class with __ methods defined
     """
     cls_dict = cls.__dict__
@@ -546,12 +548,16 @@ def _make_prefab(
         )
 
     slots = cls_dict.get("__slots__")
-    if isinstance(slots, SlotFields):
-        gatherer = slot_prefab_gatherer
-        slotted = True
+    if gathered_fields is None:
+        if isinstance(slots, SlotFields):
+            gatherer = slot_prefab_gatherer
+            slotted = True
+        else:
+            gatherer = attribute_gatherer
+            slotted = False
     else:
-        gatherer = attribute_gatherer
-        slotted = False
+        gatherer = gathered_fields
+        slotted = False if slots is None else True
 
     methods = set()
 
@@ -770,6 +776,7 @@ def build_prefab(
     frozen=False,
     dict_method=False,
     recursive_repr=False,
+    slots=False,
 ):
     """
     Dynamically construct a (dynamic) prefab.
@@ -790,12 +797,35 @@ def build_prefab(
                    (This does not prevent the modification of mutable attributes such as lists)
     :param dict_method: Include an as_dict method for faster dictionary creation
     :param recursive_repr: Safely handle repr in case of recursion
+    :param slots: Make the resulting class slotted
     :return: class with __ methods defined
     """
-    class_dict = {} if class_dict is None else class_dict
-    cls = type(class_name, bases, class_dict)
+    class_dict = {} if class_dict is None else class_dict.copy()
+
+    class_annotations = {}
+    class_slots = {}
+    fields = {}
+
     for name, attrib in attributes:
-        setattr(cls, name, attrib)
+        if isinstance(attrib, Attribute):
+            fields[name] = attrib
+        elif isinstance(attrib, Field):
+            fields[name] = Attribute.from_field(attrib)
+        else:
+            fields[name] = Attribute(default=attrib)
+
+        if attrib.type is not NOTHING:
+            class_annotations[name] = attrib.type
+
+        class_slots[name] = attrib.doc
+
+    if slots:
+        class_dict["__slots__"] = class_slots
+
+    class_dict["__annotations__"] = class_annotations
+    cls = type(class_name, bases, class_dict)
+
+    gathered_fields = GatheredFields(fields, {})
 
     cls = _make_prefab(
         cls,
@@ -808,6 +838,7 @@ def build_prefab(
         frozen=frozen,
         dict_method=dict_method,
         recursive_repr=recursive_repr,
+        gathered_fields=gathered_fields,
     )
 
     return cls
