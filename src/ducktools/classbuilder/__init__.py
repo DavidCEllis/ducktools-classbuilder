@@ -21,7 +21,7 @@
 # SOFTWARE.
 import sys
 
-__version__ = "v0.5.0"
+__version__ = "v0.5.1"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -359,6 +359,30 @@ class Field:
         return cls(**argument_dict)
 
 
+class GatheredFields:
+    __slots__ = ("fields", "modifications")
+
+    def __init__(self, fields, modifications):
+        self.fields = fields
+        self.modifications = modifications
+
+    def __repr__(self):
+        return (
+            f"{type(self.__name__)}("
+            f"fields={self.fields!r}, "
+            f"modifications={self.modifications!r}"
+            f")"
+        )
+
+    def __eq__(self, other):
+        if type(self) is type(other):
+            return (self.fields, self.modifications) == (other.fields, other.modifications)
+        return NotImplemented
+
+    def __call__(self, cls):
+        return self.fields, self.modifications
+
+
 # Use the builder to generate __repr__ and __eq__ methods
 # and pretend `Field` was a built class all along.
 _field_internal = {
@@ -374,7 +398,7 @@ if _UNDER_TESTING:
 
 builder(
     Field,
-    gatherer=lambda cls_: (_field_internal, {}),
+    gatherer=GatheredFields(_field_internal, {}),
     methods=_field_methods,
     flags={"slotted": True, "kw_only": True},
 )

@@ -92,6 +92,19 @@ class Field:
     def from_field(cls, fld: Field, /, **kwargs: typing.Any) -> Field: ...
 
 
+class GatheredFields:
+    __slots__ = ("fields", "modifications")
+    def __init__(
+        self,
+        fields: dict[str, Field],
+        modifications: dict[str, typing.Any]
+    ) -> None: ...
+
+    def __repr__(self) -> str: ...
+    def __eq__(self, other) -> bool: ...
+    def __call__(self, cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
+
+
 class SlotFields(dict):
     ...
 
