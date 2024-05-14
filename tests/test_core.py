@@ -14,6 +14,7 @@ from ducktools.classbuilder import (
     slot_gatherer,
     slotclass,
     fieldclass,
+    GatheredFields,
 )
 
 
@@ -374,3 +375,31 @@ def test_builder_noclass():
     assert x.a == 12
     assert x.b == 2
     assert x.c == []
+
+
+def test_gatheredfields():
+    fields = {"x": Field(default=1)}
+    modifications = {"x": NOTHING}
+
+    alt_fields = {"x": Field(default=1), "y": Field(default=2)}
+
+    flds = GatheredFields(fields, modifications)
+    flds_2 = GatheredFields(fields, modifications)
+    flds_3 = GatheredFields(alt_fields, modifications)
+
+    class Ex:
+        pass
+
+    assert flds(Ex) == (fields, modifications)
+
+    assert flds == flds_2
+    assert flds != alt_fields
+    assert flds != object()
+
+    assert repr(flds).endswith(
+        "GatheredFields("
+        "fields={'x': Field(default=1, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None)}, "
+        "modifications={'x': <NOTHING OBJECT>}"
+        ")"
+    )
+

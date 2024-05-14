@@ -368,7 +368,7 @@ class GatheredFields:
 
     def __repr__(self):
         return (
-            f"{type(self.__name__)}("
+            f"{type(self).__name__}("
             f"fields={self.fields!r}, "
             f"modifications={self.modifications!r}"
             f")"
