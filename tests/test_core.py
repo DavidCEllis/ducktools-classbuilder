@@ -300,6 +300,46 @@ def test_slotclass_norepr_noeq():
     assert "__eq__" not in SlotClass.__dict__
 
 
+def test_slotclass_weakref():
+    @slotclass
+    class WeakrefClass:
+        __slots__ = SlotFields(
+            a=1,
+            b=2,
+            __weakref__=None,
+        )
+
+    flds = get_fields(WeakrefClass)
+    assert 'a' in flds
+    assert 'b' in flds
+    assert '__weakref__' not in flds
+
+    slots = WeakrefClass.__slots__
+    assert 'a' in slots
+    assert 'b' in slots
+    assert '__weakref__' in slots
+
+
+def test_slotclass_dict():
+    @slotclass
+    class DictClass:
+        __slots__ = SlotFields(
+            a=1,
+            b=2,
+            __dict__=None,
+        )
+
+    flds = get_fields(DictClass)
+    assert 'a' in flds
+    assert 'b' in flds
+    assert '__dict__' not in flds
+
+    slots = DictClass.__slots__
+    assert 'a' in slots
+    assert 'b' in slots
+    assert '__dict__' in slots
+
+
 def test_fieldclass():
     @fieldclass
     class NewField(Field):
@@ -393,7 +433,7 @@ def test_gatheredfields():
     assert flds(Ex) == (fields, modifications)
 
     assert flds == flds_2
-    assert flds != alt_fields
+    assert flds != flds_3
     assert flds != object()
 
     assert repr(flds).endswith(

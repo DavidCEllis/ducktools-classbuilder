@@ -366,30 +366,22 @@ class GatheredFields:
         self.fields = fields
         self.modifications = modifications
 
-    def __repr__(self):
-        return (
-            f"{type(self).__name__}("
-            f"fields={self.fields!r}, "
-            f"modifications={self.modifications!r}"
-            f")"
-        )
-
-    def __eq__(self, other):
-        if type(self) is type(other):
-            return (self.fields, self.modifications) == (other.fields, other.modifications)
-        return NotImplemented
-
     def __call__(self, cls):
         return self.fields, self.modifications
 
 
 # Use the builder to generate __repr__ and __eq__ methods
-# and pretend `Field` was a built class all along.
+# for both Field and GatheredFields
 _field_internal = {
     "default": Field(default=NOTHING),
     "default_factory": Field(default=NOTHING),
     "type": Field(default=NOTHING),
     "doc": Field(default=None),
+}
+
+_gathered_field_internal = {
+    "fields": Field(default=NOTHING),
+    "modifications": Field(default=NOTHING),
 }
 
 _field_methods = {repr_maker, eq_maker}
@@ -401,6 +393,13 @@ builder(
     gatherer=GatheredFields(_field_internal, {}),
     methods=_field_methods,
     flags={"slotted": True, "kw_only": True},
+)
+
+builder(
+    GatheredFields,
+    gatherer=GatheredFields(_gathered_field_internal, {}),
+    methods={repr_maker, eq_maker},
+    flags={"slotted": True, "kw_only": False},
 )
 
 
@@ -454,6 +453,13 @@ def make_slot_gatherer(field_type=Field):
         slot_replacement = {}
 
         for k, v in cls_slots.items():
+            # Special case __dict__ and __weakref__
+            # They should be included in the final `__slots__`
+            # But ignored as a value.
+            if k in {"__dict__", "__weakref__"}:
+                slot_replacement[k] = None
+                continue
+
             if isinstance(v, field_type):
                 attrib = v
                 if attrib.type is not NOTHING:
