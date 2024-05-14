@@ -301,6 +301,8 @@ def test_slotclass_norepr_noeq():
 
 
 def test_slotclass_weakref():
+    import weakref
+
     @slotclass
     class WeakrefClass:
         __slots__ = SlotFields(
@@ -318,6 +320,11 @@ def test_slotclass_weakref():
     assert 'a' in slots
     assert 'b' in slots
     assert '__weakref__' in slots
+
+    # Test weakrefs can be created
+    inst = WeakrefClass()
+    ref = weakref.ref(inst)
+    assert ref == inst.__weakref__
 
 
 def test_slotclass_dict():
@@ -338,6 +345,11 @@ def test_slotclass_dict():
     assert 'a' in slots
     assert 'b' in slots
     assert '__dict__' in slots
+
+    # Test if __dict__ is included new values can be added
+    inst = DictClass()
+    inst.c = 42
+    assert inst.__dict__ == {"c": 42}
 
 
 def test_fieldclass():
