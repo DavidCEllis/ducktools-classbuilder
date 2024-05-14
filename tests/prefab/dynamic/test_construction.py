@@ -91,3 +91,25 @@ def test_kwonly_class():
         a: int = 0
         b: int = attribute(kw_only=True)
         c: int = attribute()  # kw_only should be ignored
+
+
+def test_build_slotted():
+    SlottedClass = build_prefab(
+        "SlottedClass",
+        [
+            ("x", attribute(doc="x co-ordinate", type=float)),
+            ("y", attribute(default=0, doc="y co-ordinate", type=float))
+        ],
+        slots=True,
+    )
+
+    inst = SlottedClass(1)
+    assert inst.x == 1
+    assert inst.y == 0
+    assert SlottedClass.__slots__ == {'x': "x co-ordinate", 'y': "y co-ordinate"}
+
+    assert SlottedClass.__annotations__ == {'x': float, 'y': float}
+
+    # Test slots are functioning
+    with pytest.raises(AttributeError):
+        inst.z = 0
