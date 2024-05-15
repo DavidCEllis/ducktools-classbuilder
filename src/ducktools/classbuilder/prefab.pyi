@@ -109,6 +109,7 @@ def _make_prefab(
     frozen: bool = False,
     dict_method: bool = False,
     recursive_repr: bool = False,
+    gathered_fields: Callable[[type], tuple[dict[str, Attribute], dict[str, typing.Any]]] | None = None,
 ) -> type: ...
 
 _T = typing.TypeVar("_T")
@@ -146,6 +147,7 @@ def build_prefab(
     frozen: bool = False,
     dict_method: bool = False,
     recursive_repr: bool = False,
+    slots: bool = False,
 ) -> type: ...
 
 def is_prefab(o: typing.Any) -> bool: ...

@@ -14,6 +14,7 @@ from ducktools.classbuilder import (
     slot_gatherer,
     slotclass,
     fieldclass,
+    GatheredFields,
 )
 
 
@@ -299,6 +300,58 @@ def test_slotclass_norepr_noeq():
     assert "__eq__" not in SlotClass.__dict__
 
 
+def test_slotclass_weakref():
+    import weakref
+
+    @slotclass
+    class WeakrefClass:
+        __slots__ = SlotFields(
+            a=1,
+            b=2,
+            __weakref__=None,
+        )
+
+    flds = get_fields(WeakrefClass)
+    assert 'a' in flds
+    assert 'b' in flds
+    assert '__weakref__' not in flds
+
+    slots = WeakrefClass.__slots__
+    assert 'a' in slots
+    assert 'b' in slots
+    assert '__weakref__' in slots
+
+    # Test weakrefs can be created
+    inst = WeakrefClass()
+    ref = weakref.ref(inst)
+    assert ref == inst.__weakref__
+
+
+def test_slotclass_dict():
+    @slotclass
+    class DictClass:
+        __slots__ = SlotFields(
+            a=1,
+            b=2,
+            __dict__=None,
+        )
+
+    flds = get_fields(DictClass)
+    assert 'a' in flds
+    assert 'b' in flds
+    assert '__dict__' not in flds
+
+    slots = DictClass.__slots__
+    assert 'a' in slots
+    assert 'b' in slots
+    assert '__dict__' in slots
+
+    # Test if __dict__ is included new values can be added
+    inst = DictClass()
+    inst.c = 42
+    assert inst.__dict__ == {"c": 42}
+
+
 def test_fieldclass():
     @fieldclass
     class NewField(Field):
@@ -374,3 +427,31 @@ def test_builder_noclass():
     assert x.a == 12
     assert x.b == 2
     assert x.c == []
+
+
+def test_gatheredfields():
+    fields = {"x": Field(default=1)}
+    modifications = {"x": NOTHING}
+
+    alt_fields = {"x": Field(default=1), "y": Field(default=2)}
+
+    flds = GatheredFields(fields, modifications)
+    flds_2 = GatheredFields(fields, modifications)
+    flds_3 = GatheredFields(alt_fields, modifications)
+
+    class Ex:
+        pass
+
+    assert flds(Ex) == (fields, modifications)
+
+    assert flds == flds_2
+    assert flds != flds_3
+    assert flds != object()
+
+    assert repr(flds).endswith(
+        "GatheredFields("
+        "fields={'x': Field(default=1, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None)}, "
+        "modifications={'x': <NOTHING OBJECT>}"
+        ")"
+    )
+
