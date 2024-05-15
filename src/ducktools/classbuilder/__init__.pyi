@@ -94,6 +94,12 @@ class Field:
 
 class GatheredFields:
     __slots__ = ("fields", "modifications")
+
+    fields: dict[str, Field]
+    modifications: dict[str, typing.Any]
+
+    __classbuilder_internals__: dict
+
     def __init__(
         self,
         fields: dict[str, Field],
