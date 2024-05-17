@@ -309,6 +309,8 @@ class Field:
     Intended to be extendable by subclasses for additional features.
 
     Note: When run under `pytest`, Field instances are Frozen.
+
+    When subclassing, passing `frozen=True` will make your subclass frozen.
     """
     __slots__ = {
         "default": "Standard default value to be used for attributes with"
@@ -335,6 +337,18 @@ class Field:
         self.doc = doc
 
         self.validate_field()
+
+    def __init_subclass__(cls, frozen=False):
+        field_methods = {_field_init_desc, repr_maker, eq_maker}
+        if frozen or _UNDER_TESTING:
+            field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+
+        builder(
+            cls,
+            gatherer=slot_gatherer,
+            methods=field_methods,
+            flags={"slotted": True, "kw_only": True}
+        )
 
     def validate_field(self):
         if self.default is not NOTHING and self.default_factory is not NOTHING:
@@ -629,33 +643,3 @@ _field_init_desc = MethodMaker(
         extra_code=["self.validate_field()"],
     )
 )
-
-
-def fieldclass(cls=None, /, *, frozen=False):
-    """
-    This is a special decorator for making Field subclasses using __slots__.
-    This works by forcing the __init__ method to treat NOTHING as a regular
-    value. This means *all* instance attributes always have defaults.
-
-    :param cls: Field subclass
-    :param frozen: Make the field class a frozen class.
-                   Field classes are always frozen when running under `pytest`
-    :return: Modified subclass
-    """
-    if not cls:
-        return lambda cls_: fieldclass(cls_, frozen=frozen)
-
-    field_methods = {_field_init_desc, repr_maker, eq_maker}
-
-    # Always freeze when running tests
-    if frozen or _UNDER_TESTING:
-        field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
-
-    cls = builder(
-        cls,
-        gatherer=slot_gatherer,
-        methods=field_methods,
-        flags={"slotted": True, "kw_only": True}
-    )
-
-    return cls

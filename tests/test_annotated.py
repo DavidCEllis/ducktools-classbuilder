@@ -4,7 +4,7 @@ import pytest
 from typing import ClassVar
 from typing_extensions import Annotated
 
-from ducktools.classbuilder import Field, SlotFields, fieldclass, NOTHING
+from ducktools.classbuilder import Field, SlotFields, NOTHING
 
 from ducktools.classbuilder import (
     is_classvar,
@@ -60,7 +60,6 @@ def test_annotation_gatherer():
 
 
 def test_make_annotation_gatherer():
-    @fieldclass
     class NewField(Field):
         __slots__ = SlotFields(newval=False)
 

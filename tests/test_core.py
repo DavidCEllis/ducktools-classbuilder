@@ -13,7 +13,6 @@ from ducktools.classbuilder import (
     SlotFields,
     slot_gatherer,
     slotclass,
-    fieldclass,
     GatheredFields,
 )
 
@@ -353,7 +352,6 @@ def test_slotclass_dict():
 
 
 def test_fieldclass():
-    @fieldclass
     class NewField(Field):
         __slots__ = SlotFields(serialize=True)
         serialize: bool
@@ -377,8 +375,7 @@ def test_fieldclass():
 
 
 def test_fieldclass_frozen():
-    @fieldclass(frozen=True)
-    class NewField(Field):
+    class NewField(Field, frozen=True):
         __slots__ = SlotFields(serialize=True)
         serialize: bool
 

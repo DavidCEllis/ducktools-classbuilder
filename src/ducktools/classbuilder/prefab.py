@@ -31,7 +31,7 @@ import sys
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields, GatheredFields,
-    builder, fieldclass, get_flags, get_fields, make_slot_gatherer,
+    builder, get_flags, get_fields, make_slot_gatherer,
     frozen_setattr_maker, frozen_delattr_maker, is_classvar,
 )
 
@@ -354,7 +354,6 @@ asdict_maker = get_asdict_maker()
 
 
 # Updated field with additional attributes
-@fieldclass
 class Attribute(Field):
     __slots__ = SlotFields(
         init=True,

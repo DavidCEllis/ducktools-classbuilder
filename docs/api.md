@@ -44,7 +44,3 @@
 ```{eval-rst}
 .. autofunction:: ducktools.classbuilder::make_annotation_gatherer
 ```
-
-```{eval-rst}
-.. autofunction:: ducktools.classbuilder::fieldclass
-```

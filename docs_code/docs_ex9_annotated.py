@@ -4,7 +4,6 @@ from typing import Annotated, Any, ClassVar, get_origin
 
 from ducktools.classbuilder import (
     builder,
-    fieldclass,
     get_fields,
     get_flags,
     Field,
@@ -15,7 +14,6 @@ from ducktools.classbuilder import (
 
 
 # First we need a new field that can store these modifications
-@fieldclass
 class AnnoField(Field):
     __slots__ = SlotFields(
         init=True,
