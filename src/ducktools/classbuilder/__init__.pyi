@@ -1,5 +1,6 @@
 import typing
 from collections.abc import Callable
+from typing_extensions import dataclass_transform
 
 _py_type = type  # Alias for type where it is used as a name
 
@@ -161,7 +162,7 @@ def slotclass(
     syntax_check: bool = True
 ) -> Callable[[type[_T]], type[_T]]: ...
 
-@typing.dataclass_transform(field_specifiers=(Field,))
+@dataclass_transform(field_specifiers=(Field,))
 class AnnotationClass(metaclass=AnnotationsSlotsMeta):
     def __init_subclass__(
         cls,
