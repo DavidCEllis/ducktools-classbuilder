@@ -26,8 +26,6 @@ A 'prebuilt' implementation of class generation.
 Includes pre and post init functions along with other methods.
 """
 
-import sys
-
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields, GatheredFields,
@@ -355,15 +353,14 @@ asdict_maker = get_asdict_maker()
 
 # Updated field with additional attributes
 class Attribute(Field):
-    __slots__ = SlotFields(
-        init=True,
-        repr=True,
-        compare=True,
-        iter=True,
-        kw_only=False,
-        serialize=True,
-        exclude_field=False,
-    )
+
+    init: bool = True
+    repr: bool = True
+    compare: bool = True
+    iter: bool = True
+    kw_only: bool = False
+    serialize: bool = True
+    exclude_field: bool = False
 
     def validate_field(self):
         super().validate_field()
