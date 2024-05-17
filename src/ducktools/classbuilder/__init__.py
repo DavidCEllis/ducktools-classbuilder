@@ -21,7 +21,7 @@
 # SOFTWARE.
 import sys
 
-__version__ = "v0.5.1"
+__version__ = "v0.6.0"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -337,31 +337,6 @@ def is_classvar(hint):
         elif isinstance(hint, str) and "ClassVar" in hint:
             return True
     return False
-
-
-def _slot_class_dict(cls_dict):
-    """
-    Take Annotations from a class dictionary and return
-    a new class dictionary with `__slots__` filled with fields.
-
-    :param cls_dict:
-    :return: cls_dict copy with `__slots__` completed and attributes removed.
-    """
-    cls_dict = cls_dict.copy()
-
-    cls_annotations = cls_dict.get("__annotations__", {})
-    cls_slots = SlotFields()
-
-    for k, v in cls_annotations.items():
-        if is_classvar(v):
-            continue
-
-        attrib = cls_dict.pop(k, NOTHING)
-        cls_slots[k] = attrib
-
-    cls_dict["__slots__"] = cls_slots
-
-    return cls_dict
 
 
 class AnnotationsSlotsMeta(type):
