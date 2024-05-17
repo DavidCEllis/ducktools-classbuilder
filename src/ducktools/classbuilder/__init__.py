@@ -241,6 +241,15 @@ frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
 default_methods = frozenset({init_maker, repr_maker, eq_maker})
 
+# Special `__init__` maker for 'Field' subclasses
+_field_init_maker = MethodMaker(
+    funcname="__init__",
+    code_generator=get_init_generator(
+        null=_NothingType(),
+        extra_code=["self.validate_field()"],
+    )
+)
+
 
 def builder(cls=None, /, *, gatherer, methods, flags=None):
     """
@@ -298,10 +307,91 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
     return cls
 
 
+def is_classvar(hint):
+    _typing = sys.modules.get("typing")
+
+    if _typing:
+        # Annotated is a nightmare I'm never waking up from
+        # 3.8 and 3.9 need Annotated from typing_extensions
+        # 3.8 also needs get_origin from typing_extensions
+        if sys.version_info < (3, 10):
+            _typing_extensions = sys.modules.get("typing_extensions")
+            if _typing_extensions:
+                _Annotated = _typing_extensions.Annotated
+                _get_origin = _typing_extensions.get_origin
+            else:
+                _Annotated, _get_origin = None, None
+        else:
+            _Annotated = _typing.Annotated
+            _get_origin = _typing.get_origin
+
+        if _Annotated and _get_origin(hint) is _Annotated:
+            hint = getattr(hint, "__origin__", None)
+
+        if (
+            hint is _typing.ClassVar
+            or getattr(hint, "__origin__", None) is _typing.ClassVar
+        ):
+            return True
+        # String used as annotation
+        elif isinstance(hint, str) and "ClassVar" in hint:
+            return True
+    return False
+
+
+def _slot_class_dict(cls_dict):
+    """
+    Take Annotations from a class dictionary and return
+    a new class dictionary with `__slots__` filled with fields.
+
+    :param cls_dict:
+    :return: cls_dict copy with `__slots__` completed and attributes removed.
+    """
+    cls_dict = cls_dict.copy()
+
+    cls_annotations = cls_dict.get("__annotations__", {})
+    cls_slots = SlotFields()
+
+    for k, v in cls_annotations.items():
+        if is_classvar(v):
+            continue
+
+        attrib = cls_dict.pop(k, NOTHING)
+        cls_slots[k] = attrib
+
+    cls_dict["__slots__"] = cls_slots
+
+    return cls_dict
+
+
+class AnnotationsSlotsMeta(type):
+    """
+    Metaclass to convert annotations to slots.
+
+    Will not convert `ClassVar` hinted values.
+    """
+    def __new__(cls, name, bases, classdict, slots=True, **kwargs):
+
+        # Obtain slots from annotations
+        if "__slots__" not in classdict and slots:
+            cls_annotations = classdict.get("__annotations__", {})
+            cls_slots = SlotFields({
+                k: classdict.pop(k, NOTHING)
+                for k, v in cls_annotations.items()
+                if not is_classvar(v)
+            })
+            classdict["__slots__"] = cls_slots
+
+        # Make new slotted class
+        new_cls = super().__new__(cls, name, bases, classdict, **kwargs)
+
+        return new_cls
+
+
 # The Field class can finally be defined.
 # The __init__ method has to be written manually so Fields can be created
 # However after this, the other methods can be generated.
-class Field:
+class Field(metaclass=AnnotationsSlotsMeta):
     """
     A basic class to handle the assignment of defaults/factories with
     some metadata.
@@ -339,7 +429,7 @@ class Field:
         self.validate_field()
 
     def __init_subclass__(cls, frozen=False):
-        field_methods = {_field_init_desc, repr_maker, eq_maker}
+        field_methods = {_field_init_maker, repr_maker, eq_maker}
         if frozen or _UNDER_TESTING:
             field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
 
@@ -498,42 +588,6 @@ def make_slot_gatherer(field_type=Field):
     return field_slot_gatherer
 
 
-slot_gatherer = make_slot_gatherer()
-
-
-# Annotation gathering tools
-def is_classvar(hint):
-    _typing = sys.modules.get("typing")
-
-    if _typing:
-        # Annotated is a nightmare I'm never waking up from
-        # 3.8 and 3.9 need Annotated from typing_extensions
-        # 3.8 also needs get_origin from typing_extensions
-        if sys.version_info < (3, 10):
-            _typing_extensions = sys.modules.get("typing_extensions")
-            if _typing_extensions:
-                _Annotated = _typing_extensions.Annotated
-                _get_origin = _typing_extensions.get_origin
-            else:
-                _Annotated, _get_origin = None, None
-        else:
-            _Annotated = _typing.Annotated
-            _get_origin = _typing.get_origin
-
-        if _Annotated and _get_origin(hint) is _Annotated:
-            hint = getattr(hint, "__origin__", None)
-
-        if (
-            hint is _typing.ClassVar
-            or getattr(hint, "__origin__", None) is _typing.ClassVar
-        ):
-            return True
-        # String used as annotation
-        elif isinstance(hint, str) and "ClassVar" in hint:
-            return True
-    return False
-
-
 def make_annotation_gatherer(field_type=Field, leave_default_values=True):
     """
     Create a new annotation gatherer that will work with `Field` instances
@@ -581,6 +635,7 @@ def make_annotation_gatherer(field_type=Field, leave_default_values=True):
     return field_annotation_gatherer
 
 
+slot_gatherer = make_slot_gatherer()
 annotation_gatherer = make_annotation_gatherer()
 
 
@@ -625,21 +680,15 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     return cls
 
 
-def annotationclass(cls=None, /, *, methods=default_methods):
-    if not cls:
-        return lambda cls_: annotationclass(cls_, methods=methods)
+class AnnotationClass(metaclass=AnnotationsSlotsMeta):
+    def __init_subclass__(cls, methods=default_methods, **kwargs):
+        # Check class dict otherwise this will always be True as this base
+        # class uses slots.
 
-    cls = builder(cls, gatherer=annotation_gatherer, methods=methods, flags={"slotted": False})
+        slots = "__slots__" in cls.__dict__
 
-    check_argument_order(cls)
+        gatherer = slot_gatherer if slots else annotation_gatherer
 
-    return cls
-
-
-_field_init_desc = MethodMaker(
-    funcname="__init__",
-    code_generator=get_init_generator(
-        null=_NothingType(),
-        extra_code=["self.validate_field()"],
-    )
-)
+        builder(cls, gatherer=gatherer, methods=methods, flags={"slotted": slots})
+        check_argument_order(cls)
+        super().__init_subclass__(**kwargs)

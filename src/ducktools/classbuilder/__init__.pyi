@@ -68,8 +68,21 @@ def builder(
     flags: dict[str, bool] | None = None,
 ) -> Callable[[type[_T]], type[_T]]: ...
 
+def is_classvar(hint: object) -> bool: ...
 
-class Field:
+def _slot_class_dict(cls_dict: dict[str, typing.Any]) -> dict[str, typing.Any]: ...
+
+class AnnotationsSlotsMeta(type):
+    def __new__(
+        cls: type[_T],
+        name: str,
+        bases: tuple[type, ...],
+        classdict: dict[str, typing.Any],
+        **kwargs: typing.Any,
+    ) -> type[_T]: ...
+
+
+class Field(metaclass=AnnotationsSlotsMeta):
     default: _NothingType | typing.Any
     default_factory: _NothingType | typing.Any
     type: _NothingType | _py_type
@@ -118,16 +131,12 @@ def make_slot_gatherer(
         field_type: type[Field] = Field
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
-def slot_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]:
-    ...
-
-def is_classvar(hint: object) -> bool: ...
-
 def make_annotation_gatherer(
     field_type: type[Field] = Field,
     leave_default_values: bool = True,
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
+def slot_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 def annotation_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 
 def check_argument_order(cls: type) -> None: ...
@@ -150,19 +159,6 @@ def slotclass(
     syntax_check: bool = True
 ) -> Callable[[type[_T]], type[_T]]: ...
 
-@typing.overload
-def annotationclass(
-    cls: type[_T],
-    /,
-    *,
-    methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
-) -> type[_T]: ...
-
-@typing.overload
-def annotationclass(
-        cls: None = None,
-        /,
-        *,
-        methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
-) -> Callable[[type[_T]], type[_T]]: ...
-
+@typing.dataclass_transform(field_specifiers=(Field,))
+class AnnotationClass(metaclass=AnnotationsSlotsMeta):
+    def __init_subclass__(cls, methods: set[MethodMaker] = default_methods, **kwargs) -> None: ...

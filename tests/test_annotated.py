@@ -8,7 +8,7 @@ from ducktools.classbuilder import Field, SlotFields, NOTHING
 
 from ducktools.classbuilder import (
     is_classvar,
-    annotationclass,
+    AnnotationClass,
     annotation_gatherer,
     make_annotation_gatherer,
 )
@@ -97,8 +97,7 @@ def test_make_annotation_gatherer():
 
 
 def test_annotationclass():
-    @annotationclass()
-    class ExampleAnnotated:
+    class ExampleAnnotated(AnnotationClass, slots=False):
         a: str = "a"
         b: "list[str]" = "b"
         c: Annotated[str, ""] = Field(default="c")
@@ -128,8 +127,7 @@ def test_annotationclass():
 
 def test_annotated_syntax_error():
     with pytest.raises(SyntaxError):
-        @annotationclass
-        class ExampleAnnotated:
+        class ExampleAnnotated(AnnotationClass):
             a: str = "a"
             b: "list[str]"
             c: Annotated[str, ""] = Field(default="c")
