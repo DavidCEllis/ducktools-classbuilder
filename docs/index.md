@@ -39,7 +39,7 @@ the tools provided by the main `classbuilder` module.
 
 `classbuilder` and `prefab` have been intentionally written to avoid importing external
 modules, including stdlib ones that would have a significant impact on start time.
-(This is why all of the typing is done in a stub file).
+(This is also why all of the typing is done in a stub file).
 
 ## Slot Class Usage ##
 
@@ -65,17 +65,15 @@ print(ex)
 
 ## Annotation Class Usage ##
 
-> Annotation based classes via 'extras' are only supported on Python 3.10 or later!
-
-Building classes based on annotations requires the `extras` submodule.
-This is separate because it relies on `inspect` to simplify the implementation
-but is a slow import.
+There is an additional AnnotationClass base class that allows creating slotted classes
+using annotations. This has to be a base class with a specific metaclass in order to 
+create the `__slots__` field *before* the class has been generated in order to work
+correctly.
 
 ```python
-from ducktools.classbuilder import annotationclass
+from ducktools.classbuilder import AnnotationClass
 
-@annotationclass
-class AnnotatedDC:
+class AnnotatedDC(AnnotationClass):
     the_answer: int = 42
     the_question: str = "What do you get if you multiply six by nine?"
 

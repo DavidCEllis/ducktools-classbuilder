@@ -135,10 +135,9 @@ These can be examined by looking at the output of any of the `<method>_generator
 For example the included `init_generator`.
 
 ```python
-from ducktools.classbuilder import annotationclass, init_generator
+from ducktools.classbuilder import AnnotationClass, init_generator
 
-@annotationclass
-class InitExample:
+class InitExample(AnnotationClass):
    a: str
    b: str = "b"
    obj: object = object()
@@ -171,11 +170,10 @@ The `MethodMaker` descriptors actions can be observed by looking at the class
 dictionary before and after `__init__` is first called.
 
 ```python
-from ducktools.classbuilder import annotationclass
+from ducktools.classbuilder import AnnotationClass
 
 
-@annotationclass
-class InitExample:
+class InitExample(AnnotationClass):
    a: str
    b: str = "b"
 
