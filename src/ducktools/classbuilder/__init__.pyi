@@ -73,17 +73,17 @@ def is_classvar(hint: object) -> bool: ...
 
 def _slot_class_dict(cls_dict: dict[str, typing.Any]) -> dict[str, typing.Any]: ...
 
-class AnnotationsSlotsMeta(type):
+class SlotMakerMeta(type):
     def __new__(
         cls: type[_T],
         name: str,
         bases: tuple[type, ...],
-        classdict: dict[str, typing.Any],
+        ns: dict[str, typing.Any],
         slots: bool = True,
         **kwargs: typing.Any,
     ) -> type[_T]: ...
 
-class Field(metaclass=AnnotationsSlotsMeta):
+class Field(metaclass=SlotMakerMeta):
     default: _NothingType | typing.Any
     default_factory: _NothingType | typing.Any
     type: _NothingType | _py_type
@@ -131,11 +131,11 @@ class SlotFields(dict):
     ...
 
 def make_slot_gatherer(
-    field_type: AnnotationsSlotsMeta = Field
+    field_type: SlotMakerMeta = Field
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 def make_annotation_gatherer(
-    field_type: AnnotationsSlotsMeta = Field,
+    field_type: SlotMakerMeta = Field,
     leave_default_values: bool = True,
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
@@ -163,7 +163,7 @@ def slotclass(
 ) -> Callable[[type[_T]], type[_T]]: ...
 
 @dataclass_transform(field_specifiers=(Field,))
-class AnnotationClass(metaclass=AnnotationsSlotsMeta):
+class AnnotationClass(metaclass=SlotMakerMeta):
     def __init_subclass__(
         cls,
         methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,

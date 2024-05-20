@@ -339,26 +339,26 @@ def is_classvar(hint):
     return False
 
 
-class AnnotationsSlotsMeta(type):
+class SlotMakerMeta(type):
     """
     Metaclass to convert annotations to slots.
 
     Will not convert `ClassVar` hinted values.
     """
-    def __new__(cls, name, bases, classdict, slots=True, **kwargs):
+    def __new__(cls, name, bases, ns, slots=True, **kwargs):
 
         # Obtain slots from annotations
-        if "__slots__" not in classdict and slots:
-            cls_annotations = classdict.get("__annotations__", {})
+        if "__slots__" not in ns and slots:
+            cls_annotations = ns.get("__annotations__", {})
             cls_slots = SlotFields({
-                k: classdict.pop(k, NOTHING)
+                k: ns.pop(k, NOTHING)
                 for k, v in cls_annotations.items()
                 if not is_classvar(v)
             })
-            classdict["__slots__"] = cls_slots
+            ns["__slots__"] = cls_slots
 
         # Make new slotted class
-        new_cls = super().__new__(cls, name, bases, classdict, **kwargs)
+        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
         return new_cls
 
@@ -366,7 +366,7 @@ class AnnotationsSlotsMeta(type):
 # The Field class can finally be defined.
 # The __init__ method has to be written manually so Fields can be created
 # However after this, the other methods can be generated.
-class Field(metaclass=AnnotationsSlotsMeta):
+class Field(metaclass=SlotMakerMeta):
     """
     A basic class to handle the assignment of defaults/factories with
     some metadata.
@@ -655,7 +655,7 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     return cls
 
 
-class AnnotationClass(metaclass=AnnotationsSlotsMeta):
+class AnnotationClass(metaclass=SlotMakerMeta):
     def __init_subclass__(cls, methods=default_methods, **kwargs):
         # Check class dict otherwise this will always be True as this base
         # class uses slots.
