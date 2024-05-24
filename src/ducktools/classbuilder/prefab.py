@@ -25,12 +25,13 @@ A 'prebuilt' implementation of class generation.
 
 Includes pre and post init functions along with other methods.
 """
+import sys
 
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields, GatheredFields,
     builder, get_flags, get_fields, make_slot_gatherer,
-    frozen_setattr_maker, frozen_delattr_maker, is_classvar,
+    frozen_setattr_maker, frozen_delattr_maker, is_classvar, eval_hint,
 )
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
@@ -439,18 +440,32 @@ def attribute_gatherer(cls):
 
     cls_modifications = {}
 
+    # Extra code to handle string annotations
+    cls_locals = dict(vars(cls))
+    cls_globals = None
+    module_name = getattr(cls, '__module__', None)
+    if module_name:
+        module = sys.modules.get(module_name, None)
+        if module:
+            cls_globals = getattr(module, '__dict__', None)
+
+    cls_globals = cls_globals.copy() if cls_globals is not None else None
+
     if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
         # replace the classes' attributes dict with one with the correct
         # order from the annotations.
         kw_flag = False
         new_attributes = {}
         for name, value in cls_annotations.items():
+            # Attempt to eval hint
+            hint = eval_hint(value, cls_globals, cls_locals)
+
             # Ignore ClassVar hints
-            if is_classvar(value):
+            if is_classvar(hint):
                 continue
 
             # Look for the KW_ONLY annotation
-            if value is KW_ONLY or value == "KW_ONLY":
+            if hint is KW_ONLY:
                 if kw_flag:
                     raise PrefabError(
                         "Class can not be defined as keyword only twice"

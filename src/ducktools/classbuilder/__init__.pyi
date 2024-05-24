@@ -69,7 +69,15 @@ def builder(
     flags: dict[str, bool] | None = None,
 ) -> Callable[[type[_T]], type[_T]]: ...
 
-def is_classvar(hint: object) -> bool: ...
+def eval_hint(
+    hint: object,
+    obj_globals: None | dict[str, typing.Any] = None,
+    obj_locals: None | dict[str, typing.Any] = None,
+) -> object: ...
+
+def is_classvar(
+    hint: object,
+) -> bool: ...
 
 def _slot_class_dict(cls_dict: dict[str, typing.Any]) -> dict[str, typing.Any]: ...
 
