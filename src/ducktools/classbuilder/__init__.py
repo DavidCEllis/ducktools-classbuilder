@@ -314,7 +314,7 @@ def eval_hint(hint, obj_globals=None, obj_locals=None):
     while isinstance(hint, str):
         try:
             hint = eval(hint, globs, locs)
-        except NameError:
+        except (NameError, TypeError):  # Subscripting in strings can give TypeError
             break
     return hint
 
