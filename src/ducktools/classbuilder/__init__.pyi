@@ -89,7 +89,7 @@ class SlotMakerMeta(type):
         ns: dict[str, typing.Any],
         slots: bool = True,
         **kwargs: typing.Any,
-    ) -> type[_T]: ...
+    ) -> _T: ...
 
 class Field(metaclass=SlotMakerMeta):
     default: _NothingType | typing.Any
