@@ -174,7 +174,7 @@ provide `__slots__` by generating them **before** the class is created using a
 metaclass. `slots=False` can be passed when creating the class to avoid creating slots.
 
 ```python
-from ducktools.classbuilder import AnnotationClass
+from ducktools.classbuilder.annotations import AnnotationClass
 
 class AnnotatedDC(AnnotationClass):
     the_answer: int = 42
@@ -197,7 +197,7 @@ It will copy values provided as the `type` to `Field` into the
 Values provided to `doc` will be placed in the final `__slots__` 
 field so they are present on the class if `help(...)` is called.
 
-A fairly basic `annotations_gatherer` and `annotationclass` are also included
+A fairly basic `annotations_gatherer` and `AnnotationClass` are also included
 and can be used to generate classbuilders that rely on annotations.
 
 If you want something with more features you can look at the `prefab.py`
