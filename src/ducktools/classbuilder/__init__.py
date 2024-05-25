@@ -328,8 +328,7 @@ class Field:
                            "a default value, useful for mutable objects like "
                            "lists.",
         "type": "The type of the attribute to be assigned by this field.",
-        "doc": "The documentation that appears when calling help(...) on the class.",
-        "kw_only": "This field should be a keyword only parameter in __init__."
+        "doc": "The documentation that appears when calling help(...) on the class."
     }
 
     # noinspection PyShadowingBuiltins
