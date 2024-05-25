@@ -1,6 +1,5 @@
 import typing
 from collections.abc import Callable
-from typing_extensions import dataclass_transform
 
 _py_type = type  # Alias for type where it is used as a name
 
@@ -69,34 +68,14 @@ def builder(
     flags: dict[str, bool] | None = None,
 ) -> Callable[[type[_T]], type[_T]]: ...
 
-def eval_hint(
-    hint: object,
-    obj_globals: None | dict[str, typing.Any] = None,
-    obj_locals: None | dict[str, typing.Any] = None,
-) -> object: ...
 
-def is_classvar(
-    hint: object,
-) -> bool: ...
-
-def _slot_class_dict(cls_dict: dict[str, typing.Any]) -> dict[str, typing.Any]: ...
-
-class SlotMakerMeta(type):
-    def __new__(
-        cls: type[_T],
-        name: str,
-        bases: tuple[type, ...],
-        ns: dict[str, typing.Any],
-        slots: bool = True,
-        **kwargs: typing.Any,
-    ) -> _T: ...
-
-class Field(metaclass=SlotMakerMeta):
+class Field:
     default: _NothingType | typing.Any
     default_factory: _NothingType | typing.Any
     type: _NothingType | _py_type
     doc: None | str
 
+    __slots__: dict[str, str]
     __classbuilder_internals__: dict
 
     def __init__(
@@ -139,16 +118,10 @@ class SlotFields(dict):
     ...
 
 def make_slot_gatherer(
-    field_type: SlotMakerMeta = Field
-) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
-
-def make_annotation_gatherer(
-    field_type: SlotMakerMeta = Field,
-    leave_default_values: bool = True,
+    field_type: type[Field] = Field
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 def slot_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
-def annotation_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 
 def check_argument_order(cls: type) -> None: ...
 
@@ -169,11 +142,3 @@ def slotclass(
     methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
     syntax_check: bool = True
 ) -> Callable[[type[_T]], type[_T]]: ...
-
-@dataclass_transform(field_specifiers=(Field,))
-class AnnotationClass(metaclass=SlotMakerMeta):
-    def __init_subclass__(
-        cls,
-        methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
-        **kwargs,
-    ) -> None: ...

@@ -31,8 +31,9 @@ from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields, GatheredFields,
     builder, get_flags, get_fields, make_slot_gatherer,
-    frozen_setattr_maker, frozen_delattr_maker, is_classvar, eval_hint,
+    frozen_setattr_maker, frozen_delattr_maker
 )
+from .annotations import is_classvar, eval_hint
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
@@ -354,14 +355,15 @@ asdict_maker = get_asdict_maker()
 
 # Updated field with additional attributes
 class Attribute(Field):
-
-    init: bool = True
-    repr: bool = True
-    compare: bool = True
-    iter: bool = True
-    kw_only: bool = False
-    serialize: bool = True
-    exclude_field: bool = False
+    __slots__ = SlotFields(
+        init=True,
+        repr=True,
+        compare=True,
+        iter=True,
+        kw_only=False,
+        serialize=True,
+        exclude_field=False,
+    )
 
     def validate_field(self):
         super().validate_field()
