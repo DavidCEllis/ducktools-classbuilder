@@ -458,7 +458,14 @@ def make_slot_gatherer(field_type=Field):
         :param cls: Class to gather field information from
         :return: dict of field_name: Field(...)
         """
-        cls_slots = cls.__dict__.get("__slots__", None)
+
+        try:
+            cls_slots = cls.__dict__["__slots__"]
+        except KeyError:
+            raise AttributeError(
+                "__slots__ must be defined as an instance of SlotFields "
+                "in order to generate a slotclass"
+            )
 
         if not isinstance(cls_slots, SlotFields):
             raise TypeError(

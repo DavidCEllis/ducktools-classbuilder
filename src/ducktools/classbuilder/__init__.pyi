@@ -117,8 +117,15 @@ class GatheredFields:
 class SlotFields(dict):
     ...
 
+_FieldType = typing.TypeVar("_FieldType", bound=Field)
+
+@typing.overload
 def make_slot_gatherer(
-    field_type: type[Field] = Field
+    field_type: type[_FieldType]
+) -> Callable[[type], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
+
+@typing.overload
+def make_slot_gatherer(
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 def slot_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
