@@ -6,11 +6,12 @@ from typing_extensions import Annotated
 
 from ducktools.classbuilder import Field, SlotFields, NOTHING
 
-from ducktools.classbuilder import (
+from ducktools.classbuilder.annotations import (
     is_classvar,
     AnnotationClass,
     annotation_gatherer,
     make_annotation_gatherer,
+    get_annotations,
 )
 
 CV = ClassVar
@@ -81,7 +82,7 @@ def test_make_annotation_gatherer():
         h: Annotated[CV[str], ''] = "h"
 
     annos, modifications = gatherer(ExampleAnnotated)
-    annotations = ExampleAnnotated.__annotations__
+    annotations = get_annotations(vars(ExampleAnnotated))
 
     assert annos["blank_field"] == NewField(type=str)
 

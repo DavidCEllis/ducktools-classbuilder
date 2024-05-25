@@ -1,6 +1,6 @@
 import typing
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing_extensions import dataclass_transform
 
 from . import Field, MethodMaker, default_methods
@@ -9,10 +9,12 @@ _T = typing.TypeVar("_T")
 
 
 def eval_hint(
-    hint: object,
+    hint: type | str,
     obj_globals: None | dict[str, typing.Any] = None,
     obj_locals: None | dict[str, typing.Any] = None,
-) -> object: ...
+) -> type | str: ...
+
+def get_annotations(ns: Mapping[str, typing.Any]) -> dict[str, typing.Any]: ...
 
 def is_classvar(
     hint: object,

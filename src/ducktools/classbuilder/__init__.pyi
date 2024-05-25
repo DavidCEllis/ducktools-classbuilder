@@ -1,7 +1,7 @@
 import typing
 from collections.abc import Callable
 
-_py_type = type  # Alias for type where it is used as a name
+_py_type = type | str  # Alias for type hint values
 
 __version__: str
 INTERNALS_DICT: str

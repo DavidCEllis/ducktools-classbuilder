@@ -15,6 +15,7 @@ from ducktools.classbuilder import (
     slotclass,
     GatheredFields,
 )
+from ducktools.classbuilder.annotations import get_annotations
 
 
 def test_get_fields_flags():
@@ -170,7 +171,7 @@ def test_slot_gatherer_success():
     assert slots == fields
     assert modifications["__slots__"] == {"a": None, "b": None, "c": "a list", "d": None}
     assert modifications["__annotations__"] == {"a": int, "d": str}
-    assert SlotsExample.__annotations__ == {"a": int}  # Original annotations dict unmodified
+    assert get_annotations(SlotsExample.__dict__) == {"a": int}  # Original annotations dict unmodified
 
 
 def test_slot_gatherer_failure():

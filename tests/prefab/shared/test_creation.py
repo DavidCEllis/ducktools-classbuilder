@@ -1,6 +1,7 @@
 """Tests for errors raised on class creation"""
 import sys
 
+from ducktools.classbuilder.annotations import get_annotations
 from ducktools.classbuilder.prefab import PrefabError
 
 import pytest
@@ -45,13 +46,15 @@ class TestRemoveRecipe:
         removed_attributes = ["x", "y", "z"]
         for attrib in removed_attributes:
             assert attrib not in getattr(OnlyHints, "__dict__")
-            assert attrib in getattr(OnlyHints, "__annotations__", {})
+            assert attrib in get_annotations(OnlyHints.__dict__)
 
     def test_removed_only_used_defaults(self):
         from creation import MixedHints
 
-        assert "x" in getattr(MixedHints, "__annotations__")
-        assert "y" in getattr(MixedHints, "__annotations__")
+        annotations = get_annotations(MixedHints.__dict__)
+
+        assert "x" in annotations
+        assert "y" in annotations
 
         assert "x" in getattr(MixedHints, "__dict__")
 
@@ -182,7 +185,7 @@ class TestSplitVarDef:
 
         cls = getattr(creation, classname)
 
-        assert cls.__annotations__["x"] == str
+        assert get_annotations(cls.__dict__)["x"] == str
 
         inst = cls()
         assert inst.x == "test"
@@ -208,7 +211,7 @@ class TestSplitVarDef:
         assert inst.x == "true_test"
         assert repr(inst) == "HorribleMess(x='true_test', y='test_2')"
 
-        assert cls.__annotations__ == {"x": str, "y": str}
+        assert get_annotations(cls.__dict__) == {"x": str, "y": str}
 
 
 def test_call_mistaken():

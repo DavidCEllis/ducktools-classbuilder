@@ -7,15 +7,52 @@ from . import (
 
 
 def eval_hint(hint, obj_globals=None, obj_locals=None):
-    # Can 'eval' mutate these like exec?
-    globs = obj_globals.copy() if obj_globals is not None else None
-    locs = obj_locals.copy() if obj_locals is not None else None
+    """
+    Attempt to evaluate a string type hint in the given
+    context. If this fails, return the original string.
+
+    :param hint: The existing type hint
+    :param obj_globals: global context
+    :param obj_locals: local context
+    :return: evaluated hint, or string if it could not evaluate
+    """
     while isinstance(hint, str):
+        # noinspection PyBroadException
         try:
-            hint = eval(hint, globs, locs)
-        except (NameError, TypeError):  # Subscripting in strings can give TypeError
+            hint = eval(hint, obj_globals, obj_locals)
+        except Exception:
             break
     return hint
+
+
+def get_annotations(ns):
+    """
+    Given an class namespace, attempt to retrieve the
+    annotations dictionary and evaluate strings.
+
+    :param ns: Class namespace (eg cls.__dict__)
+    :return: dictionary of evaluated annotations
+    """
+    try:
+        obj_modulename = ns["__module__"]
+    except KeyError:
+        obj_module = None
+    else:
+        obj_module = sys.modules.get(obj_modulename, None)
+
+    if obj_module:
+        obj_globals = obj_module.__dict__.copy()
+    else:
+        obj_globals = {}
+
+    obj_locals = ns.copy()
+
+    raw_annotations = ns.get("__annotations__", {})
+
+    return {
+        k: eval_hint(v, obj_globals, obj_locals)
+        for k, v in raw_annotations.items()
+    }
 
 
 def is_classvar(hint):
@@ -56,20 +93,11 @@ class SlotMakerMeta(type):
 
         # Obtain slots from annotations
         if "__slots__" not in ns and slots:
-            try:
-                obj_modulename = ns["__module__"]
-            except KeyError:
-                obj_module = None
-            else:
-                obj_module = sys.modules.get(obj_modulename, None)
-
-            obj_globals = getattr(obj_module, "__dict__", None)
-
-            cls_annotations = ns.get("__annotations__", {})
+            cls_annotations = get_annotations(ns)
             cls_slots = SlotFields({
                 k: ns.pop(k, NOTHING)
                 for k, v in cls_annotations.items()
-                if not is_classvar(eval_hint(v, obj_globals=obj_globals, obj_locals=ns))
+                if not is_classvar(v)
             })
             ns["__slots__"] = cls_slots
 
@@ -93,25 +121,15 @@ def make_annotation_gatherer(
     :return: An annotation gatherer with these settings.
     """
     def field_annotation_gatherer(cls):
-        cls_annotations = cls.__dict__.get("__annotations__", {})
 
         cls_fields: dict[str, field_type] = {}
-
         modifications = {}
 
-        cls_locals = dict(vars(cls))
-        cls_globals = {}
-
-        module_name = getattr(cls, '__module__', None)
-        if module_name:
-            module = sys.modules.get(module_name, None)
-            if module:
-                cls_globals = getattr(module, '__dict__', None)
+        cls_annotations = get_annotations(cls.__dict__)
 
         for k, v in cls_annotations.items():
-            hint = eval_hint(v, cls_globals, cls_locals)
             # Ignore ClassVar
-            if is_classvar(hint):
+            if is_classvar(v):
                 continue
 
             attrib = getattr(cls, k, NOTHING)
