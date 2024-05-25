@@ -178,7 +178,7 @@ def test_slot_gatherer_failure():
     class NoSlots:
         ...
 
-    with pytest.raises(TypeError):
+    with pytest.raises(AttributeError):
         slot_gatherer(NoSlots)
 
     class WrongSlots:
