@@ -1,12 +1,14 @@
 import typing
+import types
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from typing_extensions import dataclass_transform
 
 from . import Field, MethodMaker, default_methods
 
 _T = typing.TypeVar("_T")
 
+_CopiableMappings = dict[str, typing.Any] | types.MappingProxyType[str, typing.Any]
 
 def eval_hint(
     hint: type | str,
@@ -14,7 +16,7 @@ def eval_hint(
     obj_locals: None | dict[str, typing.Any] = None,
 ) -> type | str: ...
 
-def get_annotations(ns: Mapping[str, typing.Any]) -> dict[str, typing.Any]: ...
+def get_annotations(ns: _CopiableMappings) -> dict[str, typing.Any]: ...
 
 def is_classvar(
     hint: object,
