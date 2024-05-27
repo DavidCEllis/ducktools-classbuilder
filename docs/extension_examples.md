@@ -87,7 +87,8 @@ Here's a similar example using the `annotations_gatherer`
 
 ```python
 from pprint import pprint
-from ducktools.classbuilder import annotation_gatherer, Field
+from ducktools.classbuilder import Field
+from ducktools.classbuilder.annotations import annotation_gatherer
 
 
 class GatherExample:
@@ -135,7 +136,8 @@ These can be examined by looking at the output of any of the `<method>_generator
 For example the included `init_generator`.
 
 ```python
-from ducktools.classbuilder import AnnotationClass, init_generator
+from ducktools.classbuilder import init_generator
+from ducktools.classbuilder.annotations import AnnotationClass
 
 class InitExample(AnnotationClass):
    a: str
@@ -170,7 +172,7 @@ The `MethodMaker` descriptors actions can be observed by looking at the class
 dictionary before and after `__init__` is first called.
 
 ```python
-from ducktools.classbuilder import AnnotationClass
+from ducktools.classbuilder.annotations import AnnotationClass
 
 
 class InitExample(AnnotationClass):
@@ -668,7 +670,6 @@ This is a long example but is designed to show how you can use these tools to im
 >       If you need to change the value of a field use Field.from_field(...) to make a new instance.
 
 ```python
-import inspect
 from pprint import pp
 from typing import Annotated, Any, ClassVar, get_origin
 
@@ -681,6 +682,8 @@ from ducktools.classbuilder import (
     SlotFields,
     NOTHING,
 )
+
+from ducktools.classbuilder.annotations import get_annotations
 
 
 # First we need a new field that can store these modifications
@@ -727,9 +730,9 @@ IGNORE_ALL = FieldModifier(init=False, repr=False, compare=False)
 
 # Analyse the class and create these new Fields based on the annotations
 def annotated_gatherer(cls: type) -> tuple[dict[str, AnnoField], dict[str, Any]]:
-    # String annotations *MUST* be evaluated for this to work
+    # String annotations *MUST* be able to evaluate for this to work
     # Trying to parse the Annotations as strings would add a *lot* of extra work
-    cls_annotations = inspect.get_annotations(cls, eval_str=True)
+    cls_annotations = get_annotations(cls.__dict__)
     cls_fields = {}
 
     # This gatherer doesn't make any class modifications but still needs
