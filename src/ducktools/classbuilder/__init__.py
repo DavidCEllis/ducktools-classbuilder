@@ -548,51 +548,6 @@ def make_slot_gatherer(field_type=Field):
     return field_slot_gatherer
 
 
-slot_gatherer = make_slot_gatherer()
-
-
-def check_argument_order(cls):
-    """
-    Raise a SyntaxError if the argument order will be invalid for a generated
-    `__init__` function.
-
-    :param cls: class being built
-    """
-    fields = get_fields(cls)
-    used_default = False
-    for k, v in fields.items():
-        if v.default is NOTHING and v.default_factory is NOTHING:
-            if used_default:
-                raise SyntaxError(
-                    f"non-default argument {k!r} follows default argument"
-                )
-        else:
-            used_default = True
-
-
-# Class Decorators
-def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
-    """
-    Example of class builder in action using __slots__ to find fields.
-
-    :param cls: Class to be analysed and modified
-    :param methods: MethodMakers to be added to the class
-    :param syntax_check: check there are no arguments without defaults
-                        after arguments with defaults.
-    :return: Modified class
-    """
-    if not cls:
-        return lambda cls_: slotclass(cls_, methods=methods, syntax_check=syntax_check)
-
-    cls = builder(cls, gatherer=slot_gatherer, methods=methods, flags={"slotted": True})
-
-    if syntax_check:
-        check_argument_order(cls)
-
-    return cls
-
-
-# Annotation based class tools
 def make_annotation_gatherer(
     field_type=Field,
     leave_default_values=True,
@@ -643,7 +598,49 @@ def make_annotation_gatherer(
     return field_annotation_gatherer
 
 
+slot_gatherer = make_slot_gatherer()
 annotation_gatherer = make_annotation_gatherer()
+
+
+def check_argument_order(cls):
+    """
+    Raise a SyntaxError if the argument order will be invalid for a generated
+    `__init__` function.
+
+    :param cls: class being built
+    """
+    fields = get_fields(cls)
+    used_default = False
+    for k, v in fields.items():
+        if v.default is NOTHING and v.default_factory is NOTHING:
+            if used_default:
+                raise SyntaxError(
+                    f"non-default argument {k!r} follows default argument"
+                )
+        else:
+            used_default = True
+
+
+# Class Decorators
+def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
+    """
+    Example of class builder in action using __slots__ to find fields.
+
+    :param cls: Class to be analysed and modified
+    :param methods: MethodMakers to be added to the class
+    :param syntax_check: check there are no arguments without defaults
+                        after arguments with defaults.
+    :return: Modified class
+    """
+    if not cls:
+        return lambda cls_: slotclass(cls_, methods=methods, syntax_check=syntax_check)
+
+    cls = builder(cls, gatherer=slot_gatherer, methods=methods, flags={"slotted": True})
+
+    if syntax_check:
+        check_argument_order(cls)
+
+    return cls
 
 
 class AnnotationClass(metaclass=SlotMakerMeta):
