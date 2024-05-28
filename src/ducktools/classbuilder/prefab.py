@@ -560,6 +560,7 @@ def _make_prefab(
 
 class Prefab(metaclass=SlotMakerMeta):
     _meta_gatherer = prefab_gatherer
+    __slots__ = {}
 
     # noinspection PyShadowingBuiltins
     def __init_subclass__(

@@ -781,20 +781,22 @@ class SlotMakerMeta(type):
     Will not convert `ClassVar` hinted values.
     """
     def __new__(cls, name, bases, ns, slots=True, **kwargs):
-        # Check if a different gatherer has been set in any base classes
-        # Default to unified gatherer
-        gatherer = ns.get(META_GATHERER_NAME, None)
-        if not gatherer:
-            for base in bases:
-                if g := getattr(base, META_GATHERER_NAME, None):
-                    gatherer = g
-                    break
+        # This should only run if slots=True is declared
+        # and __slots__ have not already been defined
+        if slots and "__slots__" not in ns:
+            # Check if a different gatherer has been set in any base classes
+            # Default to unified gatherer
+            gatherer = ns.get(META_GATHERER_NAME, None)
+            if not gatherer:
+                for base in bases:
+                    if g := getattr(base, META_GATHERER_NAME, None):
+                        gatherer = g
+                        break
 
-        if not gatherer:
-            gatherer = unified_gatherer
+            if not gatherer:
+                gatherer = unified_gatherer
 
-        # Obtain slots from annotations
-        if slots:
+            # Obtain slots from annotations or attributes
             cls_fields, cls_modifications = gatherer(ns)
             ns["__slots__"] = SlotFields(cls_fields)
             for k, v in cls_modifications.items():
@@ -803,7 +805,6 @@ class SlotMakerMeta(type):
                 else:
                     ns[k] = v
 
-        # Make new slotted class
         new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
         return new_cls
