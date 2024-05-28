@@ -88,7 +88,7 @@ Here's a similar example using the `annotations_gatherer`
 ```python
 from pprint import pprint
 from ducktools.classbuilder import Field
-from ducktools.classbuilder.annotations import annotation_gatherer
+from ducktools.classbuilder import annotation_gatherer
 
 
 class GatherExample:
@@ -137,7 +137,7 @@ For example the included `init_generator`.
 
 ```python
 from ducktools.classbuilder import init_generator
-from ducktools.classbuilder.annotations import AnnotationClass
+from ducktools.classbuilder import AnnotationClass
 
 class InitExample(AnnotationClass):
    a: str
@@ -172,7 +172,7 @@ The `MethodMaker` descriptors actions can be observed by looking at the class
 dictionary before and after `__init__` is first called.
 
 ```python
-from ducktools.classbuilder.annotations import AnnotationClass
+from ducktools.classbuilder import AnnotationClass
 
 
 class InitExample(AnnotationClass):

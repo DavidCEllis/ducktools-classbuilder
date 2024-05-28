@@ -1,5 +1,6 @@
 import typing
 from collections.abc import Callable
+from typing_extensions import dataclass_transform
 
 _py_type = type | str  # Alias for type hint values
 
@@ -69,7 +70,18 @@ def builder(
 ) -> Callable[[type[_T]], type[_T]]: ...
 
 
-class Field:
+class SlotMakerMeta(type):
+    def __new__(
+        cls: type[_T],
+        name: str,
+        bases: tuple[type, ...],
+        ns: dict[str, typing.Any],
+        slots: bool = True,
+        **kwargs: typing.Any,
+    ) -> _T: ...
+
+
+class Field(metaclass=SlotMakerMeta):
     default: _NothingType | typing.Any
     default_factory: _NothingType | typing.Any
     type: _NothingType | _py_type
@@ -126,6 +138,7 @@ def make_slot_gatherer(
 
 @typing.overload
 def make_slot_gatherer(
+    field_type: SlotMakerMeta = Field
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 def slot_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
@@ -149,3 +162,26 @@ def slotclass(
     methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
     syntax_check: bool = True
 ) -> Callable[[type[_T]], type[_T]]: ...
+
+@typing.overload
+def make_annotation_gatherer(
+    field_type: type[_FieldType],
+    leave_default_values: bool = True,
+) -> Callable[[type], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
+
+@typing.overload
+def make_annotation_gatherer(
+    field_type: SlotMakerMeta = Field,
+    leave_default_values: bool = True,
+) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
+
+def annotation_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
+
+
+@dataclass_transform(field_specifiers=(Field,))
+class AnnotationClass(metaclass=SlotMakerMeta):
+    def __init_subclass__(
+        cls,
+        methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
+        **kwargs,
+    ) -> None: ...

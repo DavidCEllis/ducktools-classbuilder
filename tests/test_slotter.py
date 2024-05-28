@@ -1,7 +1,6 @@
 from typing import ClassVar
 from typing_extensions import Annotated
-from ducktools.classbuilder import SlotFields, NOTHING
-from ducktools.classbuilder.annotations import SlotMakerMeta
+from ducktools.classbuilder import SlotFields, NOTHING, SlotMakerMeta
 
 import pytest
 

@@ -25,15 +25,13 @@ A 'prebuilt' implementation of class generation.
 
 Includes pre and post init functions along with other methods.
 """
-import sys
-
 from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields, GatheredFields,
     builder, get_flags, get_fields, make_slot_gatherer,
     frozen_setattr_maker, frozen_delattr_maker
 )
-from .annotations import is_classvar, eval_hint, get_annotations
+from .annotations import is_classvar, get_annotations
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
@@ -355,15 +353,32 @@ asdict_maker = get_asdict_maker()
 
 # Updated field with additional attributes
 class Attribute(Field):
-    __slots__ = SlotFields(
-        init=True,
-        repr=True,
-        compare=True,
-        iter=True,
-        kw_only=False,
-        serialize=True,
-        exclude_field=False,
-    )
+    """
+    Get an object to define a prefab attribute
+
+    :param default: Default value for this attribute
+    :param default_factory: 0 argument callable to give a default value
+                            (for otherwise mutable defaults, eg: list)
+    :param init: Include this attribute in the __init__ parameters
+    :param repr: Include this attribute in the class __repr__
+    :param compare: Include this attribute in the class __eq__
+    :param iter: Include this attribute in the class __iter__ if generated
+    :param kw_only: Make this argument keyword only in init
+    :param serialize: Include this attribute in methods that serialize to dict
+    :param exclude_field: Exclude this field from all magic method generation
+                          apart from __init__ signature
+                          and do not include it in PREFAB_FIELDS
+                          Must be assigned in __prefab_post_init__
+    :param doc: Parameter documentation for slotted classes
+    :param type: Type of this attribute (for slotted classes)
+    """
+    init: bool = Field(default=True, doc="Include in the class __init__ parameters")
+    repr: bool = Field(default=True, doc="Include in the class __repr__")
+    compare: bool = Field(default=True, doc="Include in the class __eq__")
+    iter: bool = Field(default=True, doc="Include in the class __iter__ if generated.")
+    kw_only: bool = Field(default=False, doc="Make this a keyword only parameter in __init__")
+    serialize: bool = Field(default=True, doc="Serialize this attribute")
+    exclude_field: bool = Field(default=False, doc="Exclude this field from multiple methods")
 
     def validate_field(self):
         super().validate_field()
@@ -389,7 +404,7 @@ def attribute(
     type=NOTHING,
 ):
     """
-    Get an object to define a prefab Attribute
+    Helper function to get an object to define a prefab Attribute
 
     :param default: Default value for this attribute
     :param default_factory: 0 argument callable to give a default value

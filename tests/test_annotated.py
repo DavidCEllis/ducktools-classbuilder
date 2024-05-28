@@ -4,13 +4,13 @@ import pytest
 from typing import ClassVar
 from typing_extensions import Annotated
 
-from ducktools.classbuilder import Field, SlotFields, NOTHING
+from ducktools.classbuilder import (
+    Field, SlotFields, NOTHING,
+    AnnotationClass, annotation_gatherer, make_annotation_gatherer
+)
 
 from ducktools.classbuilder.annotations import (
     is_classvar,
-    AnnotationClass,
-    annotation_gatherer,
-    make_annotation_gatherer,
     get_annotations,
 )
 

@@ -71,7 +71,7 @@ create the `__slots__` field *before* the class has been generated in order to w
 correctly.
 
 ```python
-from ducktools.classbuilder.annotations import AnnotationClass
+from ducktools.classbuilder import AnnotationClass
 
 class AnnotatedDC(AnnotationClass):
     the_answer: int = 42

@@ -1,9 +1,26 @@
-import sys
+# MIT License
+#
+# Copyright (c) 2024 David C Ellis
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
-from . import (
-    Field, NOTHING, SlotFields,
-    builder, check_argument_order, slot_gatherer, default_methods,
-)
+import sys
 
 
 def eval_hint(hint, obj_globals=None, obj_locals=None):
@@ -82,93 +99,3 @@ def is_classvar(hint):
             return True
     return False
 
-
-class SlotMakerMeta(type):
-    """
-    Metaclass to convert annotations to slots.
-
-    Will not convert `ClassVar` hinted values.
-    """
-    def __new__(cls, name, bases, ns, slots=True, **kwargs):
-
-        # Obtain slots from annotations
-        if "__slots__" not in ns and slots:
-            cls_annotations = get_annotations(ns)
-            cls_slots = SlotFields({
-                k: ns.pop(k, NOTHING)
-                for k, v in cls_annotations.items()
-                if not is_classvar(v)
-            })
-            ns["__slots__"] = cls_slots
-
-        # Make new slotted class
-        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
-
-        return new_cls
-
-
-def make_annotation_gatherer(
-    field_type=Field,
-    leave_default_values=True,
-):
-    """
-    Create a new annotation gatherer that will work with `Field` instances
-    of the creators definition.
-
-    :param field_type: The `Field` classes to be used when gathering fields
-    :param leave_default_values: Set to True if the gatherer should leave
-                                 default values in place as class variables.
-    :return: An annotation gatherer with these settings.
-    """
-    def field_annotation_gatherer(cls):
-
-        cls_fields: dict[str, field_type] = {}
-        modifications = {}
-
-        cls_annotations = get_annotations(cls.__dict__)
-
-        for k, v in cls_annotations.items():
-            # Ignore ClassVar
-            if is_classvar(v):
-                continue
-
-            attrib = getattr(cls, k, NOTHING)
-
-            if attrib is not NOTHING:
-                if isinstance(attrib, field_type):
-                    attrib = field_type.from_field(attrib, type=v)
-
-                    if attrib.default is not NOTHING and leave_default_values:
-                        modifications[k] = attrib.default
-                    else:
-                        # NOTHING sentinel indicates a value should be removed
-                        modifications[k] = NOTHING
-                else:
-                    attrib = field_type(default=attrib, type=v)
-                    if not leave_default_values:
-                        modifications[k] = NOTHING
-            else:
-                attrib = field_type(type=v)
-
-            cls_fields[k] = attrib
-
-        return cls_fields, modifications
-
-    return field_annotation_gatherer
-
-
-annotation_gatherer = make_annotation_gatherer()
-
-
-class AnnotationClass(metaclass=SlotMakerMeta):
-    def __init_subclass__(cls, methods=default_methods, **kwargs):
-        # Check class dict otherwise this will always be True as this base
-        # class uses slots.
-
-        slots = "__slots__" in cls.__dict__
-
-        gatherer = slot_gatherer if slots else annotation_gatherer
-
-        builder(cls, gatherer=gatherer, methods=methods, flags={"slotted": slots})
-        check_argument_order(cls)
-        super().__init_subclass__(**kwargs)
