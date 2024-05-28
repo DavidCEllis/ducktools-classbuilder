@@ -26,14 +26,13 @@ A 'prebuilt' implementation of class generation.
 Includes pre and post init functions along with other methods.
 """
 from . import (
-    INTERNALS_DICT, NOTHING, KW_ONLY,
-    Field, MethodMaker, SlotFields, GatheredFields,
+    INTERNALS_DICT, NOTHING, SlotFields, KW_ONLY,
+    Field, MethodMaker, GatheredFields, SlotMakerMeta,
     builder, get_flags, get_fields,
-    make_slot_gatherer, make_annotation_gatherer, make_attribute_gatherer,
+    make_unified_gatherer,
     frozen_setattr_maker, frozen_delattr_maker, eq_maker,
     get_repr_generator,
 )
-from .annotations import is_classvar, get_annotations
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
@@ -266,7 +265,7 @@ asdict_maker = get_asdict_maker()
 
 
 # Updated field with additional attributes
-class Attribute(Field):
+class Attribute(Field, metaclass=SlotMakerMeta):
     """
     Get an object to define a prefab attribute
 
@@ -366,35 +365,7 @@ def attribute(
     )
 
 
-slot_gatherer = make_slot_gatherer(Attribute)
-annotation_gatherer = make_annotation_gatherer(Attribute, leave_default_values=False)
-attribute_gatherer = make_attribute_gatherer(Attribute, leave_default_values=False)
-
-
-# Gatherer for classes that will pick from slots, attributes, annotations.
-def prefab_gatherer(cls):
-    cls_slots = cls.__dict__.get("__slots__", {})
-
-    # Slotted gatherer
-    if isinstance(cls_slots, SlotFields):
-        return slot_gatherer(cls)
-
-    # To choose between annotation and attribute gatherers
-    # compare sets of names.
-    # Don't bother evaluating string annotations, as we only need names
-    cls_annotations = get_annotations(cls.__dict__, eval_str=False)
-    cls_attributes = {
-        k: v for k, v in vars(cls).items() if isinstance(v, Attribute)
-    }
-
-    cls_annotation_names = cls_annotations.keys()
-    cls_attribute_names = cls_attributes.keys()
-
-    if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
-        # All `Attribute` values have annotations, so use annotation gatherer
-        return annotation_gatherer(cls)
-
-    return attribute_gatherer(cls)
+prefab_gatherer = make_unified_gatherer(Attribute, False)
 
 
 # Class Builders
@@ -585,6 +556,36 @@ def _make_prefab(
         setattr(cls, "__match_args__", tuple(valid_args))
 
     return cls
+
+
+class Prefab(metaclass=SlotMakerMeta):
+    _meta_gatherer = prefab_gatherer
+
+    # noinspection PyShadowingBuiltins
+    def __init_subclass__(
+        cls,
+        init=True,
+        repr=True,
+        eq=True,
+        iter=False,
+        match_args=True,
+        kw_only=False,
+        frozen=False,
+        dict_method=False,
+        recursive_repr=False,
+    ):
+        _make_prefab(
+            cls,
+            init=init,
+            repr=repr,
+            eq=eq,
+            iter=iter,
+            match_args=match_args,
+            kw_only=kw_only,
+            frozen=frozen,
+            dict_method=dict_method,
+            recursive_repr=recursive_repr,
+        )
 
 
 # noinspection PyShadowingBuiltins

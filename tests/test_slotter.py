@@ -1,6 +1,6 @@
-from typing import ClassVar
+from typing import ClassVar, List
 from typing_extensions import Annotated
-from ducktools.classbuilder import SlotFields, NOTHING, SlotMakerMeta
+from ducktools.classbuilder import Field, SlotFields, NOTHING, SlotMakerMeta
 
 import pytest
 
@@ -8,7 +8,7 @@ import pytest
 def test_slots_created():
     class ExampleAnnotated(metaclass=SlotMakerMeta):
         a: str = "a"
-        b: "list[str]" = "b"  # Yes this is the wrong type, I know.
+        b: "List[str]" = "b"  # Yes this is the wrong type, I know.
         c: Annotated[str, ""] = "c"
 
         d: ClassVar[str] = "d"
@@ -19,7 +19,13 @@ def test_slots_created():
     assert hasattr(ExampleAnnotated, "__slots__")
 
     slots = ExampleAnnotated.__slots__  # noqa
-    assert slots == SlotFields({char: char for char in "abc"})
+    expected_slots = SlotFields({
+        "a": Field(default="a", type=str),
+        "b": Field(default="b", type=List[str]),
+        "c": Field(default="c", type=Annotated[str, ""])
+    })
+
+    assert slots == expected_slots
 
 
 def test_slots_correct_subclass():
@@ -31,8 +37,12 @@ def test_slots_correct_subclass():
     class ExampleChild(ExampleBase):
         d: str = "d"
 
-    assert ExampleBase.__slots__ == SlotFields(a=NOTHING, b="b", c="c")  # noqa
-    assert ExampleChild.__slots__ == SlotFields(d="d")  # noqa
+    assert ExampleBase.__slots__ == SlotFields(    # noqa
+        a=Field(type=str),
+        b=Field(default="b", type=str),
+        c=Field(default="c", type=str),
+    )
+    assert ExampleChild.__slots__ == SlotFields(d=Field(default="d", type=str))  # noqa
 
     inst = ExampleChild()
 

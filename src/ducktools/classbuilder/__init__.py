@@ -27,11 +27,14 @@ __version__ = "v0.6.0"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
+META_GATHERER_NAME = "_meta_gatherer"
 
 
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = "pytest" in sys.modules
+
+_MPT = type(type.__dict__)
 
 
 def get_fields(cls, *, local=False):
@@ -401,35 +404,10 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
     return cls
 
 
-# Tool to convert annotations to slots as a metaclass
-class SlotMakerMeta(type):
-    """
-    Metaclass to convert annotations to slots.
-
-    Will not convert `ClassVar` hinted values.
-    """
-    def __new__(cls, name, bases, ns, slots=True, **kwargs):
-
-        # Obtain slots from annotations
-        if "__slots__" not in ns and slots:
-            cls_annotations = get_annotations(ns)
-            cls_slots = SlotFields({
-                k: ns.pop(k, NOTHING)
-                for k, v in cls_annotations.items()
-                if not is_classvar(v)
-            })
-            ns["__slots__"] = cls_slots
-
-        # Make new slotted class
-        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
-
-        return new_cls
-
-
 # The Field class can finally be defined.
 # The __init__ method has to be written manually so Fields can be created
 # However after this, the other methods can be generated.
-class Field(metaclass=SlotMakerMeta):
+class Field:
     """
     A basic class to handle the assignment of defaults/factories with
     some metadata.
@@ -486,7 +464,7 @@ class Field(metaclass=SlotMakerMeta):
 
         builder(
             cls,
-            gatherer=slot_gatherer,
+            gatherer=unified_gatherer,
             methods=field_methods,
             flags={"slotted": True, "kw_only": True}
         )
@@ -576,6 +554,8 @@ class SlotFields(dict):
 
     This should be replaced on `__slots__` after fields have been gathered.
     """
+    def __repr__(self):
+        return f"SlotFields({super().__repr__()})"
 
 
 def make_slot_gatherer(field_type=Field):
@@ -587,16 +567,17 @@ def make_slot_gatherer(field_type=Field):
     :return: A slot gatherer that will check for and generate Fields of
              the type field_type.
     """
-    def field_slot_gatherer(cls):
+    def field_slot_gatherer(cls_or_ns):
         """
         Gather field information for class generation based on __slots__
 
-        :param cls: Class to gather field information from
+        :param cls_or_ns: Class to gather field information from (or class namespace)
         :return: dict of field_name: Field(...)
         """
+        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
 
         try:
-            cls_slots = cls.__dict__["__slots__"]
+            cls_slots = cls_dict["__slots__"]
         except KeyError:
             raise AttributeError(
                 "__slots__ must be defined as an instance of SlotFields "
@@ -612,7 +593,7 @@ def make_slot_gatherer(field_type=Field):
         # Don't want to mutate original annotations so make a copy if it exists
         # Looking at the dict is a Python3.9 or earlier requirement
         cls_annotations = {
-            **cls.__dict__.get("__annotations__", {})
+            **cls_dict.get("__annotations__", {})
         }
 
         cls_fields = {}
@@ -663,13 +644,14 @@ def make_annotation_gatherer(
                                  default values in place as class variables.
     :return: An annotation gatherer with these settings.
     """
-    def field_annotation_gatherer(cls):
+    def field_annotation_gatherer(cls_or_ns):
+        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
 
         cls_fields: dict[str, field_type] = {}
         modifications = {}
 
-        cls_annotations = get_annotations(cls.__dict__)
-        cls_slots = cls.__dict__.get("__slots__", {})
+        cls_annotations = get_annotations(cls_dict)
+        cls_slots = cls_dict.get("__slots__", {})
 
         kw_flag = False
 
@@ -684,7 +666,7 @@ def make_annotation_gatherer(
                 kw_flag = True
                 continue
 
-            attrib = getattr(cls, k, NOTHING)
+            attrib = cls_dict.get(k, NOTHING)
 
             if attrib is not NOTHING:
                 if isinstance(attrib, field_type):
@@ -717,13 +699,14 @@ def make_attribute_gatherer(
     field_type=Field,
     leave_default_values=True,
 ):
-    def field_attribute_gatherer(cls):
+    def field_attribute_gatherer(cls_or_ns):
+        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
         cls_attributes = {
             k: v
-            for k, v in vars(cls).items()
+            for k, v in cls_dict.items()
             if isinstance(v, field_type)
         }
-        cls_annotations = get_annotations(cls.__dict__)
+        cls_annotations = get_annotations(cls_dict)
 
         cls_modifications = {}
 
@@ -741,8 +724,89 @@ def make_attribute_gatherer(
     return field_attribute_gatherer
 
 
+def make_unified_gatherer(
+    field_type=Field,
+    leave_default_values=True,
+):
+    """
+    Create a gatherer that will work via first slots, then
+    Field(...) class attributes and finally annotations if
+    no unannotated Field(...) attributes are present.
+
+    :param field_type: The field class to use for gathering
+    :param leave_default_values: leave default values in place
+    :return: gatherer function
+    """
+    slot_g = make_slot_gatherer(field_type)
+    anno_g = make_annotation_gatherer(field_type, leave_default_values)
+    attrib_g = make_attribute_gatherer(field_type, leave_default_values)
+
+    def field_unified_gatherer(cls_or_ns):
+        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
+        cls_slots = cls_dict.get("__slots__")
+
+        if isinstance(cls_slots, SlotFields):
+            return slot_g(cls_dict)
+
+        # To choose between annotation and attribute gatherers
+        # compare sets of names.
+        # Don't bother evaluating string annotations, as we only need names
+        cls_annotations = get_annotations(cls_dict, eval_str=False)
+        cls_attributes = {
+            k: v for k, v in cls_dict.items() if isinstance(v, field_type)
+        }
+
+        cls_annotation_names = cls_annotations.keys()
+        cls_attribute_names = cls_attributes.keys()
+
+        if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
+            # All `Field` values have annotations, so use annotation gatherer
+            return anno_g(cls_dict)
+
+        return attrib_g(cls_dict)
+    return field_unified_gatherer
+
+
 slot_gatherer = make_slot_gatherer()
 annotation_gatherer = make_annotation_gatherer()
+
+unified_gatherer = make_unified_gatherer(field_type=Field, leave_default_values=False)
+
+
+# Tool to convert annotations to slots as a metaclass
+class SlotMakerMeta(type):
+    """
+    Metaclass to convert annotations or Field(...) attributes to slots.
+
+    Will not convert `ClassVar` hinted values.
+    """
+    def __new__(cls, name, bases, ns, slots=True, **kwargs):
+        # Check if a different gatherer has been set in any base classes
+        # Default to unified gatherer
+        gatherer = ns.get(META_GATHERER_NAME, None)
+        if not gatherer:
+            for base in bases:
+                if g := getattr(base, META_GATHERER_NAME, None):
+                    gatherer = g
+                    break
+
+        if not gatherer:
+            gatherer = unified_gatherer
+
+        # Obtain slots from annotations
+        if slots:
+            cls_fields, cls_modifications = gatherer(ns)
+            ns["__slots__"] = SlotFields(cls_fields)
+            for k, v in cls_modifications.items():
+                if v is NOTHING:
+                    ns.pop(k)
+                else:
+                    ns[k] = v
+
+        # Make new slotted class
+        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
+
+        return new_cls
 
 
 def check_argument_order(cls):
