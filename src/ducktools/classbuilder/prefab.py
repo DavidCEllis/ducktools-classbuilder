@@ -444,15 +444,9 @@ def _make_prefab(
     slotted = False if slots is None else True
 
     if gathered_fields is None:
-        if isinstance(slots, SlotFields):
-            gatherer = slot_gatherer
-            slotted = True
-        else:
-            gatherer = prefab_gatherer
-            slotted = False
+        gatherer = prefab_gatherer
     else:
         gatherer = gathered_fields
-        slotted = False if slots is None else True
 
     methods = set()
 
