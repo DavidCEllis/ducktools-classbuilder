@@ -653,7 +653,6 @@ def make_slot_gatherer(field_type=Field):
 def make_annotation_gatherer(
     field_type=Field,
     leave_default_values=True,
-    kw_only_sentinel=KW_ONLY,
 ):
     """
     Create a new annotation gatherer that will work with `Field` instances
@@ -662,7 +661,6 @@ def make_annotation_gatherer(
     :param field_type: The `Field` classes to be used when gathering fields
     :param leave_default_values: Set to True if the gatherer should leave
                                  default values in place as class variables.
-    :param kw_only_sentinel: Sentinel value making succeeding fields keyword only.
     :return: An annotation gatherer with these settings.
     """
     def field_annotation_gatherer(cls):
@@ -680,7 +678,7 @@ def make_annotation_gatherer(
             if is_classvar(v):
                 continue
 
-            if v is kw_only_sentinel:
+            if v is KW_ONLY:
                 if kw_flag:
                     raise SyntaxError("KW_ONLY sentinel may only appear once.")
                 kw_flag = True
@@ -713,6 +711,34 @@ def make_annotation_gatherer(
         return cls_fields, modifications
 
     return field_annotation_gatherer
+
+
+def make_attribute_gatherer(
+    field_type=Field,
+    leave_default_values=True,
+):
+    def field_attribute_gatherer(cls):
+        cls_attributes = {
+            k: v
+            for k, v in vars(cls).items()
+            if isinstance(v, field_type)
+        }
+        cls_annotations = get_annotations(cls.__dict__)
+
+        cls_modifications = {}
+
+        for name in cls_attributes.keys():
+            attrib = cls_attributes[name]
+            if leave_default_values:
+                cls_modifications[name] = attrib.default
+            else:
+                cls_modifications[name] = NOTHING
+
+            if (anno := cls_annotations.get(name, NOTHING)) is not NOTHING:
+                cls_attributes[name] = field_type.from_field(attrib, type=anno)
+
+        return cls_attributes, cls_modifications
+    return field_attribute_gatherer
 
 
 slot_gatherer = make_slot_gatherer()

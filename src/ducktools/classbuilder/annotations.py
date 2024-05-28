@@ -42,14 +42,20 @@ def eval_hint(hint, obj_globals=None, obj_locals=None):
     return hint
 
 
-def get_annotations(ns):
+def get_annotations(ns, eval_str=True):
     """
     Given an class namespace, attempt to retrieve the
     annotations dictionary and evaluate strings.
 
     :param ns: Class namespace (eg cls.__dict__)
+    :param eval_str: Attempt to evaluate string annotations (default to True)
     :return: dictionary of evaluated annotations
     """
+    raw_annotations = ns.get("__annotations__", {})
+
+    if not eval_str:
+        return raw_annotations
+
     try:
         obj_modulename = ns["__module__"]
     except KeyError:
@@ -63,8 +69,6 @@ def get_annotations(ns):
         obj_globals = {}
 
     obj_locals = ns.copy()
-
-    raw_annotations = ns.get("__annotations__", {})
 
     return {
         k: eval_hint(v, obj_globals, obj_locals)

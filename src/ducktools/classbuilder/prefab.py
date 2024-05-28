@@ -28,7 +28,8 @@ Includes pre and post init functions along with other methods.
 from . import (
     INTERNALS_DICT, NOTHING, KW_ONLY,
     Field, MethodMaker, SlotFields, GatheredFields,
-    builder, get_flags, get_fields, make_slot_gatherer,
+    builder, get_flags, get_fields,
+    make_slot_gatherer, make_annotation_gatherer, make_attribute_gatherer,
     frozen_setattr_maker, frozen_delattr_maker, eq_maker,
     get_repr_generator,
 )
@@ -365,84 +366,35 @@ def attribute(
     )
 
 
-slot_prefab_gatherer = make_slot_gatherer(Attribute)
+slot_gatherer = make_slot_gatherer(Attribute)
+annotation_gatherer = make_annotation_gatherer(Attribute, leave_default_values=False)
+attribute_gatherer = make_attribute_gatherer(Attribute, leave_default_values=False)
 
 
-# Gatherer for classes built on attributes or annotations
-def attribute_gatherer(cls):
-    cls_annotations = get_annotations(cls.__dict__)
-    cls_annotation_names = cls_annotations.keys()
-
+# Gatherer for classes that will pick from slots, attributes, annotations.
+def prefab_gatherer(cls):
     cls_slots = cls.__dict__.get("__slots__", {})
 
+    # Slotted gatherer
+    if isinstance(cls_slots, SlotFields):
+        return slot_gatherer(cls)
+
+    # To choose between annotation and attribute gatherers
+    # compare sets of names.
+    # Don't bother evaluating string annotations, as we only need names
+    cls_annotations = get_annotations(cls.__dict__, eval_str=False)
     cls_attributes = {
         k: v for k, v in vars(cls).items() if isinstance(v, Attribute)
     }
 
+    cls_annotation_names = cls_annotations.keys()
     cls_attribute_names = cls_attributes.keys()
 
-    cls_modifications = {}
-
     if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
-        # replace the classes' attributes dict with one with the correct
-        # order from the annotations.
-        kw_flag = False
-        new_attributes = {}
-        for name, value in cls_annotations.items():
-            # Ignore ClassVar hints
-            if is_classvar(value):
-                continue
+        # All `Attribute` values have annotations, so use annotation gatherer
+        return annotation_gatherer(cls)
 
-            # Look for the KW_ONLY annotation
-            if value is KW_ONLY:
-                if kw_flag:
-                    raise PrefabError(
-                        "Class can not be defined as keyword only twice"
-                    )
-                kw_flag = True
-            else:
-                # Copy attributes that are already defined to the new dict
-                # generate Attribute() values for those that are not defined.
-
-                # Extra parameters to pass to each Attribute
-                extras = {
-                    "type": cls_annotations[name]
-                }
-                if kw_flag:
-                    extras["kw_only"] = True
-
-                # If a field name is also declared in slots it can't have a real
-                # default value and the attr will be the slot descriptor.
-                if hasattr(cls, name) and name not in cls_slots:
-                    if name in cls_attribute_names:
-                        attrib = Attribute.from_field(
-                            cls_attributes[name],
-                            **extras,
-                        )
-                    else:
-                        attribute_default = getattr(cls, name)
-                        attrib = attribute(default=attribute_default, **extras)
-
-                    # Clear the attribute from the class after it has been used
-                    # in the definition.
-                    cls_modifications[name] = NOTHING
-                else:
-                    attrib = attribute(**extras)
-
-                new_attributes[name] = attrib
-
-        cls_attributes = new_attributes
-    else:
-        for name in cls_attributes.keys():
-            attrib = cls_attributes[name]
-            cls_modifications[name] = NOTHING
-
-            # Some items can still be annotated.
-            if name in cls_annotations:
-                new_attrib = Attribute.from_field(attrib, type=cls_annotations[name])
-                cls_attributes[name] = new_attrib
-
-    return cls_attributes, cls_modifications
+    return attribute_gatherer(cls)
 
 
 # Class Builders
@@ -488,12 +440,15 @@ def _make_prefab(
         )
 
     slots = cls_dict.get("__slots__")
+
+    slotted = False if slots is None else True
+
     if gathered_fields is None:
         if isinstance(slots, SlotFields):
-            gatherer = slot_prefab_gatherer
+            gatherer = slot_gatherer
             slotted = True
         else:
-            gatherer = attribute_gatherer
+            gatherer = prefab_gatherer
             slotted = False
     else:
         gatherer = gathered_fields

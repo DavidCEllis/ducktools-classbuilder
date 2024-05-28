@@ -111,6 +111,10 @@ class Field(metaclass=SlotMakerMeta):
         default_factory: _NothingType | typing.Any = NOTHING,
         type: _NothingType | _py_type = NOTHING,
         doc: None | str = None,
+        init: bool = True,
+        repr: bool = True,
+        compare: bool = True,
+        kw_only: bool = False,
     ) -> None: ...
 
     def __init_subclass__(cls, frozen: bool = False): ...
@@ -159,16 +163,25 @@ def make_slot_gatherer(
 def make_annotation_gatherer(
     field_type: type[_FieldType],
     leave_default_values: bool = True,
-    kw_only_sentinel: None | type = None
 ) -> Callable[[type], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
 
 @typing.overload
 def make_annotation_gatherer(
     field_type: SlotMakerMeta = Field,
     leave_default_values: bool = True,
-    kw_only_sentinel: None | type = None,
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
+@typing.overload
+def make_attribute_gatherer(
+    field_type: type[_FieldType],
+    leave_default_values: bool = True,
+) -> Callable[[type], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
+
+@typing.overload
+def make_attribute_gatherer(
+    field_type: SlotMakerMeta = Field,
+    leave_default_values: bool = True,
+) -> Callable[[type], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
 
 def slot_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 def annotation_gatherer(cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
