@@ -798,12 +798,14 @@ class SlotMakerMeta(type):
 
             # Obtain slots from annotations or attributes
             cls_fields, cls_modifications = gatherer(ns)
-            ns["__slots__"] = SlotFields(cls_fields)
             for k, v in cls_modifications.items():
                 if v is NOTHING:
                     ns.pop(k)
                 else:
                     ns[k] = v
+
+            # Place slots *after* everything else to be safe
+            ns["__slots__"] = SlotFields(cls_fields)
 
         new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
