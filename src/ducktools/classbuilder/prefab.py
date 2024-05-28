@@ -372,11 +372,7 @@ class Attribute(Field):
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
     """
-    init: bool = Field(default=True, doc="Include in the class __init__ parameters")
-    repr: bool = Field(default=True, doc="Include in the class __repr__")
-    compare: bool = Field(default=True, doc="Include in the class __eq__")
     iter: bool = Field(default=True, doc="Include in the class __iter__ if generated.")
-    kw_only: bool = Field(default=False, doc="Make this a keyword only parameter in __init__")
     serialize: bool = Field(default=True, doc="Serialize this attribute")
     exclude_field: bool = Field(default=False, doc="Exclude this field from multiple methods")
 

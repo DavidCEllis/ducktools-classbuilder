@@ -50,11 +50,7 @@ asdict_maker: MethodMaker
 class Attribute(Field):
     __slots__: dict
 
-    init: bool
-    repr: bool
-    compare: bool
     iter: bool
-    kw_only: bool
     serialize: bool
     exclude_field: bool
 

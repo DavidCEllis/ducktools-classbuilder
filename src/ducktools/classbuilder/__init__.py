@@ -362,7 +362,11 @@ class Field(metaclass=SlotMakerMeta):
                            "a default value, useful for mutable objects like "
                            "lists.",
         "type": "The type of the attribute to be assigned by this field.",
-        "doc": "The documentation that appears when calling help(...) on the class."
+        "doc": "The documentation that appears when calling help(...) on the class.",
+        "init": "Include in the class __init__ parameters",
+        "repr": "Include in the class __repr__",
+        "compare": "Include in the class __eq__",
+        "kw_only": "Make this a keyword only parameter in __init__",
     }
 
     # noinspection PyShadowingBuiltins
@@ -373,11 +377,20 @@ class Field(metaclass=SlotMakerMeta):
         default_factory=NOTHING,
         type=NOTHING,
         doc=None,
+        init=True,
+        repr=True,
+        compare=True,
+        kw_only=False,
     ):
         self.default = default
         self.default_factory = default_factory
         self.type = type
         self.doc = doc
+
+        self.init = init
+        self.repr = repr
+        self.compare = compare
+        self.kw_only = kw_only
 
         self.validate_field()
 
@@ -434,6 +447,10 @@ _field_internal = {
     "default_factory": Field(default=NOTHING),
     "type": Field(default=NOTHING),
     "doc": Field(default=None),
+    "init": Field(default=True),
+    "repr": Field(default=True),
+    "compare": Field(default=True),
+    "kw_only": Field(default=False),
 }
 
 _gathered_field_internal = {
@@ -551,6 +568,7 @@ def make_slot_gatherer(field_type=Field):
 def make_annotation_gatherer(
     field_type=Field,
     leave_default_values=True,
+    kw_only_sentinel=None,
 ):
     """
     Create a new annotation gatherer that will work with `Field` instances
@@ -559,6 +577,7 @@ def make_annotation_gatherer(
     :param field_type: The `Field` classes to be used when gathering fields
     :param leave_default_values: Set to True if the gatherer should leave
                                  default values in place as class variables.
+    :param kw_only_sentinel: Sentinel value making succeeding fields keyword only.
     :return: An annotation gatherer with these settings.
     """
     def field_annotation_gatherer(cls):

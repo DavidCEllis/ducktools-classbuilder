@@ -113,13 +113,20 @@ def test_repr_field():
     f4 = Field(default=True, type=bool)
     f5 = Field(default=True, doc="True or False")
 
+    repr_ending = "init=True, repr=True, compare=True, kw_only=False"
+
     nothing_repr = repr(NOTHING)
 
-    f1_repr = f"Field(default=True, default_factory={nothing_repr}, type={nothing_repr}, doc=None)"
-    f2_repr = f"Field(default=False, default_factory={nothing_repr}, type={nothing_repr}, doc=None)"
-    f3_repr = f"Field(default={nothing_repr}, default_factory=<class 'list'>, type={nothing_repr}, doc=None)"
-    f4_repr = f"Field(default=True, default_factory={nothing_repr}, type=<class 'bool'>, doc=None)"
-    f5_repr = f"Field(default=True, default_factory={nothing_repr}, type={nothing_repr}, doc='True or False')"
+    f1_repr = (f"Field(default=True, default_factory={nothing_repr}, "
+               f"type={nothing_repr}, doc=None, {repr_ending})")
+    f2_repr = (f"Field(default=False, default_factory={nothing_repr}, "
+               f"type={nothing_repr}, doc=None, {repr_ending})")
+    f3_repr = (f"Field(default={nothing_repr}, default_factory=<class 'list'>, "
+               f"type={nothing_repr}, doc=None, {repr_ending})")
+    f4_repr = (f"Field(default=True, default_factory={nothing_repr}, "
+               f"type=<class 'bool'>, doc=None, {repr_ending})")
+    f5_repr = (f"Field(default=True, default_factory={nothing_repr}, "
+               f"type={nothing_repr}, doc='True or False', {repr_ending})")
 
     assert repr(f1) == f1_repr
     assert repr(f2) == f2_repr
@@ -449,7 +456,10 @@ def test_gatheredfields():
 
     assert repr(flds).endswith(
         "GatheredFields("
-        "fields={'x': Field(default=1, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None)}, "
+        "fields={'x': Field("
+        "default=1, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None, "
+        "init=True, repr=True, compare=True, kw_only=False"
+        ")}, "
         "modifications={'x': <NOTHING OBJECT>}"
         ")"
     )

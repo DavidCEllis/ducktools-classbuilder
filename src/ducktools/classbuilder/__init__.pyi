@@ -86,6 +86,10 @@ class Field(metaclass=SlotMakerMeta):
     default_factory: _NothingType | typing.Any
     type: _NothingType | _py_type
     doc: None | str
+    init: bool
+    repr: bool
+    compare: bool
+    kw_only: bool
 
     __slots__: dict[str, str]
     __classbuilder_internals__: dict
@@ -145,12 +149,14 @@ def make_slot_gatherer(
 def make_annotation_gatherer(
     field_type: type[_FieldType],
     leave_default_values: bool = True,
+    kw_only_sentinel: None | type = None
 ) -> Callable[[type], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
 
 @typing.overload
 def make_annotation_gatherer(
     field_type: SlotMakerMeta = Field,
     leave_default_values: bool = True,
+    kw_only_sentinel: None | type = None,
 ) -> Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 
