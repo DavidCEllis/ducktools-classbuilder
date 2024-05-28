@@ -1,4 +1,5 @@
 # Tests for the core 'builder'
+import inspect
 import pytest
 
 from ducktools.classbuilder import (
@@ -453,3 +454,10 @@ def test_gatheredfields():
         ")"
     )
 
+def test_signature():
+    # This used to fail
+    @slotclass
+    class SigClass:
+        __slots__ = SlotFields(x=42)
+
+    assert str(inspect.signature(SigClass)) == "(x=42)"

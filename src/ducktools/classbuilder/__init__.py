@@ -96,7 +96,14 @@ class MethodMaker:
     def __repr__(self):
         return f"<MethodMaker for {self.funcname!r} method>"
 
-    def __get__(self, instance, cls):
+    def __get__(self, obj, objtype=None):
+        if objtype is None or issubclass(objtype, type):
+            # Called with get(ourclass, type(ourclass))
+            cls = obj
+        else:
+            # Called with get(inst | None, ourclass)
+            cls = objtype
+
         local_vars = {}
         code, globs = self.code_generator(cls)
         exec(code, globs, local_vars)
@@ -108,7 +115,7 @@ class MethodMaker:
 
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
-        return method.__get__(instance, cls)
+        return method.__get__(obj, objtype)
 
 
 def get_init_generator(null=NOTHING, extra_code=None):
