@@ -160,17 +160,23 @@ print(f"{DataCoords is class_register[DataCoords.__name__] = }")
 print(f"{SlotCoords is class_register[SlotCoords.__name__] = }")
 ```
 
+This does not mean that it is impossible to use annotations in such a way that 
+`__slots__` can be created automatically without making a new class, just that
+it is not possible to do so with a decorator.
+
 ## Using annotations anyway ##
 
 For those that really want to use type annotations a basic `annotation_gatherer`
-function and `@annotationclass` decorator are also included. Slots are not generated
-in this case.
+function and `AnnotationClass` base class are also included.
+
+`AnnotationClass` uses a base class instead of a decorator in order to correctly
+provide `__slots__` by generating them **before** the class is created using a 
+metaclass. `slots=False` can be passed when creating the class to avoid creating slots.
 
 ```python
-from ducktools.classbuilder import annotationclass
+from ducktools.classbuilder import AnnotationClass
 
-@annotationclass
-class AnnotatedDC:
+class AnnotatedDC(AnnotationClass):
     the_answer: int = 42
     the_question: str = "What do you get if you multiply six by nine?"
 
@@ -190,9 +196,6 @@ It will copy values provided as the `type` to `Field` into the
 `__annotations__` dictionary of the class. 
 Values provided to `doc` will be placed in the final `__slots__` 
 field so they are present on the class if `help(...)` is called.
-
-A fairly basic `annotations_gatherer` and `annotationclass` are also included
-and can be used to generate classbuilders that rely on annotations.
 
 If you want something with more features you can look at the `prefab.py`
 implementation which provides a 'prebuilt' implementation.

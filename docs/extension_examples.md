@@ -87,7 +87,8 @@ Here's a similar example using the `annotations_gatherer`
 
 ```python
 from pprint import pprint
-from ducktools.classbuilder import annotation_gatherer, Field
+from ducktools.classbuilder import Field
+from ducktools.classbuilder import annotation_gatherer
 
 
 class GatherExample:
@@ -135,10 +136,10 @@ These can be examined by looking at the output of any of the `<method>_generator
 For example the included `init_generator`.
 
 ```python
-from ducktools.classbuilder import annotationclass, init_generator
+from ducktools.classbuilder import init_generator
+from ducktools.classbuilder import AnnotationClass
 
-@annotationclass
-class InitExample:
+class InitExample(AnnotationClass):
    a: str
    b: str = "b"
    obj: object = object()
@@ -171,11 +172,10 @@ The `MethodMaker` descriptors actions can be observed by looking at the class
 dictionary before and after `__init__` is first called.
 
 ```python
-from ducktools.classbuilder import annotationclass
+from ducktools.classbuilder import AnnotationClass
 
 
-@annotationclass
-class InitExample:
+class InitExample(AnnotationClass):
    a: str
    b: str = "b"
 
@@ -240,17 +240,16 @@ accessed using the `get_fields` and `get_flags` functions provided.
 
 When customising generator methods (or adding new ones) it may be useful to 
 extend the `Field` class which stores the information on named attributes for
-how to perform the generation. A convenient decorator `@fieldclass` is provided
-to allow simple extension by adding additional slots. By using this decorator
-the `__init__`, `__repr__` and `__eq__` methods will be generated for you.
+how to perform the generation. This can be done by simply subclassing `Field`
+and adding new attributes either via annotations or by assigning `SlotFields`
+to `__slots__`.
 
 > Note: Field classes will be frozen when running under pytest.
 >       They are not frozen normally for performance reasons.
 
 ```python
-from ducktools.classbuilder import Field, SlotFields, fieldclass
+from ducktools.classbuilder import Field, SlotFields
 
-@fieldclass
 class WithInit(Field):
     __slots__ = SlotFields(init=True)
 
@@ -280,7 +279,7 @@ any globals values, but it is essential for some.
 In order to make frozen classes you need to replace `__setattr__` and `__delattr__`
 
 The building blocks for this are actually already included as they're used to prevent 
-`fieldclass` instances from being mutated.
+`Field` subclass instances from being mutated when under testing.
 
 These methods can be reused to make `slotclasses` 'frozen'.
 
@@ -381,9 +380,7 @@ You could also choose to yield tuples of `name, value` pairs in your implementat
 #### Excluding Attributes ####
 
 In order to exclude fields you first need to extend the `Field` class
-to add a new attribute. Thankfully the `@fieldclass` decorator mentioned earlier
-can be used to extend `Field` in the same way as `@slotclass` works for 
-regular classes.
+to add a new attribute.
 
 This special class builder is needed to treat `NOTHING` sentinel values as
 regular values in the `__init__` generator. As such this is only intended
@@ -397,7 +394,6 @@ Here is an example of adding the ability to exclude fields from `__repr__`.
 ```python
 from ducktools.classbuilder import (
     eq_maker,
-    fieldclass,
     get_fields,
     init_maker,
     slotclass,
@@ -407,7 +403,6 @@ from ducktools.classbuilder import (
 )
 
 
-@fieldclass
 class FieldExt(Field):
     __slots__ = SlotFields(repr=True)
 
@@ -468,7 +463,6 @@ errors when the `__init__` method is generated.
 from ducktools.classbuilder import (
     builder,
     eq_maker,
-    fieldclass,
     get_fields,
     slot_gatherer,
     Field,
@@ -478,7 +472,6 @@ from ducktools.classbuilder import (
 )
 
 
-@fieldclass
 class PosOnlyField(Field):
     __slots__ = SlotFields(pos_only=True)
 
@@ -608,7 +601,6 @@ their attribute is set.
 from ducktools.classbuilder import (
     builder,
     default_methods,
-    fieldclass,
     get_fields,
     slot_gatherer,
     Field,
@@ -617,7 +609,6 @@ from ducktools.classbuilder import (
 )
 
 
-@fieldclass
 class ConverterField(Field):
     __slots__ = SlotFields(converter=None)
 
@@ -679,13 +670,11 @@ This is a long example but is designed to show how you can use these tools to im
 >       If you need to change the value of a field use Field.from_field(...) to make a new instance.
 
 ```python
-import inspect
 from pprint import pp
 from typing import Annotated, Any, ClassVar, get_origin
 
 from ducktools.classbuilder import (
     builder,
-    fieldclass,
     get_fields,
     get_flags,
     Field,
@@ -694,9 +683,10 @@ from ducktools.classbuilder import (
     NOTHING,
 )
 
+from ducktools.classbuilder.annotations import get_annotations
+
 
 # First we need a new field that can store these modifications
-@fieldclass
 class AnnoField(Field):
     __slots__ = SlotFields(
         init=True,
@@ -740,9 +730,9 @@ IGNORE_ALL = FieldModifier(init=False, repr=False, compare=False)
 
 # Analyse the class and create these new Fields based on the annotations
 def annotated_gatherer(cls: type) -> tuple[dict[str, AnnoField], dict[str, Any]]:
-    # String annotations *MUST* be evaluated for this to work
+    # String annotations *MUST* be able to evaluate for this to work
     # Trying to parse the Annotations as strings would add a *lot* of extra work
-    cls_annotations = inspect.get_annotations(cls, eval_str=True)
+    cls_annotations = get_annotations(cls.__dict__)
     cls_fields = {}
 
     # This gatherer doesn't make any class modifications but still needs

@@ -1,10 +1,8 @@
-import inspect
 from pprint import pp
 from typing import Annotated, Any, ClassVar, get_origin
 
 from ducktools.classbuilder import (
     builder,
-    fieldclass,
     get_fields,
     get_flags,
     Field,
@@ -13,9 +11,10 @@ from ducktools.classbuilder import (
     NOTHING,
 )
 
+from ducktools.classbuilder.annotations import get_annotations
+
 
 # First we need a new field that can store these modifications
-@fieldclass
 class AnnoField(Field):
     __slots__ = SlotFields(
         init=True,
@@ -59,9 +58,9 @@ IGNORE_ALL = FieldModifier(init=False, repr=False, compare=False)
 
 # Analyse the class and create these new Fields based on the annotations
 def annotated_gatherer(cls: type) -> tuple[dict[str, AnnoField], dict[str, Any]]:
-    # String annotations *MUST* be evaluated for this to work
+    # String annotations *MUST* be able to evaluate for this to work
     # Trying to parse the Annotations as strings would add a *lot* of extra work
-    cls_annotations = inspect.get_annotations(cls, eval_str=True)
+    cls_annotations = get_annotations(cls.__dict__)
     cls_fields = {}
 
     # This gatherer doesn't make any class modifications but still needs

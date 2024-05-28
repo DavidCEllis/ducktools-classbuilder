@@ -1,7 +1,6 @@
 from ducktools.classbuilder import (
     builder,
     eq_maker,
-    fieldclass,
     get_fields,
     slot_gatherer,
     Field,
@@ -11,7 +10,6 @@ from ducktools.classbuilder import (
 )
 
 
-@fieldclass
 class PosOnlyField(Field):
     __slots__ = SlotFields(pos_only=True)
 

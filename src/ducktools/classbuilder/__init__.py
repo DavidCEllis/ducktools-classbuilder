@@ -21,7 +21,9 @@
 # SOFTWARE.
 import sys
 
-__version__ = "v0.5.1"
+from .annotations import get_annotations, is_classvar
+
+__version__ = "v0.6.0"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -94,7 +96,14 @@ class MethodMaker:
     def __repr__(self):
         return f"<MethodMaker for {self.funcname!r} method>"
 
-    def __get__(self, instance, cls):
+    def __get__(self, obj, objtype=None):
+        if objtype is None or issubclass(objtype, type):
+            # Called with get(ourclass, type(ourclass))
+            cls = obj
+        else:
+            # Called with get(inst | None, ourclass)
+            cls = objtype
+
         local_vars = {}
         code, globs = self.code_generator(cls)
         exec(code, globs, local_vars)
@@ -106,7 +115,7 @@ class MethodMaker:
 
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
-        return method.__get__(instance, cls)
+        return method.__get__(obj, objtype)
 
 
 def get_init_generator(null=NOTHING, extra_code=None):
@@ -241,6 +250,15 @@ frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
 default_methods = frozenset({init_maker, repr_maker, eq_maker})
 
+# Special `__init__` maker for 'Field' subclasses
+_field_init_maker = MethodMaker(
+    funcname="__init__",
+    code_generator=get_init_generator(
+        null=_NothingType(),
+        extra_code=["self.validate_field()"],
+    )
+)
+
 
 def builder(cls=None, /, *, gatherer, methods, flags=None):
     """
@@ -298,10 +316,35 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
     return cls
 
 
+# Tool to convert annotations to slots as a metaclass
+class SlotMakerMeta(type):
+    """
+    Metaclass to convert annotations to slots.
+
+    Will not convert `ClassVar` hinted values.
+    """
+    def __new__(cls, name, bases, ns, slots=True, **kwargs):
+
+        # Obtain slots from annotations
+        if "__slots__" not in ns and slots:
+            cls_annotations = get_annotations(ns)
+            cls_slots = SlotFields({
+                k: ns.pop(k, NOTHING)
+                for k, v in cls_annotations.items()
+                if not is_classvar(v)
+            })
+            ns["__slots__"] = cls_slots
+
+        # Make new slotted class
+        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
+
+        return new_cls
+
+
 # The Field class can finally be defined.
 # The __init__ method has to be written manually so Fields can be created
 # However after this, the other methods can be generated.
-class Field:
+class Field(metaclass=SlotMakerMeta):
     """
     A basic class to handle the assignment of defaults/factories with
     some metadata.
@@ -309,6 +352,8 @@ class Field:
     Intended to be extendable by subclasses for additional features.
 
     Note: When run under `pytest`, Field instances are Frozen.
+
+    When subclassing, passing `frozen=True` will make your subclass frozen.
     """
     __slots__ = {
         "default": "Standard default value to be used for attributes with"
@@ -335,6 +380,18 @@ class Field:
         self.doc = doc
 
         self.validate_field()
+
+    def __init_subclass__(cls, frozen=False):
+        field_methods = {_field_init_maker, repr_maker, eq_maker}
+        if frozen or _UNDER_TESTING:
+            field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+
+        builder(
+            cls,
+            gatherer=slot_gatherer,
+            methods=field_methods,
+            flags={"slotted": True, "kw_only": True}
+        )
 
     def validate_field(self):
         if self.default is not NOTHING and self.default_factory is not NOTHING:
@@ -435,7 +492,14 @@ def make_slot_gatherer(field_type=Field):
         :param cls: Class to gather field information from
         :return: dict of field_name: Field(...)
         """
-        cls_slots = cls.__dict__.get("__slots__", None)
+
+        try:
+            cls_slots = cls.__dict__["__slots__"]
+        except KeyError:
+            raise AttributeError(
+                "__slots__ must be defined as an instance of SlotFields "
+                "in order to generate a slotclass"
+            )
 
         if not isinstance(cls_slots, SlotFields):
             raise TypeError(
@@ -487,89 +551,6 @@ def make_slot_gatherer(field_type=Field):
 slot_gatherer = make_slot_gatherer()
 
 
-# Annotation gathering tools
-def is_classvar(hint):
-    _typing = sys.modules.get("typing")
-
-    if _typing:
-        # Annotated is a nightmare I'm never waking up from
-        # 3.8 and 3.9 need Annotated from typing_extensions
-        # 3.8 also needs get_origin from typing_extensions
-        if sys.version_info < (3, 10):
-            _typing_extensions = sys.modules.get("typing_extensions")
-            if _typing_extensions:
-                _Annotated = _typing_extensions.Annotated
-                _get_origin = _typing_extensions.get_origin
-            else:
-                _Annotated, _get_origin = None, None
-        else:
-            _Annotated = _typing.Annotated
-            _get_origin = _typing.get_origin
-
-        if _Annotated and _get_origin(hint) is _Annotated:
-            hint = getattr(hint, "__origin__", None)
-
-        if (
-            hint is _typing.ClassVar
-            or getattr(hint, "__origin__", None) is _typing.ClassVar
-        ):
-            return True
-        # String used as annotation
-        elif isinstance(hint, str) and "ClassVar" in hint:
-            return True
-    return False
-
-
-def make_annotation_gatherer(field_type=Field, leave_default_values=True):
-    """
-    Create a new annotation gatherer that will work with `Field` instances
-    of the creators definition.
-
-    :param field_type: The `Field` classes to be used when gathering fields
-    :param leave_default_values: Set to True if the gatherer should leave
-                                 default values in place as class variables.
-    :return: An annotation gatherer with these settings.
-    """
-    def field_annotation_gatherer(cls):
-        cls_annotations = cls.__dict__.get("__annotations__", {})
-
-        cls_fields: dict[str, field_type] = {}
-
-        modifications = {}
-
-        for k, v in cls_annotations.items():
-            # Ignore ClassVar
-            if is_classvar(v):
-                continue
-
-            attrib = getattr(cls, k, NOTHING)
-
-            if attrib is not NOTHING:
-                if isinstance(attrib, field_type):
-                    attrib = field_type.from_field(attrib, type=v)
-                    if attrib.default is not NOTHING and leave_default_values:
-                        modifications[k] = attrib.default
-                    else:
-                        # NOTHING sentinel indicates a value should be removed
-                        modifications[k] = NOTHING
-                else:
-                    attrib = field_type(default=attrib, type=v)
-                    if not leave_default_values:
-                        modifications[k] = NOTHING
-
-            else:
-                attrib = field_type(type=v)
-
-            cls_fields[k] = attrib
-
-        return cls_fields, modifications
-
-    return field_annotation_gatherer
-
-
-annotation_gatherer = make_annotation_gatherer()
-
-
 def check_argument_order(cls):
     """
     Raise a SyntaxError if the argument order will be invalid for a generated
@@ -611,51 +592,69 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     return cls
 
 
-def annotationclass(cls=None, /, *, methods=default_methods):
-    if not cls:
-        return lambda cls_: annotationclass(cls_, methods=methods)
-
-    cls = builder(cls, gatherer=annotation_gatherer, methods=methods, flags={"slotted": False})
-
-    check_argument_order(cls)
-
-    return cls
-
-
-_field_init_desc = MethodMaker(
-    funcname="__init__",
-    code_generator=get_init_generator(
-        null=_NothingType(),
-        extra_code=["self.validate_field()"],
-    )
-)
-
-
-def fieldclass(cls=None, /, *, frozen=False):
+# Annotation based class tools
+def make_annotation_gatherer(
+    field_type=Field,
+    leave_default_values=True,
+):
     """
-    This is a special decorator for making Field subclasses using __slots__.
-    This works by forcing the __init__ method to treat NOTHING as a regular
-    value. This means *all* instance attributes always have defaults.
+    Create a new annotation gatherer that will work with `Field` instances
+    of the creators definition.
 
-    :param cls: Field subclass
-    :param frozen: Make the field class a frozen class.
-                   Field classes are always frozen when running under `pytest`
-    :return: Modified subclass
+    :param field_type: The `Field` classes to be used when gathering fields
+    :param leave_default_values: Set to True if the gatherer should leave
+                                 default values in place as class variables.
+    :return: An annotation gatherer with these settings.
     """
-    if not cls:
-        return lambda cls_: fieldclass(cls_, frozen=frozen)
+    def field_annotation_gatherer(cls):
 
-    field_methods = {_field_init_desc, repr_maker, eq_maker}
+        cls_fields: dict[str, field_type] = {}
+        modifications = {}
 
-    # Always freeze when running tests
-    if frozen or _UNDER_TESTING:
-        field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+        cls_annotations = get_annotations(cls.__dict__)
 
-    cls = builder(
-        cls,
-        gatherer=slot_gatherer,
-        methods=field_methods,
-        flags={"slotted": True, "kw_only": True}
-    )
+        for k, v in cls_annotations.items():
+            # Ignore ClassVar
+            if is_classvar(v):
+                continue
 
-    return cls
+            attrib = getattr(cls, k, NOTHING)
+
+            if attrib is not NOTHING:
+                if isinstance(attrib, field_type):
+                    attrib = field_type.from_field(attrib, type=v)
+
+                    if attrib.default is not NOTHING and leave_default_values:
+                        modifications[k] = attrib.default
+                    else:
+                        # NOTHING sentinel indicates a value should be removed
+                        modifications[k] = NOTHING
+                else:
+                    attrib = field_type(default=attrib, type=v)
+                    if not leave_default_values:
+                        modifications[k] = NOTHING
+            else:
+                attrib = field_type(type=v)
+
+            cls_fields[k] = attrib
+
+        return cls_fields, modifications
+
+    return field_annotation_gatherer
+
+
+annotation_gatherer = make_annotation_gatherer()
+
+
+class AnnotationClass(metaclass=SlotMakerMeta):
+    def __init_subclass__(cls, methods=default_methods, **kwargs):
+        # Check class dict otherwise this will always be True as this base
+        # class uses slots.
+
+        slots = "__slots__" in cls.__dict__
+
+        gatherer = slot_gatherer if slots else annotation_gatherer
+
+        builder(cls, gatherer=gatherer, methods=methods, flags={"slotted": slots})
+        check_argument_order(cls)
+        super().__init_subclass__(**kwargs)

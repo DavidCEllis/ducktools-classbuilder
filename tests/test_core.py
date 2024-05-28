@@ -1,4 +1,5 @@
 # Tests for the core 'builder'
+import inspect
 import pytest
 
 from ducktools.classbuilder import (
@@ -13,9 +14,9 @@ from ducktools.classbuilder import (
     SlotFields,
     slot_gatherer,
     slotclass,
-    fieldclass,
     GatheredFields,
 )
+from ducktools.classbuilder.annotations import get_annotations
 
 
 def test_get_fields_flags():
@@ -171,14 +172,14 @@ def test_slot_gatherer_success():
     assert slots == fields
     assert modifications["__slots__"] == {"a": None, "b": None, "c": "a list", "d": None}
     assert modifications["__annotations__"] == {"a": int, "d": str}
-    assert SlotsExample.__annotations__ == {"a": int}  # Original annotations dict unmodified
+    assert get_annotations(SlotsExample.__dict__) == {"a": int}  # Original annotations dict unmodified
 
 
 def test_slot_gatherer_failure():
     class NoSlots:
         ...
 
-    with pytest.raises(TypeError):
+    with pytest.raises(AttributeError):
         slot_gatherer(NoSlots)
 
     class WrongSlots:
@@ -353,7 +354,6 @@ def test_slotclass_dict():
 
 
 def test_fieldclass():
-    @fieldclass
     class NewField(Field):
         __slots__ = SlotFields(serialize=True)
         serialize: bool
@@ -377,8 +377,7 @@ def test_fieldclass():
 
 
 def test_fieldclass_frozen():
-    @fieldclass(frozen=True)
-    class NewField(Field):
+    class NewField(Field, frozen=True):
         __slots__ = SlotFields(serialize=True)
         serialize: bool
 
@@ -455,3 +454,10 @@ def test_gatheredfields():
         ")"
     )
 
+def test_signature():
+    # This used to fail
+    @slotclass
+    class SigClass:
+        __slots__ = SlotFields(x=42)
+
+    assert str(inspect.signature(SigClass)) == "(x=42)"

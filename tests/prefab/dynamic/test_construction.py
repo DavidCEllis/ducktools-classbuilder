@@ -1,6 +1,7 @@
 import pytest
 
 from ducktools.classbuilder import get_fields
+from ducktools.classbuilder.annotations import get_annotations
 from ducktools.classbuilder.prefab import build_prefab, prefab, attribute, PrefabError
 
 
@@ -108,7 +109,7 @@ def test_build_slotted():
     assert inst.y == 0
     assert SlottedClass.__slots__ == {'x': "x co-ordinate", 'y': "y co-ordinate"}
 
-    assert SlottedClass.__annotations__ == {'x': float, 'y': float}
+    assert get_annotations(SlottedClass.__dict__) == {'x': float, 'y': float}
 
     # Test slots are functioning
     with pytest.raises(AttributeError):

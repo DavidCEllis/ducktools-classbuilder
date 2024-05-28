@@ -1,6 +1,5 @@
 from ducktools.classbuilder import (
     eq_maker,
-    fieldclass,
     get_fields,
     init_maker,
     slotclass,
@@ -10,7 +9,6 @@ from ducktools.classbuilder import (
 )
 
 
-@fieldclass
 class FieldExt(Field):
     __slots__ = SlotFields(repr=True)
 

@@ -4,13 +4,14 @@ import pytest
 from typing import ClassVar
 from typing_extensions import Annotated
 
-from ducktools.classbuilder import Field, SlotFields, fieldclass, NOTHING
-
 from ducktools.classbuilder import (
+    Field, SlotFields, NOTHING,
+    AnnotationClass, annotation_gatherer, make_annotation_gatherer
+)
+
+from ducktools.classbuilder.annotations import (
     is_classvar,
-    annotationclass,
-    annotation_gatherer,
-    make_annotation_gatherer,
+    get_annotations,
 )
 
 CV = ClassVar
@@ -60,7 +61,6 @@ def test_annotation_gatherer():
 
 
 def test_make_annotation_gatherer():
-    @fieldclass
     class NewField(Field):
         __slots__ = SlotFields(newval=False)
 
@@ -82,7 +82,7 @@ def test_make_annotation_gatherer():
         h: Annotated[CV[str], ''] = "h"
 
     annos, modifications = gatherer(ExampleAnnotated)
-    annotations = ExampleAnnotated.__annotations__
+    annotations = get_annotations(vars(ExampleAnnotated))
 
     assert annos["blank_field"] == NewField(type=str)
 
@@ -98,8 +98,7 @@ def test_make_annotation_gatherer():
 
 
 def test_annotationclass():
-    @annotationclass()
-    class ExampleAnnotated:
+    class ExampleAnnotated(AnnotationClass, slots=False):
         a: str = "a"
         b: "list[str]" = "b"
         c: Annotated[str, ""] = Field(default="c")
@@ -129,8 +128,7 @@ def test_annotationclass():
 
 def test_annotated_syntax_error():
     with pytest.raises(SyntaxError):
-        @annotationclass
-        class ExampleAnnotated:
+        class ExampleAnnotated(AnnotationClass):
             a: str = "a"
             b: "list[str]"
             c: Annotated[str, ""] = Field(default="c")

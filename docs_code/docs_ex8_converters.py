@@ -1,7 +1,6 @@
 from ducktools.classbuilder import (
     builder,
     default_methods,
-    fieldclass,
     get_fields,
     slot_gatherer,
     Field,
@@ -10,7 +9,6 @@ from ducktools.classbuilder import (
 )
 
 
-@fieldclass
 class ConverterField(Field):
     __slots__ = SlotFields(converter=None)
 
