@@ -124,29 +124,51 @@ def get_init_generator(null=NOTHING, extra_code=None):
         flags = get_flags(cls)
 
         arglist = []
+        kw_only_arglist = []
         assignments = []
         globs = {}
 
-        if flags.get("kw_only", False):
-            arglist.append("*")
+        kw_only_flag = flags.get("kw_only", False)
 
         for k, v in fields.items():
-            if v.default is not null:
-                globs[f"_{k}_default"] = v.default
-                arg = f"{k}=_{k}_default"
-                assignment = f"self.{k} = {k}"
-            elif v.default_factory is not null:
-                globs[f"_{k}_factory"] = v.default_factory
-                arg = f"{k}=None"
-                assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
+            if v.init:
+                if v.default is not null:
+                    globs[f"_{k}_default"] = v.default
+                    arg = f"{k}=_{k}_default"
+                    assignment = f"self.{k} = {k}"
+                elif v.default_factory is not null:
+                    globs[f"_{k}_factory"] = v.default_factory
+                    arg = f"{k}=None"
+                    assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
+                else:
+                    arg = f"{k}"
+                    assignment = f"self.{k} = {k}"
+
+                if kw_only_flag or v.kw_only:
+                    kw_only_arglist.append(arg)
+                else:
+                    arglist.append(arg)
+
+                assignments.append(assignment)
             else:
-                arg = f"{k}"
-                assignment = f"self.{k} = {k}"
+                if v.default is not null:
+                    globs[f"_{k}_default"] = v.default
+                    assignment = f"self.{k} = _{k}_default"
+                    assignments.append(assignment)
+                elif v.default_factory is not null:
+                    globs[f"_{k}_factory"] = v.default_factory
+                    assignment = f"self.{k} = _{k}_factory()"
+                    assignments.append(assignment)
 
-            arglist.append(arg)
-            assignments.append(assignment)
+        pos_args = ", ".join(arglist)
+        kw_args = ", ".join(kw_only_arglist)
+        if pos_args and kw_args:
+            args = f"{pos_args}, *, {kw_args}"
+        elif kw_args:
+            args = f"*, {kw_args}"
+        else:
+            args = pos_args
 
-        args = ", ".join(arglist)
         assigns = "\n    ".join(assignments) if assignments else "pass\n"
         code = (
             f"def __init__(self, {args}):\n" 
@@ -166,23 +188,75 @@ def get_init_generator(null=NOTHING, extra_code=None):
 init_generator = get_init_generator()
 
 
-def repr_generator(cls):
-    fields = get_fields(cls)
-    content = ", ".join(
-        f"{name}={{self.{name}!r}}"
-        for name, attrib in fields.items()
-    )
-    code = (
-        f"def __repr__(self):\n"
-        f"    return f'{{type(self).__qualname__}}({content})'\n"
-    )
-    globs = {}
-    return code, globs
+def get_repr_generator(recursion_safe=False, eval_safe=False):
+    """
+
+    :param recursion_safe: use reprlib.recursive_repr
+    :param eval_safe: if the repr is known not to eval correctly,
+                      generate a repr which will intentionally
+                      not evaluate.
+    :return:
+    """
+    def cls_repr_generator(cls):
+        fields = get_fields(cls)
+
+        globs = {}
+        will_eval = True
+        valid_names = []
+
+        for name, fld in fields.items():
+            if fld.repr:
+                valid_names.append(name)
+
+            if will_eval and (fld.init ^ fld.repr):
+                will_eval = False
+
+        content = ", ".join(
+            f"{name}={{self.{name}!r}}"
+            for name in valid_names
+        )
+
+        if recursion_safe:
+            import reprlib
+            globs["_recursive_repr"] = reprlib.recursive_repr()
+            recursion_func = "@_recursive_repr\n"
+        else:
+            recursion_func = ""
+
+        if eval_safe and will_eval is False:
+            if content:
+                code = (
+                    f"{recursion_func}"
+                    f"def __repr__(self):\n"
+                    f"    return f'<Generated Class {{type(self).__qualname__}}; {content}>'\n"
+                )
+            else:
+                code = (
+                    f"{recursion_func}"
+                    f"def __repr__(self):\n"
+                    f"    return f'<Generated Class {{type(self).__qualname__}}>'\n"
+                )
+        else:
+            code = (
+                f"{recursion_func}"
+                f"def __repr__(self):\n"
+                f"    return f'{{type(self).__qualname__}}({content})'\n"
+            )
+
+        return code, globs
+    return cls_repr_generator
+
+
+repr_generator = get_repr_generator()
 
 
 def eq_generator(cls):
     class_comparison = "self.__class__ is other.__class__"
-    field_names = get_fields(cls)
+    field_names = [
+        name
+        for name, attrib in get_fields(cls).items()
+        if attrib.compare
+    ]
 
     if field_names:
         selfvals = ",".join(f"self.{name}" for name in field_names)

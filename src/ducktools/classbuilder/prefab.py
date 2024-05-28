@@ -29,7 +29,8 @@ from . import (
     INTERNALS_DICT, NOTHING,
     Field, MethodMaker, SlotFields, GatheredFields,
     builder, get_flags, get_fields, make_slot_gatherer,
-    frozen_setattr_maker, frozen_delattr_maker
+    frozen_setattr_maker, frozen_delattr_maker, eq_maker,
+    get_repr_generator,
 )
 from .annotations import is_classvar, get_annotations
 
@@ -221,88 +222,6 @@ def get_init_maker(*, init_name="__init__"):
     return MethodMaker(init_name, __init__)
 
 
-def get_repr_maker(*, recursion_safe=False):
-    def __repr__(cls: "type") -> "tuple[str, dict]":
-        attributes = get_attributes(cls)
-
-        globs = {}
-
-        will_eval = True
-        valid_names = []
-        for name, attrib in attributes.items():
-            if attrib.repr and not attrib.exclude_field:
-                valid_names.append(name)
-
-            # If the init fields don't match the repr, or some fields are excluded
-            # generate a repr that clearly will not evaluate
-            if will_eval and (attrib.exclude_field or (attrib.init ^ attrib.repr)):
-                will_eval = False
-
-        content = ", ".join(
-            f"{name}={{self.{name}!r}}"
-            for name in valid_names
-        )
-
-        if recursion_safe:
-            import reprlib
-            globs["_recursive_repr"] = reprlib.recursive_repr()
-            recursion_func = "@_recursive_repr\n"
-        else:
-            recursion_func = ""
-
-        if will_eval:
-            code = (
-                f"{recursion_func}"
-                f"def __repr__(self):\n"
-                f"    return f'{{type(self).__qualname__}}({content})'\n"
-            )
-        else:
-            if content:
-                code = (
-                    f"{recursion_func}"
-                    f"def __repr__(self):\n"
-                    f"    return f'<prefab {{type(self).__qualname__}}; {content}>'\n"
-                )
-            else:
-                code = (
-                    f"{recursion_func}"
-                    f"def __repr__(self):\n"
-                    f"    return f'<prefab {{type(self).__qualname__}}>'\n"
-                )
-
-        return code, globs
-
-    return MethodMaker("__repr__", __repr__)
-
-
-def get_eq_maker():
-    def __eq__(cls: "type") -> "tuple[str, dict]":
-        class_comparison = "self.__class__ is other.__class__"
-        attribs = get_attributes(cls)
-        field_names = [
-            name
-            for name, attrib in attribs.items()
-            if attrib.compare and not attrib.exclude_field
-        ]
-
-        if field_names:
-            selfvals = ",".join(f"self.{name}" for name in field_names)
-            othervals = ",".join(f"other.{name}" for name in field_names)
-            instance_comparison = f"({selfvals},) == ({othervals},)"
-        else:
-            instance_comparison = "True"
-
-        code = (
-            f"def __eq__(self, other):\n"
-            f"    return {instance_comparison} if {class_comparison} else NotImplemented\n"
-        )
-        globs = {}
-
-        return code, globs
-
-    return MethodMaker("__eq__", __eq__)
-
-
 def get_iter_maker():
     def __iter__(cls: "type") -> "tuple[str, dict]":
         fields = get_attributes(cls)
@@ -344,9 +263,14 @@ def get_asdict_maker():
 
 init_maker = get_init_maker()
 prefab_init_maker = get_init_maker(init_name=PREFAB_INIT_FUNC)
-repr_maker = get_repr_maker()
-recursive_repr_maker = get_repr_maker(recursion_safe=True)
-eq_maker = get_eq_maker()
+repr_maker = MethodMaker(
+    "__repr__",
+    get_repr_generator(recursion_safe=False, eval_safe=True)
+)
+recursive_repr_maker = MethodMaker(
+    "__repr__",
+    get_repr_generator(recursion_safe=True, eval_safe=True)
+)
 iter_maker = get_iter_maker()
 asdict_maker = get_asdict_maker()
 
@@ -381,6 +305,17 @@ class Attribute(Field):
         if self.kw_only and not self.init:
             raise PrefabError(
                 "Attribute cannot be keyword only if it is not in init."
+            )
+
+        exclude_attribs = {
+            self.repr, self.compare, self.iter, self.serialize
+        }
+
+        if self.exclude_field and any(exclude_attribs):
+            raise PrefabError(
+                "Excluded fields must have repr, compare, iter, serialize "
+                "set to False."
+                "This is automatically handled by using the `attribute` helper."
             )
 
 
@@ -420,6 +355,12 @@ def attribute(
 
     :return: Attribute generated with these parameters.
     """
+    if exclude_field:
+        repr = False
+        compare = False
+        iter = False
+        serialize = False
+
     return Attribute(
         default=default,
         default_factory=default_factory,

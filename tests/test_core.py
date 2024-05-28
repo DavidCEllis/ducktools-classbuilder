@@ -464,6 +464,7 @@ def test_gatheredfields():
         ")"
     )
 
+
 def test_signature():
     # This used to fail
     @slotclass
