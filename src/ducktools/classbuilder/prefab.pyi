@@ -18,12 +18,6 @@ PRE_INIT_FUNC: str
 POST_INIT_FUNC: str
 
 
-# noinspection PyPep8Naming
-class _KW_ONLY_TYPE:
-    def __repr__(self) -> str: ...
-
-KW_ONLY: _KW_ONLY_TYPE
-
 class PrefabError(Exception): ...
 
 def get_attributes(cls: type) -> dict[str, Attribute]: ...

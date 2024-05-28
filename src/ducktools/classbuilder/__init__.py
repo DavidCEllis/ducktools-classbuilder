@@ -77,6 +77,17 @@ class _NothingType:
 NOTHING = _NothingType()
 
 
+# KW_ONLY sentinel 'type' to use to indicate all subsequent attributes are
+# keyword only
+# noinspection PyPep8Naming
+class _KW_ONLY_TYPE:
+    def __repr__(self):
+        return "<KW_ONLY Sentinel Object>"
+
+
+KW_ONLY = _KW_ONLY_TYPE()
+
+
 class MethodMaker:
     """
     The descriptor class to place where methods should be generated.
@@ -642,7 +653,7 @@ def make_slot_gatherer(field_type=Field):
 def make_annotation_gatherer(
     field_type=Field,
     leave_default_values=True,
-    kw_only_sentinel=None,
+    kw_only_sentinel=KW_ONLY,
 ):
     """
     Create a new annotation gatherer that will work with `Field` instances
@@ -660,29 +671,42 @@ def make_annotation_gatherer(
         modifications = {}
 
         cls_annotations = get_annotations(cls.__dict__)
+        cls_slots = cls.__dict__.get("__slots__", {})
+
+        kw_flag = False
 
         for k, v in cls_annotations.items():
             # Ignore ClassVar
             if is_classvar(v):
                 continue
 
+            if v is kw_only_sentinel:
+                if kw_flag:
+                    raise SyntaxError("KW_ONLY sentinel may only appear once.")
+                kw_flag = True
+                continue
+
             attrib = getattr(cls, k, NOTHING)
 
             if attrib is not NOTHING:
                 if isinstance(attrib, field_type):
-                    attrib = field_type.from_field(attrib, type=v)
+                    kw_only = attrib.kw_only or kw_flag
+
+                    attrib = field_type.from_field(attrib, type=v, kw_only=kw_only)
 
                     if attrib.default is not NOTHING and leave_default_values:
                         modifications[k] = attrib.default
                     else:
                         # NOTHING sentinel indicates a value should be removed
                         modifications[k] = NOTHING
-                else:
-                    attrib = field_type(default=attrib, type=v)
+                elif k not in cls_slots:
+                    attrib = field_type(default=attrib, type=v, kw_only=kw_flag)
                     if not leave_default_values:
                         modifications[k] = NOTHING
+                else:
+                    attrib = field_type(type=v, kw_only=kw_flag)
             else:
-                attrib = field_type(type=v)
+                attrib = field_type(type=v, kw_only=kw_flag)
 
             cls_fields[k] = attrib
 

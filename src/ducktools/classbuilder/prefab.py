@@ -26,7 +26,7 @@ A 'prebuilt' implementation of class generation.
 Includes pre and post init functions along with other methods.
 """
 from . import (
-    INTERNALS_DICT, NOTHING,
+    INTERNALS_DICT, NOTHING, KW_ONLY,
     Field, MethodMaker, SlotFields, GatheredFields,
     builder, get_flags, get_fields, make_slot_gatherer,
     frozen_setattr_maker, frozen_delattr_maker, eq_maker,
@@ -38,17 +38,6 @@ PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
 PRE_INIT_FUNC = "__prefab_pre_init__"
 POST_INIT_FUNC = "__prefab_post_init__"
-
-
-# KW_ONLY sentinel 'type' to use to indicate all subsequent attributes are
-# keyword only
-# noinspection PyPep8Naming
-class _KW_ONLY_TYPE:
-    def __repr__(self):
-        return "<KW_ONLY Sentinel Object>"
-
-
-KW_ONLY = _KW_ONLY_TYPE()
 
 
 class PrefabError(Exception):
