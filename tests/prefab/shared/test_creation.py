@@ -145,7 +145,7 @@ class TestClassVar:
 
 class TestExceptions:
     def test_kw_not_in_init(self):
-        with pytest.raises(PrefabError) as e_info:
+        with pytest.raises(AttributeError) as e_info:
             from fails.creation_1 import Construct
 
         assert (
@@ -171,7 +171,7 @@ class TestExceptions:
 
         assert (
             e_info.value.args[0]
-            == "Cannot define both a default value and a default factory."
+            == "Attribute cannot define both a default value and a default factory."
         )
 
 

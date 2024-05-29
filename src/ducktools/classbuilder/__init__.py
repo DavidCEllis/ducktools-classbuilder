@@ -470,9 +470,15 @@ class Field:
         )
 
     def validate_field(self):
+        cls_name = self.__class__.__name__
         if self.default is not NOTHING and self.default_factory is not NOTHING:
             raise AttributeError(
-                "Cannot define both a default value and a default factory."
+                f"{cls_name} cannot define both a default value and a default factory."
+            )
+
+        if self.kw_only and not self.init:
+            raise AttributeError(
+                f"{cls_name} cannot be keyword only if it is not in init."
             )
 
     @classmethod
@@ -820,6 +826,9 @@ def check_argument_order(cls):
     fields = get_fields(cls)
     used_default = False
     for k, v in fields.items():
+        if v.kw_only or (not v.init):
+            continue
+
         if v.default is NOTHING and v.default_factory is NOTHING:
             if used_default:
                 raise SyntaxError(

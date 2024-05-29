@@ -291,15 +291,10 @@ class Attribute(Field, metaclass=SlotMakerMeta):
 
     def validate_field(self):
         super().validate_field()
-        if self.kw_only and not self.init:
-            raise PrefabError(
-                "Attribute cannot be keyword only if it is not in init."
-            )
 
         exclude_attribs = {
             self.repr, self.compare, self.iter, self.serialize
         }
-
         if self.exclude_field and any(exclude_attribs):
             raise PrefabError(
                 "Excluded fields must have repr, compare, iter, serialize "
