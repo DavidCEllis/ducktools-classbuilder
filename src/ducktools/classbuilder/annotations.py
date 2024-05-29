@@ -54,7 +54,7 @@ def get_annotations(ns, eval_str=True):
     raw_annotations = ns.get("__annotations__", {})
 
     if not eval_str:
-        return raw_annotations
+        return raw_annotations.copy()
 
     try:
         obj_modulename = ns["__module__"]

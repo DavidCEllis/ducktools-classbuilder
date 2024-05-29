@@ -592,9 +592,7 @@ def make_slot_gatherer(field_type=Field):
 
         # Don't want to mutate original annotations so make a copy if it exists
         # Looking at the dict is a Python3.9 or earlier requirement
-        cls_annotations = {
-            **cls_dict.get("__annotations__", {})
-        }
+        cls_annotations = get_annotations(cls_dict)
 
         cls_fields = {}
         slot_replacement = {}
