@@ -9,28 +9,28 @@ def test_basic_repr_no_fields():
     from repr_func import NoReprAttributes
 
     x = NoReprAttributes()
-    assert repr(x) == "<Generated Class NoReprAttributes>"
+    assert repr(x) == "<generated class NoReprAttributes>"
 
 
 def test_one_attribute_no_repr():
     from repr_func import OneAttributeNoRepr
 
     x = OneAttributeNoRepr()
-    assert repr(x) == "<Generated Class OneAttributeNoRepr; y='World'>"
+    assert repr(x) == "<generated class OneAttributeNoRepr; y='World'>"
 
 
 def test_one_attribute_no_init():
     from repr_func import OneAttributeNoInit
 
     x = OneAttributeNoInit()
-    assert repr(x) == "<Generated Class OneAttributeNoInit; x='Hello', y='World'>"
+    assert repr(x) == "<generated class OneAttributeNoInit; x='Hello', y='World'>"
 
 
 def test_one_attribute_exclude_field():
     from repr_func import OneAttributeExcludeField
 
     x = OneAttributeExcludeField()
-    assert repr(x) == "<Generated Class OneAttributeExcludeField; x='Hello'>"
+    assert repr(x) == "<generated class OneAttributeExcludeField; x='Hello'>"
 
 
 def test_regular_one_arg():

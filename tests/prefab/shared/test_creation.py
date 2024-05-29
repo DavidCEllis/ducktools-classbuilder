@@ -235,7 +235,7 @@ class TestNonInit:
 
         x.x = 12
 
-        assert repr(x) == "<Generated Class ConstructInitFalse; x=12>"
+        assert repr(x) == "<generated class ConstructInitFalse; x=12>"
 
     def test_non_init_doesnt_break_syntax(self):
         # No syntax error if an attribute with a default is defined
@@ -243,4 +243,4 @@ class TestNonInit:
         from creation import PositionalNotAfterKW
 
         x = PositionalNotAfterKW(1, 2)
-        assert repr(x) == "<Generated Class PositionalNotAfterKW; x=1, y=0, z=2>"
+        assert repr(x) == "<generated class PositionalNotAfterKW; x=1, y=0, z=2>"

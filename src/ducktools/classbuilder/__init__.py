@@ -242,13 +242,13 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
                 code = (
                     f"{recursion_func}"
                     f"def __repr__(self):\n"
-                    f"    return f'<Generated Class {{type(self).__qualname__}}; {content}>'\n"
+                    f"    return f'<generated class {{type(self).__qualname__}}; {content}>'\n"
                 )
             else:
                 code = (
                     f"{recursion_func}"
                     f"def __repr__(self):\n"
-                    f"    return f'<Generated Class {{type(self).__qualname__}}>'\n"
+                    f"    return f'<generated class {{type(self).__qualname__}}>'\n"
                 )
         else:
             code = (
