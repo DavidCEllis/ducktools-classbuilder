@@ -53,3 +53,17 @@ def test_slots_correct_subclass():
 
     with pytest.raises(AttributeError):
         inst.e = "e"
+
+
+def test_slots_attribute():
+    # In the case where an unannotated field is declared, ignore
+    # annotations without field values.
+    class ExampleBase(metaclass=SlotMakerMeta):
+        x: str = "x"
+        y: str = Field(default="y")
+        z = Field(default="z")
+
+    assert ExampleBase.__slots__ == SlotFields(  # noqa
+        y=Field(default="y", type=str),
+        z=Field(default="z"),
+    )
