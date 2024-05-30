@@ -21,7 +21,7 @@
 # SOFTWARE.
 import sys
 
-from .annotations import get_annotations, is_classvar
+from .annotations import get_ns_annotations, is_classvar
 
 __version__ = "v0.6.0"
 
@@ -598,7 +598,7 @@ def make_slot_gatherer(field_type=Field):
 
         # Don't want to mutate original annotations so make a copy if it exists
         # Looking at the dict is a Python3.9 or earlier requirement
-        cls_annotations = get_annotations(cls_dict)
+        cls_annotations = get_ns_annotations(cls_dict)
 
         cls_fields = {}
         slot_replacement = {}
@@ -654,7 +654,7 @@ def make_annotation_gatherer(
         cls_fields: dict[str, field_type] = {}
         modifications = {}
 
-        cls_annotations = get_annotations(cls_dict)
+        cls_annotations = get_ns_annotations(cls_dict)
         cls_slots = cls_dict.get("__slots__", {})
 
         kw_flag = False
@@ -710,7 +710,7 @@ def make_attribute_gatherer(
             for k, v in cls_dict.items()
             if isinstance(v, field_type)
         }
-        cls_annotations = get_annotations(cls_dict)
+        cls_annotations = get_ns_annotations(cls_dict)
 
         cls_modifications = {}
 
@@ -755,7 +755,7 @@ def make_unified_gatherer(
         # To choose between annotation and attribute gatherers
         # compare sets of names.
         # Don't bother evaluating string annotations, as we only need names
-        cls_annotations = get_annotations(cls_dict, eval_str=False)
+        cls_annotations = get_ns_annotations(cls_dict, eval_str=False)
         cls_attributes = {
             k: v for k, v in cls_dict.items() if isinstance(v, field_type)
         }

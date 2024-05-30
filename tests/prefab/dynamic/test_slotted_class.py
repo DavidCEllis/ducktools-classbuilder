@@ -1,6 +1,6 @@
 import pytest
 
-from ducktools.classbuilder.annotations import get_annotations
+from ducktools.classbuilder.annotations import get_ns_annotations
 from ducktools.classbuilder.prefab import prefab, attribute, SlotFields
 
 
@@ -13,7 +13,7 @@ def test_basic_slotted():
         )
 
     assert SlottedPrefab.__slots__ == {"x": None, "y": "Digits of pi"}
-    assert get_annotations(SlottedPrefab.__dict__) == {"y": float}
+    assert get_ns_annotations(SlottedPrefab.__dict__) == {"y": float}
 
     ex = SlottedPrefab()
 

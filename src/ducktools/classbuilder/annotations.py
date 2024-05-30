@@ -21,31 +21,89 @@
 # SOFTWARE.
 
 import sys
+import builtins
 
 
-def eval_hint(hint, obj_globals=None, obj_locals=None):
+class _StringGlobs(dict):
+    """
+    Based on the fake globals dictionary used for annotations
+    from 3.14. This allows us to evaluate containers which
+    include forward references.
+
+    It's just a dictionary that returns the key if the key
+    is not found.
+    """
+    def __missing__(self, key):
+        return key
+
+    def __repr__(self):
+        cls_name = self.__class__.__name__
+        dict_repr = super().__repr__()
+        return f"{cls_name}({dict_repr})"
+
+
+def eval_hint(hint, context=None, *, recursion_limit=5):
     """
     Attempt to evaluate a string type hint in the given
-    context. If this fails, return the original string.
+    context.
+
+    If this raises an exception, return the last string.
+
+    If the recursion limit is hit or a previous value returns
+    on evaluation, return the original hint string.
+
+    Example::
+        import builtins
+        from typing import ClassVar
+
+        from ducktools.classbuilder.annotations import eval_hint
+
+        foo = "foo"
+
+        context = {**vars(builtins), **globals(), **locals()}
+        eval_hint("foo", context)  # returns 'foo'
+
+        eval_hint("ClassVar[str]", context)  # returns typing.ClassVar[str]
+        eval_hint("ClassVar[forwardref]", context)  # returns typing.ClassVar[ForwardRef('forwardref')]
 
     :param hint: The existing type hint
-    :param obj_globals: global context
-    :param obj_locals: local context
+    :param context: merged context
+    :param recursion_limit: maximum number of evaluation loops before
+                            returning the original string.
     :return: evaluated hint, or string if it could not evaluate
     """
+    if context is not None:
+        context = _StringGlobs(context)
+
+    original_hint = hint
+    seen = set()
+    i = 0
     while isinstance(hint, str):
+        seen.add(hint)
+
         # noinspection PyBroadException
         try:
-            hint = eval(hint, obj_globals, obj_locals)
+            hint = eval(hint, context)
         except Exception:
             break
+
+        if hint in seen or i >= recursion_limit:
+            hint = original_hint
+            break
+
+        i += 1
+
     return hint
 
 
-def get_annotations(ns, eval_str=True):
+def get_ns_annotations(ns, eval_str=True):
     """
-    Given an class namespace, attempt to retrieve the
+    Given a class namespace, attempt to retrieve the
     annotations dictionary and evaluate strings.
+
+    Note: This only evaluates in the context of module level globals
+    and values in the class namespace. Non-local variables will not
+    be evaluated.
 
     :param ns: Class namespace (eg cls.__dict__)
     :param eval_str: Attempt to evaluate string annotations (default to True)
@@ -64,14 +122,21 @@ def get_annotations(ns, eval_str=True):
         obj_module = sys.modules.get(obj_modulename, None)
 
     if obj_module:
-        obj_globals = obj_module.__dict__.copy()
+        obj_globals = vars(obj_module)
     else:
         obj_globals = {}
 
-    obj_locals = ns.copy()
+    # Type parameters should be usable in hints without breaking
+    # This is for Python 3.12+
+    type_params = {
+        repr(param): param
+        for param in ns.get("__type_params__", ())
+    }
+
+    context = {**vars(builtins), **obj_globals, **type_params, **ns}
 
     return {
-        k: eval_hint(v, obj_globals, obj_locals)
+        k: eval_hint(v, context)
         for k, v in raw_annotations.items()
     }
 
