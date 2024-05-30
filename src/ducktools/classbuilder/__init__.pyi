@@ -84,6 +84,10 @@ def builder(
 ) -> Callable[[type[_T]], type[_T]]: ...
 
 
+class SlotFields(dict):
+    ...
+
+
 class SlotMakerMeta(type):
     def __new__(
         cls: type[_T],
@@ -95,7 +99,7 @@ class SlotMakerMeta(type):
     ) -> _T: ...
 
 
-class Field:
+class Field(metaclass=SlotMakerMeta):
     default: _NothingType | typing.Any
     default_factory: _NothingType | typing.Any
     type: _NothingType | _py_type
@@ -129,28 +133,9 @@ class Field:
     def from_field(cls, fld: Field, /, **kwargs: typing.Any) -> Field: ...
 
 
-class GatheredFields:
-    __slots__ = ("fields", "modifications")
-
-    fields: dict[str, Field]
-    modifications: dict[str, typing.Any]
-
-    __classbuilder_internals__: dict
-
-    def __init__(
-        self,
-        fields: dict[str, Field],
-        modifications: dict[str, typing.Any]
-    ) -> None: ...
-
-    def __repr__(self) -> str: ...
-    def __eq__(self, other) -> bool: ...
-    def __call__(self, cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
-
-
-class SlotFields(dict):
-    ...
-
+# type[Field] doesn't work due to metaclass
+# This is not really precise enough because isinstance is used
+_ReturnsField = Callable[..., Field]
 _FieldType = typing.TypeVar("_FieldType", bound=Field)
 
 
@@ -161,6 +146,7 @@ def make_slot_gatherer(
 
 @typing.overload
 def make_slot_gatherer(
+    field_type: _ReturnsField = Field
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 @typing.overload
@@ -171,6 +157,7 @@ def make_annotation_gatherer(
 
 @typing.overload
 def make_annotation_gatherer(
+    field_type: _ReturnsField = Field,
     leave_default_values: bool = True,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
@@ -182,6 +169,7 @@ def make_attribute_gatherer(
 
 @typing.overload
 def make_attribute_gatherer(
+    field_type: _ReturnsField = Field,
     leave_default_values: bool = True,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
@@ -193,6 +181,7 @@ def make_unified_gatherer(
 
 @typing.overload
 def make_unified_gatherer(
+    field_type: _ReturnsField = Field,
     leave_default_values: bool = True,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
@@ -231,3 +220,21 @@ class AnnotationClass(metaclass=SlotMakerMeta):
         methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
         **kwargs,
     ) -> None: ...
+
+class GatheredFields:
+    __slots__: dict[str, None]
+
+    fields: dict[str, Field]
+    modifications: dict[str, typing.Any]
+
+    __classbuilder_internals__: dict
+
+    def __init__(
+        self,
+        fields: dict[str, Field],
+        modifications: dict[str, typing.Any]
+    ) -> None: ...
+
+    def __repr__(self) -> str: ...
+    def __eq__(self, other) -> bool: ...
+    def __call__(self, cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...

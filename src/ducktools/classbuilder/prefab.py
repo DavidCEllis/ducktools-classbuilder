@@ -265,7 +265,7 @@ asdict_maker = get_asdict_maker()
 
 
 # Updated field with additional attributes
-class Attribute(Field, metaclass=SlotMakerMeta):
+class Attribute(Field):
     """
     Get an object to define a prefab attribute
 
@@ -285,9 +285,9 @@ class Attribute(Field, metaclass=SlotMakerMeta):
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
     """
-    iter: bool = Field(default=True, doc="Include in the class __iter__ if generated.")
-    serialize: bool = Field(default=True, doc="Serialize this attribute")
-    exclude_field: bool = Field(default=False, doc="Exclude this field from multiple methods")
+    iter: bool = True
+    serialize: bool = True
+    exclude_field: bool = False
 
     def validate_field(self):
         super().validate_field()

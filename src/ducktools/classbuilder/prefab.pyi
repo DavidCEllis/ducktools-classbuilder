@@ -42,7 +42,7 @@ eq_maker: MethodMaker
 iter_maker: MethodMaker
 asdict_maker: MethodMaker
 
-class Attribute(Field, metaclass=SlotMakerMeta):
+class Attribute(Field):
     __slots__: dict
 
     iter: bool

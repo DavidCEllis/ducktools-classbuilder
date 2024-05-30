@@ -19,6 +19,17 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
+# In this module there are some internal bits of circular logic.
+#
+# 'Field' needs to exist in order to be used in gatherers, but is itself a
+# partially constructed class. These constructed attributes are placed on
+# 'Field' post construction.
+#
+# The 'SlotMakerMeta' metaclass generates 'Field' instances to go in __slots__
+# but is also the metaclass used to construct 'Field'.
+# Field itself sidesteps this by defining __slots__ to avoid that branch.
+
 import sys
 
 from .annotations import get_ns_annotations, is_classvar
@@ -404,10 +415,67 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
     return cls
 
 
+# Slot gathering tools
+# Subclass of dict to be identifiable by isinstance checks
+# For anything more complicated this could be made into a Mapping
+class SlotFields(dict):
+    """
+    A plain dict subclass.
+
+    For declaring slotfields there are no additional features required
+    other than recognising that this is intended to be used as a class
+    generating dict and isn't a regular dictionary that ended up in
+    `__slots__`.
+
+    This should be replaced on `__slots__` after fields have been gathered.
+    """
+    def __repr__(self):
+        return f"SlotFields({super().__repr__()})"
+
+
+# Tool to convert annotations to slots as a metaclass
+class SlotMakerMeta(type):
+    """
+    Metaclass to convert annotations or Field(...) attributes to slots.
+
+    Will not convert `ClassVar` hinted values.
+    """
+    def __new__(cls, name, bases, ns, slots=True, **kwargs):
+        # This should only run if slots=True is declared
+        # and __slots__ have not already been defined
+        if slots and "__slots__" not in ns:
+            # Check if a different gatherer has been set in any base classes
+            # Default to unified gatherer
+            gatherer = ns.get(META_GATHERER_NAME, None)
+            if not gatherer:
+                for base in bases:
+                    if g := getattr(base, META_GATHERER_NAME, None):
+                        gatherer = g
+                        break
+
+            if not gatherer:
+                gatherer = unified_gatherer
+
+            # Obtain slots from annotations or attributes
+            cls_fields, cls_modifications = gatherer(ns)
+            for k, v in cls_modifications.items():
+                if v is NOTHING:
+                    ns.pop(k)
+                else:
+                    ns[k] = v
+
+            # Place slots *after* everything else to be safe
+            ns["__slots__"] = SlotFields(cls_fields)
+
+        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
+
+        return new_cls
+
+
 # The Field class can finally be defined.
 # The __init__ method has to be written manually so Fields can be created
 # However after this, the other methods can be generated.
-class Field:
+class Field(metaclass=SlotMakerMeta):
     """
     A basic class to handle the assignment of defaults/factories with
     some metadata.
@@ -417,20 +485,30 @@ class Field:
     Note: When run under `pytest`, Field instances are Frozen.
 
     When subclassing, passing `frozen=True` will make your subclass frozen.
+
+    :param default: Standard default value to be used for attributes with this field.
+    :param default_factory: A zero-argument function to be called to generate a
+                            default value, useful for mutable obects like lists.
+    :param type: The type of the attribute to be assigned by this field.
+    :param doc: The documentation for the attribute that appears when calling
+                help(...) on the class. (Only in slotted classes).
+    :param init: Include in the class __init__ parameters.
+    :param repr: Include in the class __repr__.
+    :param compare: Include in the class __eq__.
+    :param kw_only: Make this a keyword only parameter in __init__.
     """
-    __slots__ = {
-        "default": "Standard default value to be used for attributes with"
-                   "this field.",
-        "default_factory": "A 0 argument function to be called to generate "
-                           "a default value, useful for mutable objects like "
-                           "lists.",
-        "type": "The type of the attribute to be assigned by this field.",
-        "doc": "The documentation that appears when calling help(...) on the class.",
-        "init": "Include in the class __init__ parameters",
-        "repr": "Include in the class __repr__",
-        "compare": "Include in the class __eq__",
-        "kw_only": "Make this a keyword only parameter in __init__",
-    }
+    # If this base class did not define __slots__ the metaclass would break it.
+    # This will be replaced by the builder.
+    __slots__ = SlotFields(
+        default=NOTHING,
+        default_factory=NOTHING,
+        type=NOTHING,
+        doc=None,
+        init=True,
+        repr=True,
+        compare=True,
+        kw_only=False,
+    )
 
     # noinspection PyShadowingBuiltins
     def __init__(
@@ -445,6 +523,11 @@ class Field:
         compare=True,
         kw_only=False,
     ):
+        # The init function for 'Field' cannot be generated
+        # as 'Field' needs to exist first.
+        # repr and comparison functions are generated as these
+        # do not need to exist to create initial Fields.
+
         self.default = default
         self.default_factory = default_factory
         self.type = type
@@ -496,72 +579,6 @@ class Field:
         argument_dict = {**_get_inst_fields(fld), **kwargs}
 
         return cls(**argument_dict)
-
-
-class GatheredFields:
-    __slots__ = ("fields", "modifications")
-
-    def __init__(self, fields, modifications):
-        self.fields = fields
-        self.modifications = modifications
-
-    def __call__(self, cls):
-        return self.fields, self.modifications
-
-
-# Use the builder to generate __repr__ and __eq__ methods
-# for both Field and GatheredFields
-_field_internal = {
-    "default": Field(default=NOTHING),
-    "default_factory": Field(default=NOTHING),
-    "type": Field(default=NOTHING),
-    "doc": Field(default=None),
-    "init": Field(default=True),
-    "repr": Field(default=True),
-    "compare": Field(default=True),
-    "kw_only": Field(default=False),
-}
-
-_gathered_field_internal = {
-    "fields": Field(default=NOTHING),
-    "modifications": Field(default=NOTHING),
-}
-
-_field_methods = {repr_maker, eq_maker}
-if _UNDER_TESTING:
-    _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
-
-builder(
-    Field,
-    gatherer=GatheredFields(_field_internal, {}),
-    methods=_field_methods,
-    flags={"slotted": True, "kw_only": True},
-)
-
-builder(
-    GatheredFields,
-    gatherer=GatheredFields(_gathered_field_internal, {}),
-    methods={repr_maker, eq_maker},
-    flags={"slotted": True, "kw_only": False},
-)
-
-
-# Slot gathering tools
-# Subclass of dict to be identifiable by isinstance checks
-# For anything more complicated this could be made into a Mapping
-class SlotFields(dict):
-    """
-    A plain dict subclass.
-
-    For declaring slotfields there are no additional features required
-    other than recognising that this is intended to be used as a class
-    generating dict and isn't a regular dictionary that ended up in
-    `__slots__`.
-
-    This should be replaced on `__slots__` after fields have been gathered.
-    """
-    def __repr__(self):
-        return f"SlotFields({super().__repr__()})"
 
 
 def make_slot_gatherer(field_type=Field):
@@ -777,43 +794,17 @@ annotation_gatherer = make_annotation_gatherer()
 unified_gatherer = make_unified_gatherer(field_type=Field, leave_default_values=False)
 
 
-# Tool to convert annotations to slots as a metaclass
-class SlotMakerMeta(type):
-    """
-    Metaclass to convert annotations or Field(...) attributes to slots.
+# Now the gatherers have been defined, add __repr__ and __eq__ to Field.
+_field_methods = {repr_maker, eq_maker}
+if _UNDER_TESTING:
+    _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
 
-    Will not convert `ClassVar` hinted values.
-    """
-    def __new__(cls, name, bases, ns, slots=True, **kwargs):
-        # This should only run if slots=True is declared
-        # and __slots__ have not already been defined
-        if slots and "__slots__" not in ns:
-            # Check if a different gatherer has been set in any base classes
-            # Default to unified gatherer
-            gatherer = ns.get(META_GATHERER_NAME, None)
-            if not gatherer:
-                for base in bases:
-                    if g := getattr(base, META_GATHERER_NAME, None):
-                        gatherer = g
-                        break
-
-            if not gatherer:
-                gatherer = unified_gatherer
-
-            # Obtain slots from annotations or attributes
-            cls_fields, cls_modifications = gatherer(ns)
-            for k, v in cls_modifications.items():
-                if v is NOTHING:
-                    ns.pop(k)
-                else:
-                    ns[k] = v
-
-            # Place slots *after* everything else to be safe
-            ns["__slots__"] = SlotFields(cls_fields)
-
-        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
-
-        return new_cls
+builder(
+    Field,
+    gatherer=slot_gatherer,
+    methods=_field_methods,
+    flags={"slotted": True, "kw_only": True},
+)
 
 
 def check_argument_order(cls):
@@ -872,3 +863,17 @@ class AnnotationClass(metaclass=SlotMakerMeta):
         builder(cls, gatherer=gatherer, methods=methods, flags={"slotted": slots})
         check_argument_order(cls)
         super().__init_subclass__(**kwargs)
+
+
+@slotclass
+class GatheredFields:
+    """
+    A helper gatherer for fields that have been gathered externally.
+    """
+    __slots__ = SlotFields(
+        fields=Field(),
+        modifications=Field(),
+    )
+
+    def __call__(self, cls):
+        return self.fields, self.modifications
