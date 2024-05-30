@@ -162,7 +162,7 @@ def make_annotation_gatherer(
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 @typing.overload
-def make_attribute_gatherer(
+def make_field_gatherer(
     field_type: type[_FieldType],
     leave_default_values: bool = True,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...

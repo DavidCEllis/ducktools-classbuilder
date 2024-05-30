@@ -716,7 +716,7 @@ def make_annotation_gatherer(
     return field_annotation_gatherer
 
 
-def make_attribute_gatherer(
+def make_field_gatherer(
     field_type=Field,
     leave_default_values=True,
 ):
@@ -760,7 +760,7 @@ def make_unified_gatherer(
     """
     slot_g = make_slot_gatherer(field_type)
     anno_g = make_annotation_gatherer(field_type, leave_default_values)
-    attrib_g = make_attribute_gatherer(field_type, leave_default_values)
+    attrib_g = make_field_gatherer(field_type, leave_default_values)
 
     def field_unified_gatherer(cls_or_ns):
         cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
