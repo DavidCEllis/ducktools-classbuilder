@@ -1,11 +1,15 @@
 import typing
+from types import MappingProxyType
 from typing_extensions import dataclass_transform
 
 from collections.abc import Callable
 
 from . import (
     INTERNALS_DICT, NOTHING,
-    Field, MethodMaker, SlotFields as SlotFields,
+    KW_ONLY as KW_ONLY,
+    Field, MethodMaker,
+    SlotFields as SlotFields,
+    SlotMakerMeta,
     builder, get_flags, get_fields, make_slot_gatherer
 )
 
@@ -17,22 +21,13 @@ PREFAB_INIT_FUNC: str
 PRE_INIT_FUNC: str
 POST_INIT_FUNC: str
 
-
-# noinspection PyPep8Naming
-class _KW_ONLY_TYPE:
-    def __repr__(self) -> str: ...
-
-KW_ONLY: _KW_ONLY_TYPE
+_CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
 
 class PrefabError(Exception): ...
 
 def get_attributes(cls: type) -> dict[str, Attribute]: ...
 
 def get_init_maker(*, init_name: str="__init__") -> MethodMaker: ...
-
-def get_repr_maker(*, recursion_safe: bool = False) -> MethodMaker: ...
-
-def get_eq_maker() -> MethodMaker: ...
 
 def get_iter_maker() -> MethodMaker: ...
 
@@ -50,11 +45,7 @@ asdict_maker: MethodMaker
 class Attribute(Field):
     __slots__: dict
 
-    init: bool
-    repr: bool
-    compare: bool
     iter: bool
-    kw_only: bool
     serialize: bool
     exclude_field: bool
 
@@ -93,9 +84,7 @@ def attribute(
     exclude_field: bool = False,
 ) -> Attribute: ...
 
-def slot_prefab_gatherer(cls: type) -> tuple[dict[str, Attribute], dict[str, typing.Any]]: ...
-
-def attribute_gatherer(cls: type) -> tuple[dict[str, Attribute], dict[str, typing.Any]]: ...
+def prefab_gatherer(cls_or_ns: type | MappingProxyType) -> tuple[dict[str, Attribute], dict[str, typing.Any]]: ...
 
 def _make_prefab(
     cls: type,
@@ -113,6 +102,23 @@ def _make_prefab(
 ) -> type: ...
 
 _T = typing.TypeVar("_T")
+
+# noinspection PyUnresolvedReferences
+@dataclass_transform(field_specifiers=(Attribute, attribute))
+class Prefab(metaclass=SlotMakerMeta):
+    _meta_gatherer: Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]
+    def __init_subclass__(
+        cls,
+        init: bool = True,
+        repr: bool = True,
+        eq: bool = True,
+        iter: bool = False,
+        match_args: bool = True,
+        kw_only: bool = False,
+        frozen: bool = False,
+        dict_method: bool = False,
+        recursive_repr: bool = False,
+    ) -> None: ...
 
 
 # For some reason PyCharm can't see 'attribute'?!?

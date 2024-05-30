@@ -26,28 +26,18 @@ A 'prebuilt' implementation of class generation.
 Includes pre and post init functions along with other methods.
 """
 from . import (
-    INTERNALS_DICT, NOTHING,
-    Field, MethodMaker, SlotFields, GatheredFields,
-    builder, get_flags, get_fields, make_slot_gatherer,
-    frozen_setattr_maker, frozen_delattr_maker
+    INTERNALS_DICT, NOTHING, SlotFields, KW_ONLY,
+    Field, MethodMaker, GatheredFields, SlotMakerMeta,
+    builder, get_flags, get_fields,
+    make_unified_gatherer,
+    frozen_setattr_maker, frozen_delattr_maker, eq_maker,
+    get_repr_generator,
 )
-from .annotations import is_classvar, get_annotations
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
 PRE_INIT_FUNC = "__prefab_pre_init__"
 POST_INIT_FUNC = "__prefab_post_init__"
-
-
-# KW_ONLY sentinel 'type' to use to indicate all subsequent attributes are
-# keyword only
-# noinspection PyPep8Naming
-class _KW_ONLY_TYPE:
-    def __repr__(self):
-        return "<KW_ONLY Sentinel Object>"
-
-
-KW_ONLY = _KW_ONLY_TYPE()
 
 
 class PrefabError(Exception):
@@ -221,88 +211,6 @@ def get_init_maker(*, init_name="__init__"):
     return MethodMaker(init_name, __init__)
 
 
-def get_repr_maker(*, recursion_safe=False):
-    def __repr__(cls: "type") -> "tuple[str, dict]":
-        attributes = get_attributes(cls)
-
-        globs = {}
-
-        will_eval = True
-        valid_names = []
-        for name, attrib in attributes.items():
-            if attrib.repr and not attrib.exclude_field:
-                valid_names.append(name)
-
-            # If the init fields don't match the repr, or some fields are excluded
-            # generate a repr that clearly will not evaluate
-            if will_eval and (attrib.exclude_field or (attrib.init ^ attrib.repr)):
-                will_eval = False
-
-        content = ", ".join(
-            f"{name}={{self.{name}!r}}"
-            for name in valid_names
-        )
-
-        if recursion_safe:
-            import reprlib
-            globs["_recursive_repr"] = reprlib.recursive_repr()
-            recursion_func = "@_recursive_repr\n"
-        else:
-            recursion_func = ""
-
-        if will_eval:
-            code = (
-                f"{recursion_func}"
-                f"def __repr__(self):\n"
-                f"    return f'{{type(self).__qualname__}}({content})'\n"
-            )
-        else:
-            if content:
-                code = (
-                    f"{recursion_func}"
-                    f"def __repr__(self):\n"
-                    f"    return f'<prefab {{type(self).__qualname__}}; {content}>'\n"
-                )
-            else:
-                code = (
-                    f"{recursion_func}"
-                    f"def __repr__(self):\n"
-                    f"    return f'<prefab {{type(self).__qualname__}}>'\n"
-                )
-
-        return code, globs
-
-    return MethodMaker("__repr__", __repr__)
-
-
-def get_eq_maker():
-    def __eq__(cls: "type") -> "tuple[str, dict]":
-        class_comparison = "self.__class__ is other.__class__"
-        attribs = get_attributes(cls)
-        field_names = [
-            name
-            for name, attrib in attribs.items()
-            if attrib.compare and not attrib.exclude_field
-        ]
-
-        if field_names:
-            selfvals = ",".join(f"self.{name}" for name in field_names)
-            othervals = ",".join(f"other.{name}" for name in field_names)
-            instance_comparison = f"({selfvals},) == ({othervals},)"
-        else:
-            instance_comparison = "True"
-
-        code = (
-            f"def __eq__(self, other):\n"
-            f"    return {instance_comparison} if {class_comparison} else NotImplemented\n"
-        )
-        globs = {}
-
-        return code, globs
-
-    return MethodMaker("__eq__", __eq__)
-
-
 def get_iter_maker():
     def __iter__(cls: "type") -> "tuple[str, dict]":
         fields = get_attributes(cls)
@@ -344,9 +252,14 @@ def get_asdict_maker():
 
 init_maker = get_init_maker()
 prefab_init_maker = get_init_maker(init_name=PREFAB_INIT_FUNC)
-repr_maker = get_repr_maker()
-recursive_repr_maker = get_repr_maker(recursion_safe=True)
-eq_maker = get_eq_maker()
+repr_maker = MethodMaker(
+    "__repr__",
+    get_repr_generator(recursion_safe=False, eval_safe=True)
+)
+recursive_repr_maker = MethodMaker(
+    "__repr__",
+    get_repr_generator(recursion_safe=True, eval_safe=True)
+)
 iter_maker = get_iter_maker()
 asdict_maker = get_asdict_maker()
 
@@ -372,19 +285,21 @@ class Attribute(Field):
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
     """
-    init: bool = Field(default=True, doc="Include in the class __init__ parameters")
-    repr: bool = Field(default=True, doc="Include in the class __repr__")
-    compare: bool = Field(default=True, doc="Include in the class __eq__")
-    iter: bool = Field(default=True, doc="Include in the class __iter__ if generated.")
-    kw_only: bool = Field(default=False, doc="Make this a keyword only parameter in __init__")
-    serialize: bool = Field(default=True, doc="Serialize this attribute")
-    exclude_field: bool = Field(default=False, doc="Exclude this field from multiple methods")
+    iter: bool = True
+    serialize: bool = True
+    exclude_field: bool = False
 
     def validate_field(self):
         super().validate_field()
-        if self.kw_only and not self.init:
+
+        exclude_attribs = {
+            self.repr, self.compare, self.iter, self.serialize
+        }
+        if self.exclude_field and any(exclude_attribs):
             raise PrefabError(
-                "Attribute cannot be keyword only if it is not in init."
+                "Excluded fields must have repr, compare, iter, serialize "
+                "set to False."
+                "This is automatically handled by using the `attribute` helper."
             )
 
 
@@ -424,6 +339,12 @@ def attribute(
 
     :return: Attribute generated with these parameters.
     """
+    if exclude_field:
+        repr = False
+        compare = False
+        iter = False
+        serialize = False
+
     return Attribute(
         default=default,
         default_factory=default_factory,
@@ -439,84 +360,7 @@ def attribute(
     )
 
 
-slot_prefab_gatherer = make_slot_gatherer(Attribute)
-
-
-# Gatherer for classes built on attributes or annotations
-def attribute_gatherer(cls):
-    cls_annotations = get_annotations(cls.__dict__)
-    cls_annotation_names = cls_annotations.keys()
-
-    cls_slots = cls.__dict__.get("__slots__", {})
-
-    cls_attributes = {
-        k: v for k, v in vars(cls).items() if isinstance(v, Attribute)
-    }
-
-    cls_attribute_names = cls_attributes.keys()
-
-    cls_modifications = {}
-
-    if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
-        # replace the classes' attributes dict with one with the correct
-        # order from the annotations.
-        kw_flag = False
-        new_attributes = {}
-        for name, value in cls_annotations.items():
-            # Ignore ClassVar hints
-            if is_classvar(value):
-                continue
-
-            # Look for the KW_ONLY annotation
-            if value is KW_ONLY:
-                if kw_flag:
-                    raise PrefabError(
-                        "Class can not be defined as keyword only twice"
-                    )
-                kw_flag = True
-            else:
-                # Copy attributes that are already defined to the new dict
-                # generate Attribute() values for those that are not defined.
-
-                # Extra parameters to pass to each Attribute
-                extras = {
-                    "type": cls_annotations[name]
-                }
-                if kw_flag:
-                    extras["kw_only"] = True
-
-                # If a field name is also declared in slots it can't have a real
-                # default value and the attr will be the slot descriptor.
-                if hasattr(cls, name) and name not in cls_slots:
-                    if name in cls_attribute_names:
-                        attrib = Attribute.from_field(
-                            cls_attributes[name],
-                            **extras,
-                        )
-                    else:
-                        attribute_default = getattr(cls, name)
-                        attrib = attribute(default=attribute_default, **extras)
-
-                    # Clear the attribute from the class after it has been used
-                    # in the definition.
-                    cls_modifications[name] = NOTHING
-                else:
-                    attrib = attribute(**extras)
-
-                new_attributes[name] = attrib
-
-        cls_attributes = new_attributes
-    else:
-        for name in cls_attributes.keys():
-            attrib = cls_attributes[name]
-            cls_modifications[name] = NOTHING
-
-            # Some items can still be annotated.
-            if name in cls_annotations:
-                new_attrib = Attribute.from_field(attrib, type=cls_annotations[name])
-                cls_attributes[name] = new_attrib
-
-    return cls_attributes, cls_modifications
+prefab_gatherer = make_unified_gatherer(Attribute, False)
 
 
 # Class Builders
@@ -562,16 +406,13 @@ def _make_prefab(
         )
 
     slots = cls_dict.get("__slots__")
+
+    slotted = False if slots is None else True
+
     if gathered_fields is None:
-        if isinstance(slots, SlotFields):
-            gatherer = slot_prefab_gatherer
-            slotted = True
-        else:
-            gatherer = attribute_gatherer
-            slotted = False
+        gatherer = prefab_gatherer
     else:
         gatherer = gathered_fields
-        slotted = False if slots is None else True
 
     methods = set()
 
@@ -710,6 +551,37 @@ def _make_prefab(
         setattr(cls, "__match_args__", tuple(valid_args))
 
     return cls
+
+
+class Prefab(metaclass=SlotMakerMeta):
+    _meta_gatherer = prefab_gatherer
+    __slots__ = {}
+
+    # noinspection PyShadowingBuiltins
+    def __init_subclass__(
+        cls,
+        init=True,
+        repr=True,
+        eq=True,
+        iter=False,
+        match_args=True,
+        kw_only=False,
+        frozen=False,
+        dict_method=False,
+        recursive_repr=False,
+    ):
+        _make_prefab(
+            cls,
+            init=init,
+            repr=repr,
+            eq=eq,
+            iter=iter,
+            match_args=match_args,
+            kw_only=kw_only,
+            frozen=frozen,
+            dict_method=dict_method,
+            recursive_repr=recursive_repr,
+        )
 
 
 # noinspection PyShadowingBuiltins

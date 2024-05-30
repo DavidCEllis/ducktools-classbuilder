@@ -19,19 +19,33 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
+# In this module there are some internal bits of circular logic.
+#
+# 'Field' needs to exist in order to be used in gatherers, but is itself a
+# partially constructed class. These constructed attributes are placed on
+# 'Field' post construction.
+#
+# The 'SlotMakerMeta' metaclass generates 'Field' instances to go in __slots__
+# but is also the metaclass used to construct 'Field'.
+# Field itself sidesteps this by defining __slots__ to avoid that branch.
+
 import sys
 
-from .annotations import get_annotations, is_classvar
+from .annotations import get_ns_annotations, is_classvar
 
 __version__ = "v0.6.0"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
+META_GATHERER_NAME = "_meta_gatherer"
 
 
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = "pytest" in sys.modules
+
+_MPT = type(type.__dict__)
 
 
 def get_fields(cls, *, local=False):
@@ -75,6 +89,17 @@ class _NothingType:
 
 
 NOTHING = _NothingType()
+
+
+# KW_ONLY sentinel 'type' to use to indicate all subsequent attributes are
+# keyword only
+# noinspection PyPep8Naming
+class _KW_ONLY_TYPE:
+    def __repr__(self):
+        return "<KW_ONLY Sentinel Object>"
+
+
+KW_ONLY = _KW_ONLY_TYPE()
 
 
 class MethodMaker:
@@ -124,29 +149,51 @@ def get_init_generator(null=NOTHING, extra_code=None):
         flags = get_flags(cls)
 
         arglist = []
+        kw_only_arglist = []
         assignments = []
         globs = {}
 
-        if flags.get("kw_only", False):
-            arglist.append("*")
+        kw_only_flag = flags.get("kw_only", False)
 
         for k, v in fields.items():
-            if v.default is not null:
-                globs[f"_{k}_default"] = v.default
-                arg = f"{k}=_{k}_default"
-                assignment = f"self.{k} = {k}"
-            elif v.default_factory is not null:
-                globs[f"_{k}_factory"] = v.default_factory
-                arg = f"{k}=None"
-                assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
+            if v.init:
+                if v.default is not null:
+                    globs[f"_{k}_default"] = v.default
+                    arg = f"{k}=_{k}_default"
+                    assignment = f"self.{k} = {k}"
+                elif v.default_factory is not null:
+                    globs[f"_{k}_factory"] = v.default_factory
+                    arg = f"{k}=None"
+                    assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
+                else:
+                    arg = f"{k}"
+                    assignment = f"self.{k} = {k}"
+
+                if kw_only_flag or v.kw_only:
+                    kw_only_arglist.append(arg)
+                else:
+                    arglist.append(arg)
+
+                assignments.append(assignment)
             else:
-                arg = f"{k}"
-                assignment = f"self.{k} = {k}"
+                if v.default is not null:
+                    globs[f"_{k}_default"] = v.default
+                    assignment = f"self.{k} = _{k}_default"
+                    assignments.append(assignment)
+                elif v.default_factory is not null:
+                    globs[f"_{k}_factory"] = v.default_factory
+                    assignment = f"self.{k} = _{k}_factory()"
+                    assignments.append(assignment)
 
-            arglist.append(arg)
-            assignments.append(assignment)
+        pos_args = ", ".join(arglist)
+        kw_args = ", ".join(kw_only_arglist)
+        if pos_args and kw_args:
+            args = f"{pos_args}, *, {kw_args}"
+        elif kw_args:
+            args = f"*, {kw_args}"
+        else:
+            args = pos_args
 
-        args = ", ".join(arglist)
         assigns = "\n    ".join(assignments) if assignments else "pass\n"
         code = (
             f"def __init__(self, {args}):\n" 
@@ -166,23 +213,75 @@ def get_init_generator(null=NOTHING, extra_code=None):
 init_generator = get_init_generator()
 
 
-def repr_generator(cls):
-    fields = get_fields(cls)
-    content = ", ".join(
-        f"{name}={{self.{name}!r}}"
-        for name, attrib in fields.items()
-    )
-    code = (
-        f"def __repr__(self):\n"
-        f"    return f'{{type(self).__qualname__}}({content})'\n"
-    )
-    globs = {}
-    return code, globs
+def get_repr_generator(recursion_safe=False, eval_safe=False):
+    """
+
+    :param recursion_safe: use reprlib.recursive_repr
+    :param eval_safe: if the repr is known not to eval correctly,
+                      generate a repr which will intentionally
+                      not evaluate.
+    :return:
+    """
+    def cls_repr_generator(cls):
+        fields = get_fields(cls)
+
+        globs = {}
+        will_eval = True
+        valid_names = []
+
+        for name, fld in fields.items():
+            if fld.repr:
+                valid_names.append(name)
+
+            if will_eval and (fld.init ^ fld.repr):
+                will_eval = False
+
+        content = ", ".join(
+            f"{name}={{self.{name}!r}}"
+            for name in valid_names
+        )
+
+        if recursion_safe:
+            import reprlib
+            globs["_recursive_repr"] = reprlib.recursive_repr()
+            recursion_func = "@_recursive_repr\n"
+        else:
+            recursion_func = ""
+
+        if eval_safe and will_eval is False:
+            if content:
+                code = (
+                    f"{recursion_func}"
+                    f"def __repr__(self):\n"
+                    f"    return f'<generated class {{type(self).__qualname__}}; {content}>'\n"
+                )
+            else:
+                code = (
+                    f"{recursion_func}"
+                    f"def __repr__(self):\n"
+                    f"    return f'<generated class {{type(self).__qualname__}}>'\n"
+                )
+        else:
+            code = (
+                f"{recursion_func}"
+                f"def __repr__(self):\n"
+                f"    return f'{{type(self).__qualname__}}({content})'\n"
+            )
+
+        return code, globs
+    return cls_repr_generator
+
+
+repr_generator = get_repr_generator()
 
 
 def eq_generator(cls):
     class_comparison = "self.__class__ is other.__class__"
-    field_names = get_fields(cls)
+    field_names = [
+        name
+        for name, attrib in get_fields(cls).items()
+        if attrib.compare
+    ]
 
     if field_names:
         selfvals = ",".join(f"self.{name}" for name in field_names)
@@ -316,26 +415,58 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
     return cls
 
 
+# Slot gathering tools
+# Subclass of dict to be identifiable by isinstance checks
+# For anything more complicated this could be made into a Mapping
+class SlotFields(dict):
+    """
+    A plain dict subclass.
+
+    For declaring slotfields there are no additional features required
+    other than recognising that this is intended to be used as a class
+    generating dict and isn't a regular dictionary that ended up in
+    `__slots__`.
+
+    This should be replaced on `__slots__` after fields have been gathered.
+    """
+    def __repr__(self):
+        return f"SlotFields({super().__repr__()})"
+
+
 # Tool to convert annotations to slots as a metaclass
 class SlotMakerMeta(type):
     """
-    Metaclass to convert annotations to slots.
+    Metaclass to convert annotations or Field(...) attributes to slots.
 
     Will not convert `ClassVar` hinted values.
     """
     def __new__(cls, name, bases, ns, slots=True, **kwargs):
+        # This should only run if slots=True is declared
+        # and __slots__ have not already been defined
+        if slots and "__slots__" not in ns:
+            # Check if a different gatherer has been set in any base classes
+            # Default to unified gatherer
+            gatherer = ns.get(META_GATHERER_NAME, None)
+            if not gatherer:
+                for base in bases:
+                    if g := getattr(base, META_GATHERER_NAME, None):
+                        gatherer = g
+                        break
 
-        # Obtain slots from annotations
-        if "__slots__" not in ns and slots:
-            cls_annotations = get_annotations(ns)
-            cls_slots = SlotFields({
-                k: ns.pop(k, NOTHING)
-                for k, v in cls_annotations.items()
-                if not is_classvar(v)
-            })
-            ns["__slots__"] = cls_slots
+            if not gatherer:
+                gatherer = unified_gatherer
 
-        # Make new slotted class
+            # Obtain slots from annotations or attributes
+            cls_fields, cls_modifications = gatherer(ns)
+            for k, v in cls_modifications.items():
+                if v is NOTHING:
+                    ns.pop(k)
+                else:
+                    ns[k] = v
+
+            # Place slots *after* everything else to be safe
+            ns["__slots__"] = SlotFields(cls_fields)
+
         new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
         return new_cls
@@ -354,16 +485,30 @@ class Field(metaclass=SlotMakerMeta):
     Note: When run under `pytest`, Field instances are Frozen.
 
     When subclassing, passing `frozen=True` will make your subclass frozen.
+
+    :param default: Standard default value to be used for attributes with this field.
+    :param default_factory: A zero-argument function to be called to generate a
+                            default value, useful for mutable obects like lists.
+    :param type: The type of the attribute to be assigned by this field.
+    :param doc: The documentation for the attribute that appears when calling
+                help(...) on the class. (Only in slotted classes).
+    :param init: Include in the class __init__ parameters.
+    :param repr: Include in the class __repr__.
+    :param compare: Include in the class __eq__.
+    :param kw_only: Make this a keyword only parameter in __init__.
     """
-    __slots__ = {
-        "default": "Standard default value to be used for attributes with"
-                   "this field.",
-        "default_factory": "A 0 argument function to be called to generate "
-                           "a default value, useful for mutable objects like "
-                           "lists.",
-        "type": "The type of the attribute to be assigned by this field.",
-        "doc": "The documentation that appears when calling help(...) on the class."
-    }
+    # If this base class did not define __slots__ the metaclass would break it.
+    # This will be replaced by the builder.
+    __slots__ = SlotFields(
+        default=NOTHING,
+        default_factory=NOTHING,
+        type=NOTHING,
+        doc=None,
+        init=True,
+        repr=True,
+        compare=True,
+        kw_only=False,
+    )
 
     # noinspection PyShadowingBuiltins
     def __init__(
@@ -373,11 +518,25 @@ class Field(metaclass=SlotMakerMeta):
         default_factory=NOTHING,
         type=NOTHING,
         doc=None,
+        init=True,
+        repr=True,
+        compare=True,
+        kw_only=False,
     ):
+        # The init function for 'Field' cannot be generated
+        # as 'Field' needs to exist first.
+        # repr and comparison functions are generated as these
+        # do not need to exist to create initial Fields.
+
         self.default = default
         self.default_factory = default_factory
         self.type = type
         self.doc = doc
+
+        self.init = init
+        self.repr = repr
+        self.compare = compare
+        self.kw_only = kw_only
 
         self.validate_field()
 
@@ -388,15 +547,21 @@ class Field(metaclass=SlotMakerMeta):
 
         builder(
             cls,
-            gatherer=slot_gatherer,
+            gatherer=unified_gatherer,
             methods=field_methods,
             flags={"slotted": True, "kw_only": True}
         )
 
     def validate_field(self):
+        cls_name = self.__class__.__name__
         if self.default is not NOTHING and self.default_factory is not NOTHING:
             raise AttributeError(
-                "Cannot define both a default value and a default factory."
+                f"{cls_name} cannot define both a default value and a default factory."
+            )
+
+        if self.kw_only and not self.init:
+            raise AttributeError(
+                f"{cls_name} cannot be keyword only if it is not in init."
             )
 
     @classmethod
@@ -416,66 +581,6 @@ class Field(metaclass=SlotMakerMeta):
         return cls(**argument_dict)
 
 
-class GatheredFields:
-    __slots__ = ("fields", "modifications")
-
-    def __init__(self, fields, modifications):
-        self.fields = fields
-        self.modifications = modifications
-
-    def __call__(self, cls):
-        return self.fields, self.modifications
-
-
-# Use the builder to generate __repr__ and __eq__ methods
-# for both Field and GatheredFields
-_field_internal = {
-    "default": Field(default=NOTHING),
-    "default_factory": Field(default=NOTHING),
-    "type": Field(default=NOTHING),
-    "doc": Field(default=None),
-}
-
-_gathered_field_internal = {
-    "fields": Field(default=NOTHING),
-    "modifications": Field(default=NOTHING),
-}
-
-_field_methods = {repr_maker, eq_maker}
-if _UNDER_TESTING:
-    _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
-
-builder(
-    Field,
-    gatherer=GatheredFields(_field_internal, {}),
-    methods=_field_methods,
-    flags={"slotted": True, "kw_only": True},
-)
-
-builder(
-    GatheredFields,
-    gatherer=GatheredFields(_gathered_field_internal, {}),
-    methods={repr_maker, eq_maker},
-    flags={"slotted": True, "kw_only": False},
-)
-
-
-# Slot gathering tools
-# Subclass of dict to be identifiable by isinstance checks
-# For anything more complicated this could be made into a Mapping
-class SlotFields(dict):
-    """
-    A plain dict subclass.
-
-    For declaring slotfields there are no additional features required
-    other than recognising that this is intended to be used as a class
-    generating dict and isn't a regular dictionary that ended up in
-    `__slots__`.
-
-    This should be replaced on `__slots__` after fields have been gathered.
-    """
-
-
 def make_slot_gatherer(field_type=Field):
     """
     Create a new annotation gatherer that will work with `Field` instances
@@ -485,16 +590,17 @@ def make_slot_gatherer(field_type=Field):
     :return: A slot gatherer that will check for and generate Fields of
              the type field_type.
     """
-    def field_slot_gatherer(cls):
+    def field_slot_gatherer(cls_or_ns):
         """
         Gather field information for class generation based on __slots__
 
-        :param cls: Class to gather field information from
+        :param cls_or_ns: Class to gather field information from (or class namespace)
         :return: dict of field_name: Field(...)
         """
+        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
 
         try:
-            cls_slots = cls.__dict__["__slots__"]
+            cls_slots = cls_dict["__slots__"]
         except KeyError:
             raise AttributeError(
                 "__slots__ must be defined as an instance of SlotFields "
@@ -509,9 +615,7 @@ def make_slot_gatherer(field_type=Field):
 
         # Don't want to mutate original annotations so make a copy if it exists
         # Looking at the dict is a Python3.9 or earlier requirement
-        cls_annotations = {
-            **cls.__dict__.get("__annotations__", {})
-        }
+        cls_annotations = get_ns_annotations(cls_dict)
 
         cls_fields = {}
         slot_replacement = {}
@@ -548,7 +652,159 @@ def make_slot_gatherer(field_type=Field):
     return field_slot_gatherer
 
 
+def make_annotation_gatherer(
+    field_type=Field,
+    leave_default_values=True,
+):
+    """
+    Create a new annotation gatherer that will work with `Field` instances
+    of the creators definition.
+
+    :param field_type: The `Field` classes to be used when gathering fields
+    :param leave_default_values: Set to True if the gatherer should leave
+                                 default values in place as class variables.
+    :return: An annotation gatherer with these settings.
+    """
+    def field_annotation_gatherer(cls_or_ns):
+        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
+
+        cls_fields: dict[str, field_type] = {}
+        modifications = {}
+
+        cls_annotations = get_ns_annotations(cls_dict)
+        cls_slots = cls_dict.get("__slots__", {})
+
+        kw_flag = False
+
+        for k, v in cls_annotations.items():
+            # Ignore ClassVar
+            if is_classvar(v):
+                continue
+
+            if v is KW_ONLY:
+                if kw_flag:
+                    raise SyntaxError("KW_ONLY sentinel may only appear once.")
+                kw_flag = True
+                continue
+
+            attrib = cls_dict.get(k, NOTHING)
+
+            if attrib is not NOTHING:
+                if isinstance(attrib, field_type):
+                    kw_only = attrib.kw_only or kw_flag
+
+                    attrib = field_type.from_field(attrib, type=v, kw_only=kw_only)
+
+                    if attrib.default is not NOTHING and leave_default_values:
+                        modifications[k] = attrib.default
+                    else:
+                        # NOTHING sentinel indicates a value should be removed
+                        modifications[k] = NOTHING
+                elif k not in cls_slots:
+                    attrib = field_type(default=attrib, type=v, kw_only=kw_flag)
+                    if not leave_default_values:
+                        modifications[k] = NOTHING
+                else:
+                    attrib = field_type(type=v, kw_only=kw_flag)
+            else:
+                attrib = field_type(type=v, kw_only=kw_flag)
+
+            cls_fields[k] = attrib
+
+        return cls_fields, modifications
+
+    return field_annotation_gatherer
+
+
+def make_field_gatherer(
+    field_type=Field,
+    leave_default_values=True,
+):
+    def field_attribute_gatherer(cls_or_ns):
+        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
+        cls_attributes = {
+            k: v
+            for k, v in cls_dict.items()
+            if isinstance(v, field_type)
+        }
+        cls_annotations = get_ns_annotations(cls_dict)
+
+        cls_modifications = {}
+
+        for name in cls_attributes.keys():
+            attrib = cls_attributes[name]
+            if leave_default_values:
+                cls_modifications[name] = attrib.default
+            else:
+                cls_modifications[name] = NOTHING
+
+            if (anno := cls_annotations.get(name, NOTHING)) is not NOTHING:
+                cls_attributes[name] = field_type.from_field(attrib, type=anno)
+
+        return cls_attributes, cls_modifications
+    return field_attribute_gatherer
+
+
+def make_unified_gatherer(
+    field_type=Field,
+    leave_default_values=True,
+):
+    """
+    Create a gatherer that will work via first slots, then
+    Field(...) class attributes and finally annotations if
+    no unannotated Field(...) attributes are present.
+
+    :param field_type: The field class to use for gathering
+    :param leave_default_values: leave default values in place
+    :return: gatherer function
+    """
+    slot_g = make_slot_gatherer(field_type)
+    anno_g = make_annotation_gatherer(field_type, leave_default_values)
+    attrib_g = make_field_gatherer(field_type, leave_default_values)
+
+    def field_unified_gatherer(cls_or_ns):
+        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
+        cls_slots = cls_dict.get("__slots__")
+
+        if isinstance(cls_slots, SlotFields):
+            return slot_g(cls_dict)
+
+        # To choose between annotation and attribute gatherers
+        # compare sets of names.
+        # Don't bother evaluating string annotations, as we only need names
+        cls_annotations = get_ns_annotations(cls_dict, eval_str=False)
+        cls_attributes = {
+            k: v for k, v in cls_dict.items() if isinstance(v, field_type)
+        }
+
+        cls_annotation_names = cls_annotations.keys()
+        cls_attribute_names = cls_attributes.keys()
+
+        if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
+            # All `Field` values have annotations, so use annotation gatherer
+            return anno_g(cls_dict)
+
+        return attrib_g(cls_dict)
+    return field_unified_gatherer
+
+
 slot_gatherer = make_slot_gatherer()
+annotation_gatherer = make_annotation_gatherer()
+
+unified_gatherer = make_unified_gatherer(field_type=Field, leave_default_values=False)
+
+
+# Now the gatherers have been defined, add __repr__ and __eq__ to Field.
+_field_methods = {repr_maker, eq_maker}
+if _UNDER_TESTING:
+    _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+
+builder(
+    Field,
+    gatherer=slot_gatherer,
+    methods=_field_methods,
+    flags={"slotted": True, "kw_only": True},
+)
 
 
 def check_argument_order(cls):
@@ -561,6 +817,9 @@ def check_argument_order(cls):
     fields = get_fields(cls)
     used_default = False
     for k, v in fields.items():
+        if v.kw_only or (not v.init):
+            continue
+
         if v.default is NOTHING and v.default_factory is NOTHING:
             if used_default:
                 raise SyntaxError(
@@ -592,60 +851,6 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     return cls
 
 
-# Annotation based class tools
-def make_annotation_gatherer(
-    field_type=Field,
-    leave_default_values=True,
-):
-    """
-    Create a new annotation gatherer that will work with `Field` instances
-    of the creators definition.
-
-    :param field_type: The `Field` classes to be used when gathering fields
-    :param leave_default_values: Set to True if the gatherer should leave
-                                 default values in place as class variables.
-    :return: An annotation gatherer with these settings.
-    """
-    def field_annotation_gatherer(cls):
-
-        cls_fields: dict[str, field_type] = {}
-        modifications = {}
-
-        cls_annotations = get_annotations(cls.__dict__)
-
-        for k, v in cls_annotations.items():
-            # Ignore ClassVar
-            if is_classvar(v):
-                continue
-
-            attrib = getattr(cls, k, NOTHING)
-
-            if attrib is not NOTHING:
-                if isinstance(attrib, field_type):
-                    attrib = field_type.from_field(attrib, type=v)
-
-                    if attrib.default is not NOTHING and leave_default_values:
-                        modifications[k] = attrib.default
-                    else:
-                        # NOTHING sentinel indicates a value should be removed
-                        modifications[k] = NOTHING
-                else:
-                    attrib = field_type(default=attrib, type=v)
-                    if not leave_default_values:
-                        modifications[k] = NOTHING
-            else:
-                attrib = field_type(type=v)
-
-            cls_fields[k] = attrib
-
-        return cls_fields, modifications
-
-    return field_annotation_gatherer
-
-
-annotation_gatherer = make_annotation_gatherer()
-
-
 class AnnotationClass(metaclass=SlotMakerMeta):
     def __init_subclass__(cls, methods=default_methods, **kwargs):
         # Check class dict otherwise this will always be True as this base
@@ -658,3 +863,17 @@ class AnnotationClass(metaclass=SlotMakerMeta):
         builder(cls, gatherer=gatherer, methods=methods, flags={"slotted": slots})
         check_argument_order(cls)
         super().__init_subclass__(**kwargs)
+
+
+@slotclass
+class GatheredFields:
+    """
+    A helper gatherer for fields that have been gathered externally.
+    """
+    __slots__ = SlotFields(
+        fields=Field(),
+        modifications=Field(),
+    )
+
+    def __call__(self, cls):
+        return self.fields, self.modifications

@@ -1,7 +1,7 @@
 """Tests for errors raised on class creation"""
 import sys
 
-from ducktools.classbuilder.annotations import get_annotations
+from ducktools.classbuilder.annotations import get_ns_annotations
 from ducktools.classbuilder.prefab import PrefabError
 
 import pytest
@@ -46,12 +46,12 @@ class TestRemoveRecipe:
         removed_attributes = ["x", "y", "z"]
         for attrib in removed_attributes:
             assert attrib not in getattr(OnlyHints, "__dict__")
-            assert attrib in get_annotations(OnlyHints.__dict__)
+            assert attrib in get_ns_annotations(OnlyHints.__dict__)
 
     def test_removed_only_used_defaults(self):
         from creation import MixedHints
 
-        annotations = get_annotations(MixedHints.__dict__)
+        annotations = get_ns_annotations(MixedHints.__dict__)
 
         assert "x" in annotations
         assert "y" in annotations
@@ -145,7 +145,7 @@ class TestClassVar:
 
 class TestExceptions:
     def test_kw_not_in_init(self):
-        with pytest.raises(PrefabError) as e_info:
+        with pytest.raises(AttributeError) as e_info:
             from fails.creation_1 import Construct
 
         assert (
@@ -171,7 +171,7 @@ class TestExceptions:
 
         assert (
             e_info.value.args[0]
-            == "Cannot define both a default value and a default factory."
+            == "Attribute cannot define both a default value and a default factory."
         )
 
 
@@ -185,7 +185,7 @@ class TestSplitVarDef:
 
         cls = getattr(creation, classname)
 
-        assert get_annotations(cls.__dict__)["x"] == str
+        assert get_ns_annotations(cls.__dict__)["x"] == str
 
         inst = cls()
         assert inst.x == "test"
@@ -211,7 +211,7 @@ class TestSplitVarDef:
         assert inst.x == "true_test"
         assert repr(inst) == "HorribleMess(x='true_test', y='test_2')"
 
-        assert get_annotations(cls.__dict__) == {"x": str, "y": str}
+        assert get_ns_annotations(cls.__dict__) == {"x": str, "y": str}
 
 
 def test_call_mistaken():
@@ -235,7 +235,7 @@ class TestNonInit:
 
         x.x = 12
 
-        assert repr(x) == "<prefab ConstructInitFalse; x=12>"
+        assert repr(x) == "<generated class ConstructInitFalse; x=12>"
 
     def test_non_init_doesnt_break_syntax(self):
         # No syntax error if an attribute with a default is defined
@@ -243,4 +243,4 @@ class TestNonInit:
         from creation import PositionalNotAfterKW
 
         x = PositionalNotAfterKW(1, 2)
-        assert repr(x) == "<prefab PositionalNotAfterKW; x=1, y=0, z=2>"
+        assert repr(x) == "<generated class PositionalNotAfterKW; x=1, y=0, z=2>"

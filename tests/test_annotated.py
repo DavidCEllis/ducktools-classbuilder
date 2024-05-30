@@ -11,7 +11,7 @@ from ducktools.classbuilder import (
 
 from ducktools.classbuilder.annotations import (
     is_classvar,
-    get_annotations,
+    get_ns_annotations,
 )
 
 CV = ClassVar
@@ -82,7 +82,7 @@ def test_make_annotation_gatherer():
         h: Annotated[CV[str], ''] = "h"
 
     annos, modifications = gatherer(ExampleAnnotated)
-    annotations = get_annotations(vars(ExampleAnnotated))
+    annotations = get_ns_annotations(vars(ExampleAnnotated))
 
     assert annos["blank_field"] == NewField(type=str)
 

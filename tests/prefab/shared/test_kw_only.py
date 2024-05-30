@@ -1,6 +1,6 @@
 import pytest
 
-from ducktools.classbuilder.annotations import get_annotations
+from ducktools.classbuilder.annotations import get_ns_annotations
 
 def test_kw_only_basic():
     from kw_only import KWBasic
@@ -65,7 +65,7 @@ def test_kw_only_prefab_argument_overrides():
 def test_kw_flag_no_defaults():
     from kw_only import KWFlagNoDefaults
 
-    annotations = get_annotations(KWFlagNoDefaults.__dict__)
+    annotations = get_ns_annotations(KWFlagNoDefaults.__dict__)
 
     assert "_" in annotations
 
