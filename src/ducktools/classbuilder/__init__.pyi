@@ -213,11 +213,17 @@ def slotclass(
 ) -> Callable[[type[_T]], type[_T]]: ...
 
 
+_gatherer_type = Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]
+
+
 @dataclass_transform(field_specifiers=(Field,))
 class AnnotationClass(metaclass=SlotMakerMeta):
+    __slots__: dict
+
     def __init_subclass__(
         cls,
         methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
+        gatherer: _gatherer_type = make_unified_gatherer(leave_default_values=True),
         **kwargs,
     ) -> None: ...
 

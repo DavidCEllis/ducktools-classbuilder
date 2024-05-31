@@ -791,7 +791,9 @@ def make_unified_gatherer(
 slot_gatherer = make_slot_gatherer()
 annotation_gatherer = make_annotation_gatherer()
 
-unified_gatherer = make_unified_gatherer(field_type=Field, leave_default_values=False)
+# The unified gatherer used for slot classes must remove default
+# values for slots to work correctly.
+unified_gatherer = make_unified_gatherer(leave_default_values=False)
 
 
 # Now the gatherers have been defined, add __repr__ and __eq__ to Field.
@@ -852,13 +854,17 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
 
 
 class AnnotationClass(metaclass=SlotMakerMeta):
-    def __init_subclass__(cls, methods=default_methods, **kwargs):
+    __slots__ = {}
+
+    def __init_subclass__(
+            cls,
+            methods=default_methods,
+            gatherer=make_unified_gatherer(leave_default_values=True),
+            **kwargs
+    ):
         # Check class dict otherwise this will always be True as this base
         # class uses slots.
-
         slots = "__slots__" in cls.__dict__
-
-        gatherer = slot_gatherer if slots else annotation_gatherer
 
         builder(cls, gatherer=gatherer, methods=methods, flags={"slotted": slots})
         check_argument_order(cls)
