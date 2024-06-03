@@ -42,7 +42,7 @@ class _StringGlobs(dict):
         return f"{cls_name}({dict_repr})"
 
 
-def eval_hint(hint, context=None, *, recursion_limit=5):
+def eval_hint(hint, context=None, *, recursion_limit=2):
     """
     Attempt to evaluate a string type hint in the given
     context.
