@@ -12,7 +12,7 @@ def eval_hint(
     hint: type | str,
     context: None | dict[str, typing.Any] = None,
     *,
-    recursion_limit: int = 5
+    recursion_limit: int = 2
 ) -> type | str: ...
 
 
