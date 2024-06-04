@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from ducktools.classbuilder.prefab import Prefab, Attribute, SlotFields
 
 
@@ -13,7 +11,7 @@ class TestConstructionForms:
             b = Attribute(default=1)
 
         # Slotted by default
-        assert hasattr(Ex, "__slots__")
+        assert "__slots__" in vars(Ex)
         assert isinstance(Ex.__slots__, dict)
 
         ex = Ex(1, 2)
@@ -22,10 +20,10 @@ class TestConstructionForms:
 
     def test_annotations(self):
         class Ex(Prefab):
-            a: int | float
-            b: int | float = 1
+            a: int
+            b: int = 1
 
-        assert hasattr(Ex, "__slots__")
+        assert "__slots__" in vars(Ex)
         assert isinstance(Ex.__slots__, dict)
 
         ex = Ex(1, 2)
@@ -39,10 +37,24 @@ class TestConstructionForms:
                 b=1
             )
 
-        assert hasattr(Ex, "__slots__")
+        assert "__slots__" in vars(Ex)
         assert isinstance(Ex.__slots__, dict)
 
         ex = Ex(1, 2)
         assert ex.a == 1
         assert ex.b == 2
 
+
+class TestClassArguments:
+    def test_slots(self):
+        class Ex(Prefab, slots=True):
+            a: int
+            b: int = 1
+
+        assert "__slots__" in vars(Ex)
+
+        class Ex(Prefab, slots=False):
+            a: int
+            b: int = 1
+
+        assert "__slots__" not in vars(Ex)
