@@ -5,8 +5,10 @@ import pytest
 from ducktools.classbuilder import (
     INTERNALS_DICT,
     NOTHING,
+    default_methods,
     get_fields,
     get_flags,
+    get_methods,
     GeneratedCode,
     MethodMaker,
     init_maker,
@@ -20,15 +22,17 @@ from ducktools.classbuilder import (
 from ducktools.classbuilder.annotations import get_ns_annotations
 
 
-def test_get_fields_flags():
+def test_get_fields_flags_methods():
     local_fields = {"Example": Field()}
     resolved_fields = {"ParentField": Field(), "Example": Field()}
     flags = {"slotted": False}
+    methods = {m.funcname: m for m in default_methods}
 
     internals_dict = {
         "fields": resolved_fields,
         "local_fields": local_fields,
         "flags": flags,
+        "methods": methods
     }
 
     class ExampleFields:
@@ -39,6 +43,7 @@ def test_get_fields_flags():
     assert get_fields(ExampleFields) == resolved_fields
     assert get_fields(ExampleFields, local=True) == local_fields
     assert get_flags(ExampleFields) == flags
+    assert get_methods(ExampleFields) == methods
 
 
 def test_method_maker():
