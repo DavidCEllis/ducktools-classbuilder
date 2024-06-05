@@ -5,13 +5,13 @@ from typing_extensions import dataclass_transform
 from collections.abc import Callable
 
 from . import (
-    INTERNALS_DICT, NOTHING,
-    KW_ONLY as KW_ONLY,
-    Field, MethodMaker,
-    SlotFields as SlotFields,
+    NOTHING,
+    Field,
+    MethodMaker,
     SlotMakerMeta,
-    builder, get_flags, get_fields, make_slot_gatherer
 )
+
+from . import SlotFields as SlotFields, KW_ONLY as KW_ONLY
 
 # noinspection PyUnresolvedReferences
 from . import _NothingType

@@ -45,7 +45,9 @@ META_GATHERER_NAME = "_meta_gatherer"
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = "pytest" in sys.modules
 
-_MPT = type(type.__dict__)
+# Obtain types the same way types.py does
+_MemberDescriptorType = type(type(lambda: None).__globals__)
+_MappingProxyType = type(type.__dict__)
 
 
 def get_fields(cls, *, local=False):
@@ -70,6 +72,17 @@ def get_flags(cls):
     :return: dictionary of keys and flag values
     """
     return getattr(cls, INTERNALS_DICT)["flags"]
+
+
+def get_methods(cls):
+    """
+    Utility function to gather the set of methods
+    from the class internals.
+
+    :param cls: generated class
+    :return: dict of generated methods attached to the class by name
+    """
+    return getattr(cls, INTERNALS_DICT)["methods"]
 
 
 def _get_inst_fields(inst):
@@ -102,6 +115,27 @@ class _KW_ONLY_TYPE:
 KW_ONLY = _KW_ONLY_TYPE()
 
 
+class GeneratedCode:
+    """
+    This class provides a return value for the generated output from source code
+    generators.
+    """
+    __slots__ = ("source_code", "globs")
+
+    def __init__(self, source_code, globs):
+        self.source_code = source_code
+        self.globs = globs
+
+    def __repr__(self):
+        first_source_line = self.source_code.split("\n")[0]
+        return f"GeneratorOutput(source_code='{first_source_line} ...', globs={self.globs!r})"
+
+    def __eq__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.source_code, self.globs) == (other.source_code, other.globs)
+        return NotImplemented
+
+
 class MethodMaker:
     """
     The descriptor class to place where methods should be generated.
@@ -130,8 +164,8 @@ class MethodMaker:
             cls = objtype
 
         local_vars = {}
-        code, globs = self.code_generator(cls)
-        exec(code, globs, local_vars)
+        gen = self.code_generator(cls)
+        exec(gen.source_code, gen.globs, local_vars)
         method = local_vars.get(self.funcname)
         method.__qualname__ = f"{cls.__qualname__}.{self.funcname}"
 
@@ -205,7 +239,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
             for line in extra_code:
                 code += f"    {line}\n"
 
-        return code, globs
+        return GeneratedCode(code, globs)
 
     return cls_init_maker
 
@@ -268,7 +302,7 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
                 f"    return f'{{type(self).__qualname__}}({content})'\n"
             )
 
-        return code, globs
+        return GeneratedCode(code, globs)
     return cls_repr_generator
 
 
@@ -296,7 +330,7 @@ def eq_generator(cls):
     )
     globs = {}
 
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 def frozen_setattr_generator(cls):
@@ -325,7 +359,7 @@ def frozen_setattr_generator(cls):
     )
     code = f"def __setattr__(self, name, value):\n{body}"
 
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 def frozen_delattr_generator(cls):
@@ -337,7 +371,7 @@ def frozen_delattr_generator(cls):
     )
     code = f"def __delattr__(self, name):\n{body}"
     globs = {}
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 # As only the __get__ method refers to the class we can use the same
@@ -409,8 +443,12 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
     internals["flags"] = flags if flags is not None else {}
 
     # Assign all of the method generators
+    internal_methods = {}
     for method in methods:
         setattr(cls, method.funcname, method)
+        internal_methods[method.funcname] = method
+
+    internals["methods"] = _MappingProxyType(internal_methods)
 
     return cls
 
@@ -597,7 +635,10 @@ def make_slot_gatherer(field_type=Field):
         :param cls_or_ns: Class to gather field information from (or class namespace)
         :return: dict of field_name: Field(...)
         """
-        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
+        if isinstance(cls_or_ns, (_MappingProxyType, dict)):
+            cls_dict = cls_or_ns
+        else:
+            cls_dict = cls_or_ns.__dict__
 
         try:
             cls_slots = cls_dict["__slots__"]
@@ -666,13 +707,15 @@ def make_annotation_gatherer(
     :return: An annotation gatherer with these settings.
     """
     def field_annotation_gatherer(cls_or_ns):
-        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
+        if isinstance(cls_or_ns, (_MappingProxyType, dict)):
+            cls_dict = cls_or_ns
+        else:
+            cls_dict = cls_or_ns.__dict__
 
         cls_fields: dict[str, field_type] = {}
         modifications = {}
 
         cls_annotations = get_ns_annotations(cls_dict)
-        cls_slots = cls_dict.get("__slots__", {})
 
         kw_flag = False
 
@@ -700,7 +743,7 @@ def make_annotation_gatherer(
                     else:
                         # NOTHING sentinel indicates a value should be removed
                         modifications[k] = NOTHING
-                elif k not in cls_slots:
+                elif not isinstance(attrib, _MemberDescriptorType):
                     attrib = field_type(default=attrib, type=v, kw_only=kw_flag)
                     if not leave_default_values:
                         modifications[k] = NOTHING
@@ -721,7 +764,11 @@ def make_field_gatherer(
     leave_default_values=True,
 ):
     def field_attribute_gatherer(cls_or_ns):
-        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
+        if isinstance(cls_or_ns, (_MappingProxyType, dict)):
+            cls_dict = cls_or_ns
+        else:
+            cls_dict = cls_or_ns.__dict__
+
         cls_attributes = {
             k: v
             for k, v in cls_dict.items()
@@ -763,7 +810,11 @@ def make_unified_gatherer(
     attrib_g = make_field_gatherer(field_type, leave_default_values)
 
     def field_unified_gatherer(cls_or_ns):
-        cls_dict = cls_or_ns if isinstance(cls_or_ns, (_MPT, dict)) else cls_or_ns.__dict__
+        if isinstance(cls_or_ns, (_MappingProxyType, dict)):
+            cls_dict = cls_or_ns
+        else:
+            cls_dict = cls_or_ns.__dict__
+
         cls_slots = cls_dict.get("__slots__")
 
         if isinstance(cls_slots, SlotFields):

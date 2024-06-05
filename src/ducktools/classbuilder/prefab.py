@@ -26,13 +26,17 @@ A 'prebuilt' implementation of class generation.
 Includes pre and post init functions along with other methods.
 """
 from . import (
-    INTERNALS_DICT, NOTHING, SlotFields, KW_ONLY,
-    Field, MethodMaker, GatheredFields, SlotMakerMeta,
+    INTERNALS_DICT, NOTHING,
+    Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
     builder, get_flags, get_fields,
     make_unified_gatherer,
     frozen_setattr_maker, frozen_delattr_maker, eq_maker,
     get_repr_generator,
 )
+
+# These aren't used but are re-exported for ease of use
+# noinspection PyUnresolvedReferences
+from . import SlotFields, KW_ONLY
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
@@ -57,7 +61,7 @@ def get_attributes(cls):
 
 # Method Generators
 def get_init_maker(*, init_name="__init__"):
-    def __init__(cls: "type") -> "tuple[str, dict]":
+    def __init__(cls: type) -> GeneratedCode:
         globs = {}
         # Get the internals dictionary and prepare attributes
         attributes = get_attributes(cls)
@@ -206,13 +210,13 @@ def get_init_maker(*, init_name="__init__"):
             f"{body}\n"
             f"{post_init_call}\n"
         )
-        return code, globs
+        return GeneratedCode(code, globs)
 
     return MethodMaker(init_name, __init__)
 
 
 def get_iter_maker():
-    def __iter__(cls: "type") -> "tuple[str, dict]":
+    def __iter__(cls: type) -> GeneratedCode:
         fields = get_attributes(cls)
 
         valid_fields = (
@@ -228,13 +232,13 @@ def get_iter_maker():
 
         code = f"def __iter__(self):\n{values}"
         globs = {}
-        return code, globs
+        return GeneratedCode(code, globs)
 
     return MethodMaker("__iter__", __iter__)
 
 
 def get_asdict_maker():
-    def as_dict_gen(cls: "type") -> "tuple[str, dict]":
+    def as_dict_gen(cls: type) -> GeneratedCode:
         fields = get_attributes(cls)
 
         vals = ", ".join(
@@ -246,7 +250,7 @@ def get_asdict_maker():
         code = f"def as_dict(self): return {out_dict}"
 
         globs = {}
-        return code, globs
+        return GeneratedCode(code, globs)
     return MethodMaker("as_dict", as_dict_gen)
 
 

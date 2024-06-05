@@ -7,6 +7,7 @@ from ducktools.classbuilder import (
     NOTHING,
     get_fields,
     get_flags,
+    GeneratedCode,
     MethodMaker,
     init_maker,
     builder,
@@ -44,7 +45,7 @@ def test_method_maker():
     def generator(cls):
         code = "def demo(self): return self.x"
         globs = {}
-        return code, globs
+        return GeneratedCode(code, globs)
 
     method_desc = MethodMaker("demo", generator)
 
