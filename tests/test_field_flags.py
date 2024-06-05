@@ -46,3 +46,56 @@ def test_compare_false_field():
 
     assert ex == ex2
     assert ex != ex3
+
+
+def test_kwonly_true_field():
+    @slotclass
+    class Example:
+        __slots__ = SlotFields(
+            a="a",
+            b=Field(default="b", kw_only=True),
+            c="c"
+        )
+
+    # Check the signature is correct
+    params = inspect.signature(Example).parameters
+
+    assert params["a"].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+    assert params["b"].kind == inspect.Parameter.KEYWORD_ONLY
+    assert params["c"].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+
+    assert params["a"].default == "a"
+    assert params["b"].default == "b"
+    assert params["c"].default == "c"
+
+    # Check the values are set correctly inside __init__
+    ex = Example(a="a", b="b", c="c")
+    assert (ex.a, ex.b, ex.c) == ("a", "b", "c")
+
+    ex2 = Example("A", "C")
+    assert (ex2.a, ex2.b, ex2.c) == ("A", "b", "C")
+
+    ex3 = Example(b="B")
+    assert (ex3.a, ex3.b, ex3.c) == ("a", "B", "c")
+
+    @slotclass
+    class ExampleNoDefaults:
+        __slots__ = SlotFields(
+            a=Field(),
+            b=Field(kw_only=True),
+            c=Field(),
+        )
+
+    params = inspect.signature(ExampleNoDefaults).parameters
+
+    assert params["a"].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+    assert params["b"].kind == inspect.Parameter.KEYWORD_ONLY
+    assert params["c"].kind == inspect.Parameter.POSITIONAL_OR_KEYWORD
+
+    assert params["a"].default is inspect.Parameter.empty
+    assert params["b"].default is inspect.Parameter.empty
+    assert params["c"].default is inspect.Parameter.empty
+
+    ex = ExampleNoDefaults("a", "c", b="b")
+
+    assert (ex.a, ex.b, ex.c) == ("a", "b", "c")
