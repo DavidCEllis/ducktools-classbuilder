@@ -45,9 +45,12 @@ META_GATHERER_NAME = "_meta_gatherer"
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = "pytest" in sys.modules
 
-# Obtain types the same way types.py does
-_MemberDescriptorType = type(type(lambda: None).__globals__)
+# Obtain types the same way types.py does in pypy
+# See: https://github.com/pypy/pypy/blob/19d9fa6be11165116dd0839b9144d969ab426ae7/lib-python/3/types.py#L61-L73
+class _C: __slots__ = 's'  # noqa
+_MemberDescriptorType = type(_C.s)  # noqa
 _MappingProxyType = type(type.__dict__)
+del _C
 
 
 def get_fields(cls, *, local=False):
