@@ -2,6 +2,7 @@ from ducktools.classbuilder import (
     default_methods,
     get_fields,
     slotclass,
+    GeneratedCode,
     MethodMaker,
     SlotFields,
 )
@@ -9,17 +10,10 @@ from ducktools.classbuilder import (
 
 def iter_generator(cls):
     field_names = get_fields(cls).keys()
-    if field_names:
-        field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
-    else:
-        field_yield = "    yield from ()"
-
-    code = (
-        f"def __iter__(self):\n"
-        f"{field_yield}\n"
-    )
+    field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
+    code = f"def __iter__(self):\n" f"{field_yield}"
     globs = {}
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 iter_maker = MethodMaker("__iter__", iter_generator)
