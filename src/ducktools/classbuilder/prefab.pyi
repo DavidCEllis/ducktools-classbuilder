@@ -47,7 +47,6 @@ class Attribute(Field):
 
     iter: bool
     serialize: bool
-    exclude_field: bool
 
     def __init__(
         self,
@@ -62,7 +61,6 @@ class Attribute(Field):
         iter: bool = True,
         kw_only: bool = False,
         serialize: bool = True,
-        exclude_field: bool = False,
     ) -> None: ...
 
     def __repr__(self) -> str: ...
