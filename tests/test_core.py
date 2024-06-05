@@ -435,6 +435,8 @@ def test_builder_noclass():
     assert "__repr__" not in SlotClass.__dict__
     assert "__eq__" not in SlotClass.__dict__
 
+    assert get_methods(SlotClass) == {"__init__": init_maker}
+
     x = SlotClass(12)
     assert x.a == 12
     assert x.b == 2
