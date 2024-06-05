@@ -217,7 +217,7 @@ def get_iter_maker():
 
         valid_fields = (
             name for name, attrib in fields.items()
-            if attrib.iter and not attrib.exclude_field
+            if attrib.iter
         )
 
         values = "\n".join(f"    yield self.{name}" for name in valid_fields)
@@ -240,7 +240,7 @@ def get_asdict_maker():
         vals = ", ".join(
             f"'{name}': self.{name}"
             for name, attrib in fields.items()
-            if attrib.serialize and not attrib.exclude_field
+            if attrib.serialize
         )
         out_dict = f"{{{vals}}}"
         code = f"def as_dict(self): return {out_dict}"
@@ -278,29 +278,11 @@ class Attribute(Field):
     :param iter: Include this attribute in the class __iter__ if generated
     :param kw_only: Make this argument keyword only in init
     :param serialize: Include this attribute in methods that serialize to dict
-    :param exclude_field: Exclude this field from all magic method generation
-                          apart from __init__ signature
-                          and do not include it in PREFAB_FIELDS
-                          Must be assigned in __prefab_post_init__
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
     """
     iter: bool = True
     serialize: bool = True
-    exclude_field: bool = False
-
-    def validate_field(self):
-        super().validate_field()
-
-        exclude_attribs = {
-            self.repr, self.compare, self.iter, self.serialize
-        }
-        if self.exclude_field and any(exclude_attribs):
-            raise PrefabError(
-                "Excluded fields must have repr, compare, iter, serialize "
-                "set to False."
-                "This is automatically handled by using the `attribute` helper."
-            )
 
 
 # noinspection PyShadowingBuiltins
@@ -330,10 +312,7 @@ def attribute(
     :param iter: Include this attribute in the class __iter__ if generated
     :param kw_only: Make this argument keyword only in init
     :param serialize: Include this attribute in methods that serialize to dict
-    :param exclude_field: Exclude this field from all magic method generation
-                          apart from __init__ signature
-                          and do not include it in PREFAB_FIELDS
-                          Must be assigned in __prefab_post_init__
+    :param exclude_field: Shorthand for setting repr, compare, iter and serialize to False
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
 
@@ -354,7 +333,6 @@ def attribute(
         iter=iter,
         kw_only=kw_only,
         serialize=serialize,
-        exclude_field=exclude_field,
         doc=doc,
         type=type,
     )
@@ -512,24 +490,15 @@ def _make_prefab(
         post_init_args.extend(arglist)
 
     # Gather values for match_args and do some syntax checking
-
     default_defined = []
-    valid_args = []
+    valid_args = list(fields.keys())
+
     for name, attrib in fields.items():
         # slot_gather and parent classes may use Fields
         # prefabs require Attributes, so convert.
         if not isinstance(attrib, Attribute):
             attrib = Attribute.from_field(attrib)
             fields[name] = attrib
-
-        # Excluded fields *MUST* be forwarded to post_init
-        if attrib.exclude_field:
-            if name not in post_init_args:
-                raise PrefabError(
-                    f"{name!r} is an excluded attribute but is not passed to post_init"
-                )
-        else:
-            valid_args.append(name)
 
         if not kw_only:
             # Syntax check arguments for __init__ don't have non-default after default
@@ -781,5 +750,5 @@ def as_dict(o):
     return {
         name: getattr(o, name)
         for name, attrib in flds.items()
-        if attrib.serialize and not attrib.exclude_field
+        if attrib.serialize
     }
