@@ -33,7 +33,7 @@ where = ["src"]
 version = {attr = "ducktools.classbuilder.__version__"}
 
 [project.optional-dependencies]
-testing = ["pytest", "pytest-cov", "mypy", "typing_extensions; python_version < '3.10'"]
+testing = ["pytest", "pytest-cov", "mypy", "typing_extensions"]
 docs = ["sphinx", "myst-parser", "sphinx_rtd_theme"]
 
 [project.urls]
