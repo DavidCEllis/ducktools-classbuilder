@@ -1,3 +1,8 @@
+"""
+Tests to check that typing.Annotated / typing_extensions.Annotated
+does not interfere when wrapping ClassVar
+"""
+
 import sys
 import pytest
 

@@ -7,6 +7,7 @@ caption: "Contents:"
 hidden: true
 ---
 extension_examples
+generated_code
 api
 perf/performance_tests
 approach_vs_tool

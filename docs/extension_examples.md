@@ -337,6 +337,7 @@ from ducktools.classbuilder import (
     default_methods,
     get_fields,
     slotclass,
+    GeneratedCode,
     MethodMaker,
     SlotFields,
 )
@@ -347,7 +348,7 @@ def iter_generator(cls):
     field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
     code = f"def __iter__(self):\n" f"{field_yield}"
     globs = {}
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 iter_maker = MethodMaker("__iter__", iter_generator)
@@ -377,87 +378,14 @@ You could also choose to yield tuples of `name, value` pairs in your implementat
 
 ### Extending Field ###
 
-#### Excluding Attributes ####
-
-In order to exclude fields you first need to extend the `Field` class
-to add a new attribute.
-
-This special class builder is needed to treat `NOTHING` sentinel values as
-regular values in the `__init__` generator. As such this is only intended
-for use on `Field` subclasses.
-
-You also need to rewrite the code generator to check for the new attribute 
-and exclude the field if it is `False`.
-
-Here is an example of adding the ability to exclude fields from `__repr__`.
-
-```python
-from ducktools.classbuilder import (
-    eq_maker,
-    get_fields,
-    init_maker,
-    slotclass,
-    Field,
-    SlotFields,
-    MethodMaker,
-)
-
-
-class FieldExt(Field):
-    __slots__ = SlotFields(repr=True)
-
-
-def repr_exclude_generator(cls):
-    fields = get_fields(cls)
-
-    # Use getattr with default True for the condition so
-    # regular fields without the 'repr' field still work
-    content = ", ".join(
-        f"{name}={{self.{name}!r}}"
-        for name, field in fields.items()
-        if getattr(field, "repr", True)
-    )
-    code = (
-        f"def __repr__(self):\n"
-        f"    return f'{{type(self).__qualname__}}({content})'\n"
-    )
-    globs = {}
-    return code, globs
-
-
-repr_exclude_maker = MethodMaker("__repr__", repr_exclude_generator)
-
-
-if __name__ == "__main__":
-
-    methods = frozenset({init_maker, eq_maker, repr_exclude_maker})
-
-    @slotclass(methods=methods)
-    class Example:
-        __slots__ = SlotFields(
-            the_answer=42,
-            the_question=Field(
-                default="What do you get if you multiply six by nine?",
-                doc="Life, the Universe, and Everything",
-            ),
-            the_book=FieldExt(
-                default="The Hitchhiker's Guide to the Galaxy",
-                repr=False,
-            )
-        )
-
-    ex = Example()
-    print(ex)
-    print(ex.the_book)
-```
-
 #### Positional Only Arguments? ####
 
-Also possible, but a little longer as we also need to modify multiple methods
-along with adding a check to the builder.
+This is possible, but a little longer as we also need to modify multiple methods
+along with adding a check to the builder to catch likely errors before the `__init__`
+method is generated.
 
-The additional check in the builder is needed to prevent more confusing
-errors when the `__init__` method is generated.
+For simplicity this demonstration version will ignore the existence of the kw_only
+parameter for fields.
 
 ```python
 from ducktools.classbuilder import (
@@ -466,6 +394,7 @@ from ducktools.classbuilder import (
     get_fields,
     slot_gatherer,
     Field,
+    GeneratedCode,
     SlotFields,
     NOTHING,
     MethodMaker,
@@ -511,7 +440,7 @@ def init_generator(cls):
     args = ", ".join(arglist)
     assigns = "\n    ".join(assignments)
     code = f"def __init__(self, {args}):\n" f"    {assigns}\n"
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 def repr_generator(cls):
@@ -530,7 +459,7 @@ def repr_generator(cls):
         f"    return f'{{type(self).__qualname__}}({content})'\n"
     )
     globs = {}
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 init_maker = MethodMaker("__init__", init_generator)
@@ -604,13 +533,14 @@ from ducktools.classbuilder import (
     get_fields,
     slot_gatherer,
     Field,
+    GeneratedCode,
     SlotFields,
     MethodMaker,
 )
 
 
 class ConverterField(Field):
-    __slots__ = SlotFields(converter=None)
+    converter = Field(default=None)
 
 
 def setattr_generator(cls):
@@ -633,7 +563,7 @@ def setattr_generator(cls):
         f"        _object_setattr(self, name, value)\n"
     )
 
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 setattr_maker = MethodMaker("__setattr__", setattr_generator)
@@ -661,39 +591,31 @@ if __name__ == "__main__":
 #### What about using annotations instead of `Field(init=False, ...)` ####
 
 This seems to be a feature people keep requesting for `dataclasses`.
-This is also doable.
 
-This is a long example but is designed to show how you can use these tools to implement such a thing.
+To implement this you simply need to create a new annotated_gatherer function.
 
 > Note: Field classes will be frozen when running under pytest.
 >       They should not be mutated by gatherers.
 >       If you need to change the value of a field use Field.from_field(...) to make a new instance.
 
 ```python
-from pprint import pp
+from __future__ import annotations
+
+import types
 from typing import Annotated, Any, ClassVar, get_origin
 
 from ducktools.classbuilder import (
     builder,
+    default_methods,
     get_fields,
-    get_flags,
+    get_methods,
+    slot_gatherer,
     Field,
-    MethodMaker,
-    SlotFields,
+    SlotMakerMeta,
     NOTHING,
 )
 
-from ducktools.classbuilder.annotations import get_annotations
-
-
-# First we need a new field that can store these modifications
-class AnnoField(Field):
-    __slots__ = SlotFields(
-        init=True,
-        repr=True,
-        compare=True,
-        kw_only=False,
-    )
+from ducktools.classbuilder.annotations import get_ns_annotations
 
 
 # Our 'Annotated' tools need to be combinable and need to contain the keyword argument
@@ -729,10 +651,13 @@ IGNORE_ALL = FieldModifier(init=False, repr=False, compare=False)
 
 
 # Analyse the class and create these new Fields based on the annotations
-def annotated_gatherer(cls: type) -> tuple[dict[str, AnnoField], dict[str, Any]]:
-    # String annotations *MUST* be able to evaluate for this to work
-    # Trying to parse the Annotations as strings would add a *lot* of extra work
-    cls_annotations = get_annotations(cls.__dict__)
+def annotated_gatherer(cls_or_ns):
+    if isinstance(cls_or_ns, (types.MappingProxyType, dict)):
+        cls_dict = cls_or_ns
+    else:
+        cls_dict = cls_or_ns.__dict__
+
+    cls_annotations = get_ns_annotations(cls_dict)
     cls_fields = {}
 
     # This gatherer doesn't make any class modifications but still needs
@@ -755,152 +680,111 @@ def annotated_gatherer(cls: type) -> tuple[dict[str, AnnoField], dict[str, Any]]
         if anno is ClassVar or get_origin(anno) is ClassVar:
             continue
 
-        if key in cls.__dict__ and "__slots__" not in cls.__dict__:
-            val = cls.__dict__[key]
+        if key in cls_dict:
+            val = cls_dict[key]
             if isinstance(val, Field):
                 # Make a new field - DO NOT MODIFY FIELDS IN PLACE
-                fld = AnnoField.from_field(val, type=anno, **modifiers)
+                fld = Field.from_field(val, type=anno, **modifiers)
+                cls_modifications[key] = NOTHING
+            elif not isinstance(val, types.MemberDescriptorType):
+                fld = Field(default=val, type=anno, **modifiers)
+                cls_modifications[key] = NOTHING
             else:
-                fld = AnnoField(default=val, type=anno, **modifiers)
+                fld = Field(type=anno, **modifiers)
         else:
-            fld = AnnoField(type=anno, **modifiers)
+            fld = Field(type=anno, **modifiers)
 
         cls_fields[key] = fld
 
     return cls_fields, cls_modifications
 
 
-def init_generator(cls):
-    fields = get_fields(cls)
-    flags = get_flags(cls)
-
-    arglist = []
-    kw_only_arglist = []
-
-    assignments = []
-    globs = {}
-
-    # Whole class kw_only
-    kw_only = flags.get("kw_only", False)
-
-    for k, v in fields.items():
-        if getattr(v, "init", True):
-            if v.default is not NOTHING:
-                globs[f"_{k}_default"] = v.default
-                arg = f"{k}=_{k}_default"
-                assignment = f"self.{k} = {k}"
-            elif v.default_factory is not NOTHING:
-                globs[f"_{k}_factory"] = v.default_factory
-                arg = f"{k}=None"
-                assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
-            else:
-                arg = f"{k}"
-                assignment = f"self.{k} = {k}"
-
-            if getattr(v, "kw_only", False) or kw_only:
-                kw_only_arglist.append(arg)
-            else:
-                arglist.append(arg)
-
-            assignments.append(assignment)
-        else:
-            if v.default is not NOTHING:
-                globs[f"_{k}_default"] = v.default
-                assignment = f"self.{k} = _{k}_default"
-                assignments.append(assignment)
-            elif v.default_factory is not NOTHING:
-                globs[f"_{k}_factory"] = v.default_factory
-                assignment = f"self.{k} = _{k}_factory()"
-                assignments.append(assignment)
-
-    if kw_only_arglist:
-        arglist.append("*")
-        arglist.extend(kw_only_arglist)
-
-    args = ", ".join(arglist)
-    assigns = "\n    ".join(assignments)
-    code = f"def __init__(self, {args}):\n" f"    {assigns}\n"
-
-    return code, globs
-
-
-def repr_generator(cls):
-    fields = get_fields(cls)
-    content = ", ".join(
-        f"{name}={{self.{name}!r}}"
-        for name, fld in fields.items()
-        if getattr(fld, "repr", True)
-    )
-    code = (
-        f"def __repr__(self):\n"
-        f"    return f'{{type(self).__qualname__}}({content})'\n"
-    )
-    globs = {}
-    return code, globs
-
-
-def eq_generator(cls):
-    class_comparison = "self.__class__ is other.__class__"
-    field_names = [
-        name
-        for name, fld in get_fields(cls).items()
-        if getattr(fld, "compare", True)
-    ]
-
-    if field_names:
-        selfvals = ",".join(f"self.{name}" for name in field_names)
-        othervals = ",".join(f"other.{name}" for name in field_names)
-        instance_comparison = f"({selfvals},) == ({othervals},)"
-    else:
-        instance_comparison = "True"
-
-    code = (
-        f"def __eq__(self, other):\n"
-        f"    return {instance_comparison} if {class_comparison} else NotImplemented\n"
-    )
-    globs = {}
-
-    return code, globs
-
-
-init_maker = MethodMaker("__init__", init_generator)
-repr_maker = MethodMaker("__repr__", repr_generator)
-eq_maker = MethodMaker("__eq__", eq_generator)
-
-methods = {init_maker, repr_maker, eq_maker}
-
-
-def annotationsclass(cls=None, *, kw_only=False):
+# As a decorator
+def annotatedclass(cls=None, *, kw_only=False):
     if not cls:
-        return lambda cls_: annotationsclass(cls_, kw_only=kw_only)
+        return lambda cls_: annotatedclass(cls_, kw_only=kw_only)
 
     return builder(
         cls,
         gatherer=annotated_gatherer,
-        methods=methods,
+        methods=default_methods,
         flags={"slotted": False, "kw_only": kw_only}
     )
 
 
-@annotationsclass
-class X:
-    x: str
-    y: ClassVar[str] = "This should be ignored"
-    z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"
-    a: Annotated[int, NO_INIT] = "Not In __init__ signature"
-    b: Annotated[str, NO_REPR] = "Not In Repr"
-    c: Annotated[list[str], NO_COMPARE] = AnnoField(default_factory=list)
-    d: Annotated[str, IGNORE_ALL] = "Not Anywhere"
-    e: Annotated[str, KW_ONLY, NO_COMPARE]
+# As a base class with slots
+class AnnotatedClass(metaclass=SlotMakerMeta):
+    # This attribute tells the slotmaker to use this gatherer
+    _meta_gatherer = annotated_gatherer
+
+    def __init_subclass__(cls, kw_only=False, **kwargs):
+        slots = "__slots__" in cls.__dict__
+
+        # if slots is True then fields will already be present in __slots__
+        # Use the slot_gatherer for this case
+        gatherer = slot_gatherer if slots else annotated_gatherer
+
+        builder(
+            cls,
+            gatherer=gatherer,
+            methods=default_methods,
+            flags={"slotted": slots, "kw_only": kw_only}
+        )
+
+        super().__init_subclass__(**kwargs)
 
 
-ex = X("Value of x", e="Value of e")
+if __name__ == "__main__":
+    from pprint import pp
 
-print(ex, "\n")
+    # Make classes, one via decorator one via subclass
+    @annotatedclass
+    class X:
+        x: str
+        y: ClassVar[str] = "This should be ignored"
+        z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"
+        a: Annotated[int, NO_INIT] = "Not In __init__ signature"
+        b: Annotated[str, NO_REPR] = "Not In Repr"
+        c: Annotated[list[str], NO_COMPARE] = Field(default_factory=list)
+        d: Annotated[str, IGNORE_ALL] = "Not Anywhere"
+        e: Annotated[str, KW_ONLY, NO_COMPARE]
 
-pp(get_fields(X))
-print("\nSource:")
-print(init_generator(X)[0])
-print(eq_generator(X)[0])
-print(repr_generator(X)[0])
+
+    class Y(AnnotatedClass):
+        x: str
+        y: ClassVar[str] = "This should be ignored"
+        z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"
+        a: Annotated[int, NO_INIT] = "Not In __init__ signature"
+        b: Annotated[str, NO_REPR] = "Not In Repr"
+        c: Annotated[list[str], NO_COMPARE] = Field(default_factory=list)
+        d: Annotated[str, IGNORE_ALL] = "Not Anywhere"
+        e: Annotated[str, KW_ONLY, NO_COMPARE]
+
+
+    # Unslotted Demo
+    ex = X("Value of x", e="Value of e")
+    print(ex, "\n")
+
+    pp(get_fields(X))
+    print("\n")
+
+    # Slotted Demo
+    ex = Y("Value of x", e="Value of e")
+    print(ex, "\n")
+
+    print(f"Slots: {Y.__dict__.get('__slots__')}")
+
+    print("\nSource:")
+
+    # Obtain the methods set on the class X
+    methods = get_methods(X)
+
+    # Call the code generators to display the source code
+    for method in methods.values():
+        # Both classes generate identical source code
+        genX = method.code_generator(X)
+        genY = method.code_generator(Y)
+        assert genX == genY
+
+        print(genX.source_code)
 ```

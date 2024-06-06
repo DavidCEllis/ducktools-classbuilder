@@ -76,10 +76,13 @@ def eval_hint(hint, context=None, *, recursion_limit=2):
         context = _StringGlobs(context)
 
     original_hint = hint
-    seen = set()
+
+    # Using a set would require the hint always be hashable
+    # This is only going to be 2 items at most usually
+    seen = []
     i = 0
     while isinstance(hint, str):
-        seen.add(hint)
+        seen.append(hint)
 
         # noinspection PyBroadException
         try:

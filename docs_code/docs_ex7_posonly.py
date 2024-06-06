@@ -4,6 +4,7 @@ from ducktools.classbuilder import (
     get_fields,
     slot_gatherer,
     Field,
+    GeneratedCode,
     SlotFields,
     NOTHING,
     MethodMaker,
@@ -49,7 +50,7 @@ def init_generator(cls):
     args = ", ".join(arglist)
     assigns = "\n    ".join(assignments)
     code = f"def __init__(self, {args}):\n" f"    {assigns}\n"
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 def repr_generator(cls):
@@ -68,7 +69,7 @@ def repr_generator(cls):
         f"    return f'{{type(self).__qualname__}}({content})'\n"
     )
     globs = {}
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 init_maker = MethodMaker("__init__", init_generator)

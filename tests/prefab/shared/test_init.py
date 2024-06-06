@@ -136,7 +136,6 @@ def test_post_init_annotations():
 def test_exclude_field():
     from init_ex import ExcludeField
 
-    assert "x" not in ExcludeField.PREFAB_FIELDS
     x = ExcludeField()
     y = ExcludeField(x="still_excluded")
 

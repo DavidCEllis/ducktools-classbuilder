@@ -26,13 +26,17 @@ A 'prebuilt' implementation of class generation.
 Includes pre and post init functions along with other methods.
 """
 from . import (
-    INTERNALS_DICT, NOTHING, SlotFields, KW_ONLY,
-    Field, MethodMaker, GatheredFields, SlotMakerMeta,
+    INTERNALS_DICT, NOTHING,
+    Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
     builder, get_flags, get_fields,
     make_unified_gatherer,
     frozen_setattr_maker, frozen_delattr_maker, eq_maker,
     get_repr_generator,
 )
+
+# These aren't used but are re-exported for ease of use
+# noinspection PyUnresolvedReferences
+from . import SlotFields, KW_ONLY
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
@@ -57,7 +61,7 @@ def get_attributes(cls):
 
 # Method Generators
 def get_init_maker(*, init_name="__init__"):
-    def __init__(cls: "type") -> "tuple[str, dict]":
+    def __init__(cls: type) -> GeneratedCode:
         globs = {}
         # Get the internals dictionary and prepare attributes
         attributes = get_attributes(cls)
@@ -206,18 +210,18 @@ def get_init_maker(*, init_name="__init__"):
             f"{body}\n"
             f"{post_init_call}\n"
         )
-        return code, globs
+        return GeneratedCode(code, globs)
 
     return MethodMaker(init_name, __init__)
 
 
 def get_iter_maker():
-    def __iter__(cls: "type") -> "tuple[str, dict]":
+    def __iter__(cls: type) -> GeneratedCode:
         fields = get_attributes(cls)
 
         valid_fields = (
             name for name, attrib in fields.items()
-            if attrib.iter and not attrib.exclude_field
+            if attrib.iter
         )
 
         values = "\n".join(f"    yield self.{name}" for name in valid_fields)
@@ -228,25 +232,25 @@ def get_iter_maker():
 
         code = f"def __iter__(self):\n{values}"
         globs = {}
-        return code, globs
+        return GeneratedCode(code, globs)
 
     return MethodMaker("__iter__", __iter__)
 
 
 def get_asdict_maker():
-    def as_dict_gen(cls: "type") -> "tuple[str, dict]":
+    def as_dict_gen(cls: type) -> GeneratedCode:
         fields = get_attributes(cls)
 
         vals = ", ".join(
             f"'{name}': self.{name}"
             for name, attrib in fields.items()
-            if attrib.serialize and not attrib.exclude_field
+            if attrib.serialize
         )
         out_dict = f"{{{vals}}}"
         code = f"def as_dict(self): return {out_dict}"
 
         globs = {}
-        return code, globs
+        return GeneratedCode(code, globs)
     return MethodMaker("as_dict", as_dict_gen)
 
 
@@ -278,29 +282,11 @@ class Attribute(Field):
     :param iter: Include this attribute in the class __iter__ if generated
     :param kw_only: Make this argument keyword only in init
     :param serialize: Include this attribute in methods that serialize to dict
-    :param exclude_field: Exclude this field from all magic method generation
-                          apart from __init__ signature
-                          and do not include it in PREFAB_FIELDS
-                          Must be assigned in __prefab_post_init__
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
     """
     iter: bool = True
     serialize: bool = True
-    exclude_field: bool = False
-
-    def validate_field(self):
-        super().validate_field()
-
-        exclude_attribs = {
-            self.repr, self.compare, self.iter, self.serialize
-        }
-        if self.exclude_field and any(exclude_attribs):
-            raise PrefabError(
-                "Excluded fields must have repr, compare, iter, serialize "
-                "set to False."
-                "This is automatically handled by using the `attribute` helper."
-            )
 
 
 # noinspection PyShadowingBuiltins
@@ -330,10 +316,7 @@ def attribute(
     :param iter: Include this attribute in the class __iter__ if generated
     :param kw_only: Make this argument keyword only in init
     :param serialize: Include this attribute in methods that serialize to dict
-    :param exclude_field: Exclude this field from all magic method generation
-                          apart from __init__ signature
-                          and do not include it in PREFAB_FIELDS
-                          Must be assigned in __prefab_post_init__
+    :param exclude_field: Shorthand for setting repr, compare, iter and serialize to False
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
 
@@ -354,7 +337,6 @@ def attribute(
         iter=iter,
         kw_only=kw_only,
         serialize=serialize,
-        exclude_field=exclude_field,
         doc=doc,
         type=type,
     )
@@ -512,24 +494,15 @@ def _make_prefab(
         post_init_args.extend(arglist)
 
     # Gather values for match_args and do some syntax checking
-
     default_defined = []
-    valid_args = []
+    valid_args = list(fields.keys())
+
     for name, attrib in fields.items():
         # slot_gather and parent classes may use Fields
         # prefabs require Attributes, so convert.
         if not isinstance(attrib, Attribute):
             attrib = Attribute.from_field(attrib)
             fields[name] = attrib
-
-        # Excluded fields *MUST* be forwarded to post_init
-        if attrib.exclude_field:
-            if name not in post_init_args:
-                raise PrefabError(
-                    f"{name!r} is an excluded attribute but is not passed to post_init"
-                )
-        else:
-            valid_args.append(name)
 
         if not kw_only:
             # Syntax check arguments for __init__ don't have non-default after default
@@ -781,5 +754,5 @@ def as_dict(o):
     return {
         name: getattr(o, name)
         for name, attrib in flds.items()
-        if attrib.serialize and not attrib.exclude_field
+        if attrib.serialize
     }

@@ -4,13 +4,14 @@ from ducktools.classbuilder import (
     get_fields,
     slot_gatherer,
     Field,
+    GeneratedCode,
     SlotFields,
     MethodMaker,
 )
 
 
 class ConverterField(Field):
-    __slots__ = SlotFields(converter=None)
+    converter = Field(default=None)
 
 
 def setattr_generator(cls):
@@ -33,7 +34,7 @@ def setattr_generator(cls):
         f"        _object_setattr(self, name, value)\n"
     )
 
-    return code, globs
+    return GeneratedCode(code, globs)
 
 
 setattr_maker = MethodMaker("__setattr__", setattr_generator)
