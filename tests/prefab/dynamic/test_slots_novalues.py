@@ -2,7 +2,7 @@ import pytest
 from ducktools.classbuilder.prefab import prefab
 
 
-def test_fail_slots():
+def test_existing_slots():
     @prefab
     class SlotPrefab:
         __slots__ = ("x", "y")
