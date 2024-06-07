@@ -11,6 +11,8 @@ from ducktools.classbuilder import (
 def iter_generator(cls):
     field_names = get_fields(cls).keys()
     field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
+    if not field_yield:
+        field_yield = "    yield from ()"
     code = f"def __iter__(self):\n" f"{field_yield}"
     globs = {}
     return GeneratedCode(code, globs)
@@ -34,6 +36,15 @@ if __name__ == "__main__":
             d=4,
             e=5,
         )
+
+    ex = IterDemo()
+    print([item for item in ex])
+
+
+    @iterclass
+    class IterDemo:
+        __slots__ = SlotFields()
+
 
     ex = IterDemo()
     print([item for item in ex])

@@ -1,5 +1,20 @@
 # Tutorial: Making a class boilerplate generator #
 
+The core idea is that there are 3 parts to the process of generating
+the class boilerplate that need to be handled:
+
+1. Create a new subclass of `Field` if you need to add any extra attributes to fields
+2. Make a new gatherer function or use one of the tools provided to create a generator
+   that will use your new `Field` subclass (ex: `make_unified_gatherer(NewField)`)
+3. Write any code generator functions you wish to add or modify for your class
+4. Create a function or base class that applies these to classes using the `builder` provided
+
+The field gathering **should not** attempt to do any inheritance checking, that is already handled
+by the `builder` function. `slot_gatherer` is an example of a gatherer.
+
+To demonstrate this we will go through making a new Field, gatherer, generated method, class decorator
+and base class.
+
 ## Deciding on Customizations ##
 
 For the purpose of this tutorial we are going to make a special
