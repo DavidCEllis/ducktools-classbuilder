@@ -110,13 +110,14 @@ the fields can be set *before* the class is constructed, so the class
 will work correctly without needing to be rebuilt.
 
 For example these two classes would be roughly equivalent, except that
-`@dataclass` has had to recreate the class from scratch while `@slotclass`
-has added the methods on to the original class. 
+`@dataclass` has had to recreate the class from scratch while `AnnotationClass`
+has created `__slots__` and added the methods on to the original class. 
 This means that any references stored to the original class *before*
 `@dataclass` has rebuilt the class will not be pointing towards the 
 correct class.
 
-Here's a demonstration using a registry for serialization functions.
+Here's a demonstration of the issue using a registry for serialization 
+functions.
 
 > This example requires Python 3.10 or later as earlier versions of 
 > `dataclasses` did not support the `slots` argument.
