@@ -170,7 +170,13 @@ class MethodMaker:
         gen = self.code_generator(cls)
         exec(gen.source_code, gen.globs, local_vars)
         method = local_vars.get(self.funcname)
-        method.__qualname__ = f"{cls.__qualname__}.{self.funcname}"
+
+        try:
+            method.__qualname__ = f"{cls.__qualname__}.{self.funcname}"
+        except AttributeError:
+            # This might be a property or some other special
+            # descriptor. Don't try to rename.
+            pass
 
         # Replace this descriptor on the class with the generated function
         setattr(cls, self.funcname, method)
