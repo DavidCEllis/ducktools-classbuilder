@@ -1,0 +1,154 @@
+from types import MappingProxyType
+from pprint import pp
+
+import ducktools.classbuilder as dtbuild
+
+
+# Step 1: Defining a Field subclass
+class CustomField(dtbuild.Field):
+    report: bool = True
+
+
+# Step 2: Creating a new __fields__ gatherer
+def fields_attribute_gatherer(cls_or_ns):
+    # Gatherers need to work on either a class or a class namespace
+    # `builder` will operate on the class while `SlotMakerMeta` only has the namespace
+    if isinstance(cls_or_ns, (MappingProxyType, dict)):
+        cls_dict = cls_or_ns
+    else:
+        cls_dict = cls_or_ns.__dict__
+
+    cls_fields_attrib = cls_dict.get("__fields__", None)
+
+    if cls_fields_attrib is None:
+        raise AttributeError("Class has already been generated or `__fields__` has not been set")
+    elif not isinstance(cls_fields_attrib, dict):
+        raise TypeError("__fields__ attribute must be a dictionary")
+
+    gathered_fields = {}
+
+    # Field or CustomField instances will be copied and converted if needed
+    # Plain values will be made into CustomField instances
+    for k, v in cls_fields_attrib.items():
+        if isinstance(v, dtbuild.Field):
+            gathered_fields[k] = CustomField.from_field(v)
+        else:
+            gathered_fields[k] = CustomField(default=v)
+
+    # Modifications to be made to class attributes
+    modifications = {
+        "__fields__": None
+    }
+
+    return gathered_fields, modifications
+
+
+# Check this gatherer works
+class GathererTest:
+    __fields__ = {
+        "field_1": "First Field",
+        "field_2": dtbuild.Field(default="Second Field"),
+        "field_3": CustomField(default="Third Field", report=False)
+    }
+
+pp(fields_attribute_gatherer(GathererTest))
+
+
+# Step 3: Define the 'report' code generator
+def report_generator(cls):
+    fields = dtbuild.get_fields(cls)
+
+
+    field_reports = []
+    for name, fld in fields.items():
+        if getattr(fld, "report", True):
+            field_reports.append(f"{name}: {{repr(self.{name})}}")
+        else:
+            field_reports.append(f"{name}: <HIDDEN>")
+
+    reports_str = "\\n".join(field_reports)
+    class_str = f"Class: {cls.__name__}"
+
+    code = (
+        "@property\n"
+        "def report(self):\n"
+        f"    return f\"{class_str}\\n{reports_str}\""
+    )
+    globs = {}
+
+    return dtbuild.GeneratedCode(code, globs)
+
+
+report_maker = dtbuild.MethodMaker("report", report_generator)
+
+
+# View the generated code by testing on a demo class
+class CodegenDemo(dtbuild.AnnotationClass):
+    field_1: str = "Field one"
+    field_2: str = "Field two"
+    field_3: str = "Field three"
+
+
+print(report_generator(CodegenDemo).source_code)
+
+
+# Step 4a: Define a decorator builder
+# Import the builder and method makers for eq/repr/init
+
+def reportclass(cls):
+    gatherer = fields_attribute_gatherer
+    methods = {
+        dtbuild.eq_maker,
+        dtbuild.repr_maker,
+        dtbuild.init_maker,
+        report_maker
+    }
+
+    slotted = "__slots__" in vars(cls)
+    flags = {"slotted": slotted}
+
+    return dtbuild.builder(cls, gatherer=gatherer, methods=methods, flags=flags)
+
+# Step 4b: Define a base class builder
+# Once slots have been made, slot_gatherer should be used.
+slot_gatherer = dtbuild.make_slot_gatherer(CustomField)
+
+
+class ReportClass(metaclass=dtbuild.SlotMakerMeta):
+    __slots__ = {}
+    _meta_gatherer = fields_attribute_gatherer
+
+    def __init_subclass__(cls):
+        slotted = '__slots__' in vars(cls) and isinstance(cls.__slots__, dtbuild.SlotFields)
+        gatherer = slot_gatherer if slotted else fields_attribute_gatherer
+        methods = {
+            dtbuild.eq_maker,
+            dtbuild.repr_maker,
+            dtbuild.init_maker,
+            report_maker
+        }
+
+        slotted = "__slots__" in vars(cls)
+        flags = {"slotted": slotted}
+
+        dtbuild.builder(cls, gatherer=gatherer, methods=methods, flags=flags)
+
+
+# Step 5: Examples
+@reportclass
+class Example:
+    __fields__ = {
+        "x": 42,
+        "y": CustomField(default="value", report=False)
+    }
+
+print(Example().report)
+
+
+class ExampleSlots(ReportClass):
+    __fields__ = {
+        "x": 42,
+        "y": CustomField(default="value", report=False)
+    }
+
+print(ExampleSlots().report)
