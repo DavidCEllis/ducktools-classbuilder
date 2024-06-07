@@ -27,11 +27,9 @@ def fields_attribute_gatherer(cls_or_ns):
 
     gathered_fields = {}
 
-    # Field or CustomField instances will be copied and converted if needed
-    # Plain values will be made into CustomField instances
     for k, v in cls_fields_attrib.items():
-        if isinstance(v, dtbuild.Field):
-            gathered_fields[k] = CustomField.from_field(v)
+        if isinstance(v, CustomField):
+            gathered_fields[k] = v
         else:
             gathered_fields[k] = CustomField(default=v)
 
@@ -47,8 +45,8 @@ def fields_attribute_gatherer(cls_or_ns):
 class GathererTest:
     __fields__ = {
         "field_1": "First Field",
-        "field_2": dtbuild.Field(default="Second Field"),
-        "field_3": CustomField(default="Third Field", report=False)
+        "field_2": CustomField(default="Second Field"),
+        "field_3": CustomField(default="Third Field", report=False),
     }
 
 pp(fields_attribute_gatherer(GathererTest))

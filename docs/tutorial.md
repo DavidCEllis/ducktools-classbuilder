@@ -101,8 +101,8 @@ Demonstrate the output of this gatherer:
 class GathererTest:
     __fields__ = {
         "field_1": "First Field",
-        "field_2": dtbuild.Field(default="Second Field"),
-        "field_3": CustomField(default="Third Field", report=False)
+        "field_2": CustomField(default="Second Field"),
+        "field_3": CustomField(default="Third Field", report=False),
     }
 
 pp(fields_attribute_gatherer(GathererTest))
