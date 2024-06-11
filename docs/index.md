@@ -6,6 +6,7 @@ maxdepth: 2
 caption: "Contents:"
 hidden: true
 ---
+tutorial
 extension_examples
 generated_code
 api
