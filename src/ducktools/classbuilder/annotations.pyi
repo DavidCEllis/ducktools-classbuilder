@@ -4,7 +4,7 @@ import types
 _T = typing.TypeVar("_T")
 _CopiableMappings = dict[str, typing.Any] | types.MappingProxyType[str, typing.Any]
 
-class _StringGlobs:
+class _StringGlobs(dict):
     def __missing__(self, key: _T) -> _T: ...
 
 
