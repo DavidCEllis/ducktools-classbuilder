@@ -167,7 +167,7 @@ class MethodMaker:
             cls = objtype
 
         local_vars = {}
-        gen = self.code_generator(cls)
+        gen = self.code_generator(cls, self.funcname)
         exec(gen.source_code, gen.globs, local_vars)
         method = local_vars.get(self.funcname)
 
@@ -187,7 +187,7 @@ class MethodMaker:
 
 
 def get_init_generator(null=NOTHING, extra_code=None):
-    def cls_init_maker(cls):
+    def cls_init_maker(cls, funcname="__init__"):
         fields = get_fields(cls)
         flags = get_flags(cls)
 
@@ -239,7 +239,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
 
         assigns = "\n    ".join(assignments) if assignments else "pass\n"
         code = (
-            f"def __init__(self, {args}):\n" 
+            f"def {funcname}(self, {args}):\n" 
             f"    {assigns}\n"
         )
         # Handle additional function calls
@@ -265,7 +265,7 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
                       not evaluate.
     :return:
     """
-    def cls_repr_generator(cls):
+    def cls_repr_generator(cls, funcname="__repr__"):
         fields = get_fields(cls)
 
         globs = {}
@@ -295,19 +295,19 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
             if content:
                 code = (
                     f"{recursion_func}"
-                    f"def __repr__(self):\n"
+                    f"def {funcname}(self):\n"
                     f"    return f'<generated class {{type(self).__qualname__}}; {content}>'\n"
                 )
             else:
                 code = (
                     f"{recursion_func}"
-                    f"def __repr__(self):\n"
+                    f"def {funcname}(self):\n"
                     f"    return f'<generated class {{type(self).__qualname__}}>'\n"
                 )
         else:
             code = (
                 f"{recursion_func}"
-                f"def __repr__(self):\n"
+                f"def {funcname}(self):\n"
                 f"    return f'{{type(self).__qualname__}}({content})'\n"
             )
 
@@ -318,7 +318,7 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
 repr_generator = get_repr_generator()
 
 
-def eq_generator(cls):
+def eq_generator(cls, funcname="__eq__"):
     class_comparison = "self.__class__ is other.__class__"
     field_names = [
         name
@@ -334,7 +334,7 @@ def eq_generator(cls):
         instance_comparison = "True"
 
     code = (
-        f"def __eq__(self, other):\n"
+        f"def {funcname}(self, other):\n"
         f"    return {instance_comparison} if {class_comparison} else NotImplemented\n"
     )
     globs = {}
@@ -342,7 +342,7 @@ def eq_generator(cls):
     return GeneratedCode(code, globs)
 
 
-def frozen_setattr_generator(cls):
+def frozen_setattr_generator(cls, funcname="__setattr__"):
     globs = {}
     field_names = set(get_fields(cls))
     flags = get_flags(cls)
@@ -366,19 +366,19 @@ def frozen_setattr_generator(cls):
         f"    else:\n"
         f"        {setattr_method}\n"
     )
-    code = f"def __setattr__(self, name, value):\n{body}"
+    code = f"def {funcname}(self, name, value):\n{body}"
 
     return GeneratedCode(code, globs)
 
 
-def frozen_delattr_generator(cls):
+def frozen_delattr_generator(cls, funcname="__delattr__"):
     body = (
         '    raise TypeError(\n'
         '        f"{type(self).__name__!r} object "\n'
         '        f"does not support attribute deletion"\n'
         '    )\n'
     )
-    code = f"def __delattr__(self, name):\n{body}"
+    code = f"def {funcname}(self, name):\n{body}"
     globs = {}
     return GeneratedCode(code, globs)
 

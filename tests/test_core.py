@@ -50,8 +50,8 @@ def test_get_fields_flags_methods():
 
 
 def test_method_maker():
-    def generator(cls):
-        code = "def demo(self): return self.x"
+    def generator(cls, funcname="demo"):
+        code = f"def {funcname}(self): return self.x"
         globs = {}
         return GeneratedCode(code, globs)
 
