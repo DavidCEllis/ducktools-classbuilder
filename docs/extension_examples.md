@@ -79,12 +79,12 @@ from ducktools.classbuilder import (
 )
 
 
-def iter_generator(cls):
+def iter_generator(cls, funcname="__iter__"):
     field_names = get_fields(cls).keys()
     field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
     if not field_yield:
         field_yield = "    yield from ()"
-    code = f"def __iter__(self):\n" f"{field_yield}"
+    code = f"def {funcname}(self):\n" f"{field_yield}"
     globs = {}
     return GeneratedCode(code, globs)
 
@@ -143,7 +143,7 @@ class PosOnlyField(Field):
     __slots__ = SlotFields(pos_only=True)
 
 
-def init_generator(cls):
+def init_generator(cls, funcname="__init__"):
     fields = get_fields(cls)
 
     arglist = []
@@ -177,11 +177,11 @@ def init_generator(cls):
 
     args = ", ".join(arglist)
     assigns = "\n    ".join(assignments)
-    code = f"def __init__(self, {args}):\n" f"    {assigns}\n"
+    code = f"def {funcname}(self, {args}):\n" f"    {assigns}\n"
     return GeneratedCode(code, globs)
 
 
-def repr_generator(cls):
+def repr_generator(cls, funcname="__repr__"):
     fields = get_fields(cls)
     content_list = []
     for name, field in fields.items():
@@ -193,7 +193,7 @@ def repr_generator(cls):
 
     content = ", ".join(content_list)
     code = (
-        f"def __repr__(self):\n"
+        f"def {funcname}(self):\n"
         f"    return f'{{type(self).__qualname__}}({content})'\n"
     )
     globs = {}
@@ -281,7 +281,7 @@ class ConverterField(Field):
     converter = Field(default=None)
 
 
-def setattr_generator(cls):
+def setattr_generator(cls, funcname="__setattr__"):
     fields = get_fields(cls)
     converters = {}
     for k, v in fields.items():
@@ -294,7 +294,7 @@ def setattr_generator(cls):
     }
 
     code = (
-        f"def __setattr__(self, name, value):\n"
+        f"def {funcname}(self, name, value):\n"
         f"    if conv := _converters.get(name):\n"
         f"        _object_setattr(self, name, conv(value))\n"
         f"    else:\n"

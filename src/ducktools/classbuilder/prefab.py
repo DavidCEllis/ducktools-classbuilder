@@ -60,202 +60,195 @@ def get_attributes(cls):
 
 
 # Method Generators
-def get_init_maker(*, init_name="__init__"):
-    def __init__(cls: type) -> GeneratedCode:
-        globs = {}
-        # Get the internals dictionary and prepare attributes
-        attributes = get_attributes(cls)
-        flags = get_flags(cls)
+def init_generator(cls, funcname="__init__"):
+    globs = {}
+    # Get the internals dictionary and prepare attributes
+    attributes = get_attributes(cls)
+    flags = get_flags(cls)
 
-        kw_only = flags.get("kw_only", False)
+    kw_only = flags.get("kw_only", False)
 
-        # Handle pre/post init first - post_init can change types for __init__
-        # Get pre and post init arguments
-        pre_init_args = []
-        post_init_args = []
-        post_init_annotations = {}
+    # Handle pre/post init first - post_init can change types for __init__
+    # Get pre and post init arguments
+    pre_init_args = []
+    post_init_args = []
+    post_init_annotations = {}
 
-        for func_name, func_arglist in [
-            (PRE_INIT_FUNC, pre_init_args),
-            (POST_INIT_FUNC, post_init_args),
-        ]:
-            try:
-                func = getattr(cls, func_name)
-                func_code = func.__code__
-            except AttributeError:
-                pass
-            else:
-                argcount = func_code.co_argcount + func_code.co_kwonlyargcount
-
-                # Identify if method is static, if so include first arg, otherwise skip
-                is_static = type(cls.__dict__.get(func_name)) is staticmethod
-
-                arglist = (
-                    func_code.co_varnames[:argcount]
-                    if is_static
-                    else func_code.co_varnames[1:argcount]
-                )
-
-                func_arglist.extend(arglist)
-
-                if func_name == POST_INIT_FUNC:
-                    post_init_annotations.update(func.__annotations__)
-
-        pos_arglist = []
-        kw_only_arglist = []
-        for name, attrib in attributes.items():
-            # post_init annotations can be used to broaden types.
-            if name in post_init_annotations:
-                globs[f"_{name}_type"] = post_init_annotations[name]
-            elif attrib.type is not NOTHING:
-                globs[f"_{name}_type"] = attrib.type
-
-            if attrib.init:
-                if attrib.default is not NOTHING:
-                    if isinstance(attrib.default, (str, int, float, bool)):
-                        # Just use the literal in these cases
-                        if attrib.type is NOTHING:
-                            arg = f"{name}={attrib.default!r}"
-                        else:
-                            arg = f"{name}: _{name}_type = {attrib.default!r}"
-                    else:
-                        # No guarantee repr will work for other objects
-                        # so store the value in a variable and put it
-                        # in the globals dict for eval
-                        if attrib.type is NOTHING:
-                            arg = f"{name}=_{name}_default"
-                        else:
-                            arg = f"{name}: _{name}_type = _{name}_default"
-                        globs[f"_{name}_default"] = attrib.default
-                elif attrib.default_factory is not NOTHING:
-                    # Use NONE here and call the factory later
-                    # This matches the behaviour of compiled
-                    if attrib.type is NOTHING:
-                        arg = f"{name}=None"
-                    else:
-                        arg = f"{name}: _{name}_type = None"
-                    globs[f"_{name}_factory"] = attrib.default_factory
-                else:
-                    if attrib.type is NOTHING:
-                        arg = name
-                    else:
-                        arg = f"{name}: _{name}_type"
-                if attrib.kw_only or kw_only:
-                    kw_only_arglist.append(arg)
-                else:
-                    pos_arglist.append(arg)
-            # Not in init, but need to set defaults
-            else:
-                if attrib.default is not NOTHING:
-                    globs[f"_{name}_default"] = attrib.default
-                elif attrib.default_factory is not NOTHING:
-                    globs[f"_{name}_factory"] = attrib.default_factory
-
-        pos_args = ", ".join(pos_arglist)
-        kw_args = ", ".join(kw_only_arglist)
-        if pos_args and kw_args:
-            args = f"{pos_args}, *, {kw_args}"
-        elif kw_args:
-            args = f"*, {kw_args}"
+    for extra_funcname, func_arglist in [
+        (PRE_INIT_FUNC, pre_init_args),
+        (POST_INIT_FUNC, post_init_args),
+    ]:
+        try:
+            func = getattr(cls, extra_funcname)
+            func_code = func.__code__
+        except AttributeError:
+            pass
         else:
-            args = pos_args
+            argcount = func_code.co_argcount + func_code.co_kwonlyargcount
 
-        assignments = []
-        processes = []  # post_init values still need default factories to be called.
-        for name, attrib in attributes.items():
-            if attrib.init:
-                if attrib.default_factory is not NOTHING:
-                    value = f"{name} if {name} is not None else _{name}_factory()"
-                else:
-                    value = name
-            else:
-                if attrib.default_factory is not NOTHING:
-                    value = f"_{name}_factory()"
-                elif attrib.default is not NOTHING:
-                    value = f"_{name}_default"
-                else:
-                    value = None
+            # Identify if method is static, if so include first arg, otherwise skip
+            is_static = type(cls.__dict__.get(extra_funcname)) is staticmethod
 
-            if name in post_init_args:
-                if attrib.default_factory is not NOTHING:
-                    processes.append((name, value))
-            elif value is not None:
-                assignments.append((name, value))
-
-        if hasattr(cls, PRE_INIT_FUNC):
-            pre_init_arg_call = ", ".join(f"{name}={name}" for name in pre_init_args)
-            pre_init_call = f"    self.{PRE_INIT_FUNC}({pre_init_arg_call})\n"
-        else:
-            pre_init_call = ""
-
-        if assignments or processes:
-            body = ""
-            body += "\n".join(
-                f"    self.{name} = {value}" for name, value in assignments
+            arglist = (
+                func_code.co_varnames[:argcount]
+                if is_static
+                else func_code.co_varnames[1:argcount]
             )
-            body += "\n"
-            body += "\n".join(f"    {name} = {value}" for name, value in processes)
+
+            func_arglist.extend(arglist)
+
+            if extra_funcname == POST_INIT_FUNC:
+                post_init_annotations.update(func.__annotations__)
+
+    pos_arglist = []
+    kw_only_arglist = []
+    for name, attrib in attributes.items():
+        # post_init annotations can be used to broaden types.
+        if name in post_init_annotations:
+            globs[f"_{name}_type"] = post_init_annotations[name]
+        elif attrib.type is not NOTHING:
+            globs[f"_{name}_type"] = attrib.type
+
+        if attrib.init:
+            if attrib.default is not NOTHING:
+                if isinstance(attrib.default, (str, int, float, bool)):
+                    # Just use the literal in these cases
+                    if attrib.type is NOTHING:
+                        arg = f"{name}={attrib.default!r}"
+                    else:
+                        arg = f"{name}: _{name}_type = {attrib.default!r}"
+                else:
+                    # No guarantee repr will work for other objects
+                    # so store the value in a variable and put it
+                    # in the globals dict for eval
+                    if attrib.type is NOTHING:
+                        arg = f"{name}=_{name}_default"
+                    else:
+                        arg = f"{name}: _{name}_type = _{name}_default"
+                    globs[f"_{name}_default"] = attrib.default
+            elif attrib.default_factory is not NOTHING:
+                # Use NONE here and call the factory later
+                # This matches the behaviour of compiled
+                if attrib.type is NOTHING:
+                    arg = f"{name}=None"
+                else:
+                    arg = f"{name}: _{name}_type = None"
+                globs[f"_{name}_factory"] = attrib.default_factory
+            else:
+                if attrib.type is NOTHING:
+                    arg = name
+                else:
+                    arg = f"{name}: _{name}_type"
+            if attrib.kw_only or kw_only:
+                kw_only_arglist.append(arg)
+            else:
+                pos_arglist.append(arg)
+        # Not in init, but need to set defaults
         else:
-            body = "    pass"
+            if attrib.default is not NOTHING:
+                globs[f"_{name}_default"] = attrib.default
+            elif attrib.default_factory is not NOTHING:
+                globs[f"_{name}_factory"] = attrib.default_factory
 
-        if hasattr(cls, POST_INIT_FUNC):
-            post_init_arg_call = ", ".join(f"{name}={name}" for name in post_init_args)
-            post_init_call = f"    self.{POST_INIT_FUNC}({post_init_arg_call})\n"
+    pos_args = ", ".join(pos_arglist)
+    kw_args = ", ".join(kw_only_arglist)
+    if pos_args and kw_args:
+        args = f"{pos_args}, *, {kw_args}"
+    elif kw_args:
+        args = f"*, {kw_args}"
+    else:
+        args = pos_args
+
+    assignments = []
+    processes = []  # post_init values still need default factories to be called.
+    for name, attrib in attributes.items():
+        if attrib.init:
+            if attrib.default_factory is not NOTHING:
+                value = f"{name} if {name} is not None else _{name}_factory()"
+            else:
+                value = name
         else:
-            post_init_call = ""
+            if attrib.default_factory is not NOTHING:
+                value = f"_{name}_factory()"
+            elif attrib.default is not NOTHING:
+                value = f"_{name}_default"
+            else:
+                value = None
 
-        code = (
-            f"def {init_name}(self, {args}):\n"
-            f"{pre_init_call}\n"
-            f"{body}\n"
-            f"{post_init_call}\n"
+        if name in post_init_args:
+            if attrib.default_factory is not NOTHING:
+                processes.append((name, value))
+        elif value is not None:
+            assignments.append((name, value))
+
+    if hasattr(cls, PRE_INIT_FUNC):
+        pre_init_arg_call = ", ".join(f"{name}={name}" for name in pre_init_args)
+        pre_init_call = f"    self.{PRE_INIT_FUNC}({pre_init_arg_call})\n"
+    else:
+        pre_init_call = ""
+
+    if assignments or processes:
+        body = ""
+        body += "\n".join(
+            f"    self.{name} = {value}" for name, value in assignments
         )
-        return GeneratedCode(code, globs)
+        body += "\n"
+        body += "\n".join(f"    {name} = {value}" for name, value in processes)
+    else:
+        body = "    pass"
 
-    return MethodMaker(init_name, __init__)
+    if hasattr(cls, POST_INIT_FUNC):
+        post_init_arg_call = ", ".join(f"{name}={name}" for name in post_init_args)
+        post_init_call = f"    self.{POST_INIT_FUNC}({post_init_arg_call})\n"
+    else:
+        post_init_call = ""
 
-
-def get_iter_maker():
-    def __iter__(cls: type) -> GeneratedCode:
-        fields = get_attributes(cls)
-
-        valid_fields = (
-            name for name, attrib in fields.items()
-            if attrib.iter
+    code = (
+        f"def {funcname}(self, {args}):\n"
+        f"{pre_init_call}\n"
+        f"{body}\n"
+        f"{post_init_call}\n"
         )
 
-        values = "\n".join(f"    yield self.{name}" for name in valid_fields)
-
-        # if values is an empty string
-        if not values:
-            values = "    yield from ()"
-
-        code = f"def __iter__(self):\n{values}"
-        globs = {}
-        return GeneratedCode(code, globs)
-
-    return MethodMaker("__iter__", __iter__)
+    return GeneratedCode(code, globs)
 
 
-def get_asdict_maker():
-    def as_dict_gen(cls: type) -> GeneratedCode:
-        fields = get_attributes(cls)
+def iter_generator(cls, funcname="__iter__"):
+    fields = get_attributes(cls)
 
-        vals = ", ".join(
-            f"'{name}': self.{name}"
-            for name, attrib in fields.items()
-            if attrib.serialize
-        )
-        out_dict = f"{{{vals}}}"
-        code = f"def as_dict(self): return {out_dict}"
+    valid_fields = (
+        name for name, attrib in fields.items()
+        if attrib.iter
+    )
 
-        globs = {}
-        return GeneratedCode(code, globs)
-    return MethodMaker("as_dict", as_dict_gen)
+    values = "\n".join(f"    yield self.{name}" for name in valid_fields)
+
+    # if values is an empty string
+    if not values:
+        values = "    yield from ()"
+
+    code = f"def {funcname}(self):\n{values}"
+    globs = {}
+    return GeneratedCode(code, globs)
 
 
-init_maker = get_init_maker()
-prefab_init_maker = get_init_maker(init_name=PREFAB_INIT_FUNC)
+def as_dict_generator(cls, funcname="as_dict"):
+    fields = get_attributes(cls)
+
+    vals = ", ".join(
+        f"'{name}': self.{name}"
+        for name, attrib in fields.items()
+        if attrib.serialize
+    )
+    out_dict = f"{{{vals}}}"
+    code = f"def {funcname}(self): return {out_dict}"
+
+    globs = {}
+    return GeneratedCode(code, globs)
+
+
+init_maker = MethodMaker("__init__", init_generator)
+prefab_init_maker = MethodMaker(PREFAB_INIT_FUNC, init_generator)
 repr_maker = MethodMaker(
     "__repr__",
     get_repr_generator(recursion_safe=False, eval_safe=True)
@@ -264,8 +257,8 @@ recursive_repr_maker = MethodMaker(
     "__repr__",
     get_repr_generator(recursion_safe=True, eval_safe=True)
 )
-iter_maker = get_iter_maker()
-asdict_maker = get_asdict_maker()
+iter_maker = MethodMaker("__iter__", iter_generator)
+asdict_maker = MethodMaker("as_dict", as_dict_generator)
 
 
 # Updated field with additional attributes
