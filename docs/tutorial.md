@@ -120,7 +120,7 @@ field_3: <HIDDEN>
 ```
 
 ```python
-def report_generator(cls):
+def report_generator(cls, funcname="report"):
     fields = dtbuild.get_fields(cls)
 
     field_reports = []
@@ -135,7 +135,7 @@ def report_generator(cls):
 
     code = (
         "@property\n"
-        "def report(self):\n"
+        f"def {funcname}(self):\n"
         f"    return f\"{class_str}\\n{reports_str}\""
     )
     globs = {}

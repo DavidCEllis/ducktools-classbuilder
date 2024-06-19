@@ -53,14 +53,14 @@ pp(fields_attribute_gatherer(GathererTest))
 
 
 # Step 3: Define the 'report' code generator
-def report_generator(cls):
+def report_generator(cls, funcname="report"):
     fields = dtbuild.get_fields(cls)
 
 
     field_reports = []
     for name, fld in fields.items():
         if getattr(fld, "report", True):
-            field_reports.append(f"{name}: {{repr(self.{name})}}")
+            field_reports.append(f"{name}: {{self.{name}!r}}")
         else:
             field_reports.append(f"{name}: <HIDDEN>")
 
@@ -69,7 +69,7 @@ def report_generator(cls):
 
     code = (
         "@property\n"
-        "def report(self):\n"
+        f"def {funcname}(self):\n"
         f"    return f\"{class_str}\\n{reports_str}\""
     )
     globs = {}

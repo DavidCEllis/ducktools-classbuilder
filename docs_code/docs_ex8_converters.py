@@ -14,7 +14,7 @@ class ConverterField(Field):
     converter = Field(default=None)
 
 
-def setattr_generator(cls):
+def setattr_generator(cls, funcname="__setattr__"):
     fields = get_fields(cls)
     converters = {}
     for k, v in fields.items():
@@ -27,7 +27,7 @@ def setattr_generator(cls):
     }
 
     code = (
-        f"def __setattr__(self, name, value):\n"
+        f"def {funcname}(self, name, value):\n"
         f"    if conv := _converters.get(name):\n"
         f"        _object_setattr(self, name, conv(value))\n"
         f"    else:\n"

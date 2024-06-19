@@ -15,7 +15,7 @@ class PosOnlyField(Field):
     __slots__ = SlotFields(pos_only=True)
 
 
-def init_generator(cls):
+def init_generator(cls, funcname="__init__"):
     fields = get_fields(cls)
 
     arglist = []
@@ -49,11 +49,11 @@ def init_generator(cls):
 
     args = ", ".join(arglist)
     assigns = "\n    ".join(assignments)
-    code = f"def __init__(self, {args}):\n" f"    {assigns}\n"
+    code = f"def {funcname}(self, {args}):\n" f"    {assigns}\n"
     return GeneratedCode(code, globs)
 
 
-def repr_generator(cls):
+def repr_generator(cls, funcname="__repr__"):
     fields = get_fields(cls)
     content_list = []
     for name, field in fields.items():
@@ -65,7 +65,7 @@ def repr_generator(cls):
 
     content = ", ".join(content_list)
     code = (
-        f"def __repr__(self):\n"
+        f"def {funcname}(self):\n"
         f"    return f'{{type(self).__qualname__}}({content})'\n"
     )
     globs = {}
