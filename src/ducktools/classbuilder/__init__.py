@@ -34,7 +34,7 @@ import sys
 
 from .annotations import get_ns_annotations, is_classvar
 
-__version__ = "v0.6.1"
+__version__ = "v0.6.2"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -158,14 +158,7 @@ class MethodMaker:
     def __repr__(self):
         return f"<MethodMaker for {self.funcname!r} method>"
 
-    def __get__(self, obj, objtype=None):
-        if objtype is None or issubclass(objtype, type):
-            # Called with get(ourclass, type(ourclass))
-            cls = obj
-        else:
-            # Called with get(inst | None, ourclass)
-            cls = objtype
-
+    def __get__(self, inst, cls):
         local_vars = {}
         gen = self.code_generator(cls, self.funcname)
         exec(gen.source_code, gen.globs, local_vars)
@@ -183,7 +176,31 @@ class MethodMaker:
 
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
-        return method.__get__(obj, objtype)
+        return method.__get__(inst, cls)
+
+
+class _SignatureMaker:
+    # 'inspect.signature' calls the `__get__` method of the `__init__` methodmaker with
+    # the wrong arguments.
+    # Instead of __get__(None, cls) or __get__(inst, type(inst))
+    # it uses __get__(cls, type(cls)).
+    #
+    # If this is done before `__init__` has been generated then
+    # help(cls) will fail along with inspect.signature(cls)
+    # This signature maker descriptor is placed to override __signature__ and force
+    # the `__init__` signature to be generated first if the signature is requested.
+    def __get__(self, instance, cls):
+        import inspect  # Deferred inspect import
+        _ = cls.__init__  # force generation of `__init__` function
+        # Remove this attribute from the class
+        # This prevents recursion back into this __get__ method.
+        delattr(cls, "__signature__")
+        sig = inspect.signature(cls)
+        setattr(cls, "__signature__", sig)
+        return sig
+
+
+signature_maker = _SignatureMaker()
 
 
 def get_init_generator(null=NOTHING, extra_code=None):
@@ -402,7 +419,7 @@ _field_init_maker = MethodMaker(
 )
 
 
-def builder(cls=None, /, *, gatherer, methods, flags=None):
+def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     """
     The main builder for class generation
 
@@ -413,6 +430,10 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
     :type methods: set[MethodMaker]
     :param flags: additional flags to store in the internals dictionary
                   for use by method generators.
+    :type flags: None | dict[str, bool]
+    :param fix_signature: Add a __signature__ attribute to work-around an issue with
+                          inspect.signature incorrectly handling __init__ descriptors.
+    :type fix_signature: bool
     :return: The modified class (the class itself is modified, but this is expected).
     """
     # Handle `None` to make wrapping with a decorator easier.
@@ -458,6 +479,10 @@ def builder(cls=None, /, *, gatherer, methods, flags=None):
         internal_methods[method.funcname] = method
 
     internals["methods"] = _MappingProxyType(internal_methods)
+
+    # Fix for inspect.signature(cls)
+    if fix_signature:
+        setattr(cls, "__signature__", signature_maker)
 
     return cls
 
