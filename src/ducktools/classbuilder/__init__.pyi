@@ -1,6 +1,8 @@
 import types
 import typing
 
+import inspect
+
 from collections.abc import Callable
 from types import MappingProxyType
 from typing_extensions import dataclass_transform
@@ -49,7 +51,12 @@ class MethodMaker:
     code_generator: _CodegenType
     def __init__(self, funcname: str, code_generator: _CodegenType) -> None: ...
     def __repr__(self) -> str: ...
-    def __get__(self, instance, cls=None) -> Callable: ...
+    def __get__(self, instance, cls) -> Callable: ...
+
+class _SignatureMaker:
+    def __get__(self, instance, cls) -> inspect.Signature: ...
+
+signature_maker: _SignatureMaker
 
 def get_init_generator(
     null: _NothingType = NOTHING,
@@ -86,6 +93,7 @@ def builder(
     gatherer: Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]],
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
+    fix_signature: bool = ...,
 ) -> type[_T]: ...
 
 @typing.overload
@@ -96,6 +104,7 @@ def builder(
     gatherer: Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]],
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
+    fix_signature: bool = ...,
 ) -> Callable[[type[_T]], type[_T]]: ...
 
 
@@ -126,6 +135,7 @@ class Field(metaclass=SlotMakerMeta):
 
     __slots__: dict[str, str]
     __classbuilder_internals__: dict
+    __signature__: inspect.Signature
 
     def __init__(
         self,
@@ -249,6 +259,7 @@ class GatheredFields:
     modifications: dict[str, typing.Any]
 
     __classbuilder_internals__: dict
+    __signature__: inspect.Signature
 
     def __init__(
         self,

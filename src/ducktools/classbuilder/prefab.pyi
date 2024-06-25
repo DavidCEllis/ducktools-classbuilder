@@ -2,6 +2,8 @@ import typing
 from types import MappingProxyType
 from typing_extensions import dataclass_transform
 
+import inspect
+
 from collections.abc import Callable
 
 from . import (
@@ -42,6 +44,7 @@ asdict_maker: MethodMaker
 
 class Attribute(Field):
     __slots__: dict
+    __signature__: inspect.Signature
 
     iter: bool
     serialize: bool
