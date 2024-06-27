@@ -8,6 +8,7 @@ from ducktools.classbuilder import (
 
     builder,
     default_methods,
+    eq_maker,
     get_fields,
     get_flags,
     get_methods,
@@ -527,3 +528,33 @@ def test_signature():
         __slots__ = SlotFields(x=42)
 
     assert str(inspect.signature(SigClass)) == "(x=42)"
+
+
+def test_subclass_method_not_overwritten():
+    @slotclass
+    class X:
+        __slots__ = SlotFields(x=Field())
+
+    class Y(X):
+        def __init__(self, x, y):
+            self.y = y
+            super().__init__(x=x)
+
+    y_init_func = Y.__init__
+
+    assert X.__dict__["__eq__"] is eq_maker
+
+    y_inst = Y(0, 1)
+
+    # super().__init__ method generated correctly
+    assert y_init_func is Y.__init__
+    assert X.__dict__["__init__"] is not init_maker
+    assert (y_inst.x, y_inst.y) == (0, 1)
+
+    # Would fail previously as __init__ would be overwritten
+    y_inst_2 = Y(0, 2)
+
+    assert y_inst == y_inst_2
+
+    assert X.__dict__["__eq__"] is not eq_maker
+    assert "__eq__" not in Y.__dict__

@@ -160,19 +160,39 @@ class MethodMaker:
 
     def __get__(self, inst, cls):
         local_vars = {}
-        gen = self.code_generator(cls, self.funcname)
+
+        # This can be called via super().funcname(...) in which case the class
+        # may not be the correct one. If this is the correct class
+        # it should have this descriptor in the class dict under
+        # the correct funcname.
+        # Otherwise is should be found in the MRO of the class.
+        if cls.__dict__.get(self.funcname) is self:
+            gen_cls = cls
+        else:
+            for c in cls.__mro__[1:]:  # skip 'cls' as special cased
+                if c.__dict__.get(self.funcname) is self:
+                    gen_cls = c
+                    break
+            else:  # pragma: no cover
+                # This should only be reached if called with incorrect arguments
+                # manually
+                raise AttributeError(
+                    f"Could not find {self!r} in class {cls.__name__!r} MRO."
+                )
+
+        gen = self.code_generator(gen_cls, self.funcname)
         exec(gen.source_code, gen.globs, local_vars)
         method = local_vars.get(self.funcname)
 
         try:
-            method.__qualname__ = f"{cls.__qualname__}.{self.funcname}"
+            method.__qualname__ = f"{gen_cls.__qualname__}.{self.funcname}"
         except AttributeError:
             # This might be a property or some other special
             # descriptor. Don't try to rename.
             pass
 
         # Replace this descriptor on the class with the generated function
-        setattr(cls, self.funcname, method)
+        setattr(gen_cls, self.funcname, method)
 
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
