@@ -161,16 +161,24 @@ class MethodMaker:
     def __get__(self, inst, cls):
         local_vars = {}
 
-        # This can be called via __super__ in which case the class
-        # May not be the appropriate one.
-        for c in cls.__mro__:
-            if c.__dict__.get(self.funcname) is self:
-                gen_cls = c
-                break
-        else:  # pragma: no cover
-            raise AttributeError(
-                f"Could not find {self!r} in class {cls.__name__!r} MRO."
-            )
+        # This can be called via super().funcname(...) in which case the class
+        # may not be the correct one. If this is the correct class
+        # it should have this descriptor in the class dict under
+        # the correct funcname.
+        # Otherwise is should be found in the MRO of the class.
+        if cls.__dict__.get(self.funcname) is self:
+            gen_cls = cls
+        else:
+            for c in cls.__mro__[1:]:  # skip 'cls' as special cased
+                if c.__dict__.get(self.funcname) is self:
+                    gen_cls = c
+                    break
+            else:  # pragma: no cover
+                # This should only be reached if called with incorrect arguments
+                # manually
+                raise AttributeError(
+                    f"Could not find {self!r} in class {cls.__name__!r} MRO."
+                )
 
         gen = self.code_generator(gen_cls, self.funcname)
         exec(gen.source_code, gen.globs, local_vars)
