@@ -6,7 +6,7 @@ I thought it was briefly worth discussing his note on learning an approach vs us
 I think that learning an approach is valuable, this module would not exist without the
 example given by `cluegen`.
 
-However, what I foundn was that in essentially every case where I wanted to use 
+However, what I found was that in essentially every case where I wanted to use 
 these generating tools, I needed to modify them - often significantly. 
 It quickly became easier to just create my own tool and upload it as a package.
 
