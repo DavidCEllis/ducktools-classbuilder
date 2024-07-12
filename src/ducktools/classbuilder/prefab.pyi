@@ -81,6 +81,7 @@ def attribute(
     kw_only: bool = False,
     serialize: bool = True,
     exclude_field: bool = False,
+    private: bool = False,
 ) -> Attribute: ...
 
 def prefab_gatherer(cls_or_ns: type | MappingProxyType) -> tuple[dict[str, Attribute], dict[str, typing.Any]]: ...
