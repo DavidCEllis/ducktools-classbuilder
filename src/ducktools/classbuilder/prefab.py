@@ -294,6 +294,7 @@ def attribute(
     kw_only=False,
     serialize=True,
     exclude_field=False,
+    private=False,
     doc=None,
     type=NOTHING,
 ):
@@ -310,12 +311,22 @@ def attribute(
     :param kw_only: Make this argument keyword only in init
     :param serialize: Include this attribute in methods that serialize to dict
     :param exclude_field: Shorthand for setting repr, compare, iter and serialize to False
+    :param private: Short for init, repr, compare, iter, serialize = False, must have default or factory
     :param doc: Parameter documentation for slotted classes
     :param type: Type of this attribute (for slotted classes)
 
     :return: Attribute generated with these parameters.
     """
     if exclude_field:
+        repr = False
+        compare = False
+        iter = False
+        serialize = False
+
+    if private:
+        if default is NOTHING and default_factory is NOTHING:
+            raise AttributeError("Private attributes must have defaults or factories.")
+        init = False
         repr = False
         compare = False
         iter = False
