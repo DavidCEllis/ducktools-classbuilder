@@ -34,7 +34,7 @@ import sys
 
 from .annotations import get_ns_annotations, is_classvar
 
-__version__ = "v0.6.2"
+__version__ = "v0.6.3"
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
