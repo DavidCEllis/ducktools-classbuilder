@@ -3,7 +3,7 @@ from ducktools.classbuilder.prefab import Prefab, attribute, get_attributes
 
 def test_private_attribute():
     class Ex(Prefab):
-        _internal: str | None = attribute(default=None, private=True)
+        _internal: "str | None" = attribute(default=None, private=True)
         a: int
         b: str
 
