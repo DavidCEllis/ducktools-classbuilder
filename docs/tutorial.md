@@ -1,6 +1,6 @@
 # Tutorial: Making a class boilerplate generator #
 
-The core idea is that there are 3 parts to the process of generating
+The core idea is that there are 4 parts to the process of generating
 the class boilerplate that need to be handled:
 
 1. Create a new subclass of `Field` if you need to add any extra attributes to fields
