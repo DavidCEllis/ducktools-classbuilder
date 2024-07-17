@@ -11,6 +11,7 @@ _py_type = type | str  # Alias for type hint values
 _CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
 
 __version__: str
+__version_tuple__: tuple[str | int, ...]
 INTERNALS_DICT: str
 META_GATHERER_NAME: str
 

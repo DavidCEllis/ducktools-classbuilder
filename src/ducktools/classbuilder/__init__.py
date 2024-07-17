@@ -33,7 +33,7 @@
 import os
 
 from .annotations import get_ns_annotations, is_classvar
-from ._version import __version__
+from ._version import __version__, __version_tuple__
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
