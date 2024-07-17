@@ -330,7 +330,7 @@ if __name__ == "__main__":
 
 This seems to be a feature people keep requesting for `dataclasses`.
 
-To implement this you simply need to create a new annotated_gatherer function.
+To implement this you need to create a new annotated_gatherer function.
 
 > Note: Field classes will be frozen when running under pytest.
 >       They should not be mutated by gatherers.
