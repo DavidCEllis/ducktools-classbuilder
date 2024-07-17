@@ -117,8 +117,9 @@ class ReportClass(metaclass=dtbuild.SlotMakerMeta):
     _meta_gatherer = fields_attribute_gatherer
 
     def __init_subclass__(cls):
-        slotted = '__slots__' in vars(cls) and isinstance(cls.__slots__, dtbuild.SlotFields)
-        gatherer = slot_gatherer if slotted else fields_attribute_gatherer
+        # Check if the metaclass has generated slots
+        meta_slotted = '__slots__' in vars(cls) and isinstance(cls.__slots__, dtbuild.SlotFields)
+        gatherer = slot_gatherer if meta_slotted else fields_attribute_gatherer
         methods = {
             dtbuild.eq_maker,
             dtbuild.repr_maker,
@@ -126,6 +127,7 @@ class ReportClass(metaclass=dtbuild.SlotMakerMeta):
             report_maker
         }
 
+        # The class may still have slots unrelated to code generation
         slotted = "__slots__" in vars(cls)
         flags = {"slotted": slotted}
 

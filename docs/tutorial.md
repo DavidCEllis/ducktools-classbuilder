@@ -162,7 +162,7 @@ print(report_generator(CodegenDemo).source_code)
 Here we will make both a simple decorator based builder and then a subclass
 based builder that can create `__slots__`.
 
-### Decorator builder ###
+### 4a: Decorator builder ###
 ```python
 def reportclass(cls):
     gatherer = fields_attribute_gatherer
@@ -177,21 +177,22 @@ def reportclass(cls):
     flags = {"slotted": slotted}
 
     return dtbuild.builder(cls, gatherer=gatherer, methods=methods, flags=flags)
-
-# Step 4b: Define a base class builder
-# Once slots have been made, slot_gatherer should be used.
-slot_gatherer = dtbuild.make_slot_gatherer(CustomField)
 ```
 
-### Base class Builder ###
+### 4b: Base class Builder ###
 ```python
+# Once slots have been made, slot_gatherer should be used.
+slot_gatherer = dtbuild.make_slot_gatherer(CustomField)
+
+
 class ReportClass(metaclass=dtbuild.SlotMakerMeta):
     __slots__ = {}
     _meta_gatherer = fields_attribute_gatherer
 
     def __init_subclass__(cls):
-        slotted = '__slots__' in vars(cls) and isinstance(cls.__slots__, dtbuild.SlotFields)
-        gatherer = slot_gatherer if slotted else fields_attribute_gatherer
+        # Check if the metaclass has generated slots
+        meta_slotted = '__slots__' in vars(cls) and isinstance(cls.__slots__, dtbuild.SlotFields)
+        gatherer = slot_gatherer if meta_slotted else fields_attribute_gatherer
         methods = {
             dtbuild.eq_maker,
             dtbuild.repr_maker,
@@ -199,6 +200,7 @@ class ReportClass(metaclass=dtbuild.SlotMakerMeta):
             report_maker
         }
 
+        # The class may still have slots unrelated to code generation
         slotted = "__slots__" in vars(cls)
         flags = {"slotted": slotted}
 
