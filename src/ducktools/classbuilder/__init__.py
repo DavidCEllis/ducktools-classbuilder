@@ -30,11 +30,10 @@
 # but is also the metaclass used to construct 'Field'.
 # Field itself sidesteps this by defining __slots__ to avoid that branch.
 
-import sys
+import os
 
 from .annotations import get_ns_annotations, is_classvar
-
-__version__ = "v0.6.3"
+from ._version import __version__, __version_tuple__
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -43,7 +42,7 @@ META_GATHERER_NAME = "_meta_gatherer"
 
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
-_UNDER_TESTING = "pytest" in sys.modules
+_UNDER_TESTING = os.environ.get("PYTEST_VERSION") is not None
 
 # Obtain types the same way types.py does in pypy
 # See: https://github.com/pypy/pypy/blob/19d9fa6be11165116dd0839b9144d969ab426ae7/lib-python/3/types.py#L61-L73
