@@ -33,8 +33,7 @@
 import os
 
 from .annotations import get_ns_annotations, is_classvar
-
-__version__ = "v0.6.3"
+from ._version import __version__
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"

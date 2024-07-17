@@ -20,3 +20,6 @@ hyperfine_testfiles/
 .vscode/
 __pycache__/
 *.pyc
+
+# setuptools-scm generated version file
+_version.py

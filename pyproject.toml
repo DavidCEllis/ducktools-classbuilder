@@ -1,7 +1,7 @@
 [build-system]
 requires = [
-    "setuptools>=61.0",
-    "wheel"
+    "setuptools>=64",
+    "setuptools-scm>=8",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -29,8 +29,8 @@ license = {file = "LICENSE.md"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools.dynamic]
-version = {attr = "ducktools.classbuilder.__version__"}
+[tool.setuptools_scm]
+version_file = "src/ducktools/classbuilder/_version.py"
 
 [project.optional-dependencies]
 testing = ["pytest>=8.2", "pytest-cov", "mypy", "typing_extensions"]
