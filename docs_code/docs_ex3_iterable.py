@@ -13,7 +13,7 @@ def iter_generator(cls, funcname="__iter__"):
     field_yield = "\n".join(f"    yield self.{f}" for f in field_names)
     if not field_yield:
         field_yield = "    yield from ()"
-    code = f"def {funcname}(self):\n" f"{field_yield}"
+    code = f"def {funcname}(self):\n{field_yield}"
     globs = {}
     return GeneratedCode(code, globs)
 
