@@ -24,6 +24,19 @@ import sys
 import builtins
 
 
+# Evil stuff from types.py
+def _cell_factory():
+    a = 1
+
+    def f():
+        nonlocal a
+    return f.__closure__[0]
+_FunctionType = type(_cell_factory)
+_CellType = type(_cell_factory())
+del _cell_factory
+# End evil stuff from types.py
+
+
 class _StringGlobs(dict):
     """
     Based on the fake globals dictionary used for annotations
@@ -112,36 +125,81 @@ def get_ns_annotations(ns, eval_str=True):
     :param eval_str: Attempt to evaluate string annotations (default to True)
     :return: dictionary of evaluated annotations
     """
-    raw_annotations = ns.get("__annotations__", {})
 
-    if not eval_str:
-        return raw_annotations.copy()
+    # In 3.14 the 'canonical' method of getting annotations is to use __annotate__
+    # If this doesn't exist, check __annotations__ and treat as 3.13 or earlier.
+    annotate = ns.get("__annotate__")
 
-    try:
-        obj_modulename = ns["__module__"]
-    except KeyError:
-        obj_module = None
+    if annotate is not None:
+        # Python 3.14 breaks the old methods of getting annotations
+        # The new annotationlib relies on 'ast' and 'functools' and so is
+        # too slow for this project.
+        # The basic logic is copied from there, however, replacing ForwardRef
+        # with a more basic class.
+
+        try:
+            raw_annotations = annotate(1)
+        except NameError:
+            pass
+        else:
+            return raw_annotations
+
+        # Some modified logic from annotationlib
+        namespace = {**annotate.__builtins__, **annotate.__globals__}
+        globs = _StringGlobs(namespace)
+
+        # if annotate.__closure__:
+        #     freevars = annotate.__code__.co_freevars
+        #     new_closure = []
+        #     for i, cell in enumerate(annotate.__closure__):
+        #         try:
+        #             cell.cell_contents
+        #         except ValueError:
+        #             if i < len(freevars):
+        #                 name = freevars[i]
+        #             else:
+        #                 name = "__cell__"
+        #             new_closure.append(_CellType(name))
+        #         else:
+        #             new_closure.append(cell)
+        #     closure = tuple(new_closure)
+        # else:
+        #     closure = None
+
+        new_annotate = _FunctionType(annotate.__code__, globs, closure=annotate.__closure__)
+        return new_annotate(1)
+
     else:
-        obj_module = sys.modules.get(obj_modulename, None)
+        raw_annotations = ns.get("__annotations__", {})
 
-    if obj_module:
-        obj_globals = vars(obj_module)
-    else:
-        obj_globals = {}
+        if not eval_str:
+            return raw_annotations.copy()
 
-    # Type parameters should be usable in hints without breaking
-    # This is for Python 3.12+
-    type_params = {
-        repr(param): param
-        for param in ns.get("__type_params__", ())
-    }
+        try:
+            obj_modulename = ns["__module__"]
+        except KeyError:
+            obj_module = None
+        else:
+            obj_module = sys.modules.get(obj_modulename, None)
 
-    context = {**vars(builtins), **obj_globals, **type_params, **ns}
+        if obj_module:
+            obj_globals = vars(obj_module)
+        else:
+            obj_globals = {}
 
-    return {
-        k: eval_hint(v, context)
-        for k, v in raw_annotations.items()
-    }
+        # Type parameters should be usable in hints without breaking
+        # This is for Python 3.12+
+        type_params = {
+            repr(param): param
+            for param in ns.get("__type_params__", ())
+        }
+
+        context = {**vars(builtins), **obj_globals, **type_params, **ns}
+
+        return {
+            k: eval_hint(v, context)
+            for k, v in raw_annotations.items()
+        }
 
 
 def is_classvar(hint):
