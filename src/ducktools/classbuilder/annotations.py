@@ -112,6 +112,62 @@ def eval_hint(hint, context=None, *, recursion_limit=2):
     return hint
 
 
+def call_annotate_func(annotate):
+    # Python 3.14 breaks the old methods of getting annotations
+    # The new annotationlib currently relies on 'ast' and 'functools'
+    # that this project tries to avoid importing.
+
+    # The basic logic is copied from there, however, replacing ForwardRef
+    # with a more basic class.
+    # While `annotationlib` is trying to return ForwardRef objects that can
+    # be evaluated later, this module only cares about annotations that can
+    # be evaluated at the point this function is called.
+    # As such we throw away the other information and just return strings
+    # instead of forwardrefs.
+
+    try:
+        raw_annotations = annotate(1)
+    except NameError:
+        pass
+    else:
+        return raw_annotations
+
+    # The annotate func may support forwardref natively
+    try:
+        raw_annotations = annotate(2)
+    except NotImplementedError:
+        pass
+    else:
+        return raw_annotations
+
+    # Not supported so we have to implement our own deferred handling
+    # Some modified logic from annotationlib
+    namespace = {**annotate.__builtins__, **annotate.__globals__}
+    globs = _StringGlobs(namespace)
+
+    # This handles closures where the variable is defined after get annotations is called.
+    if annotate.__closure__:
+        freevars = annotate.__code__.co_freevars
+        new_closure = []
+        for i, cell in enumerate(annotate.__closure__):
+            try:
+                cell.cell_contents
+            except ValueError:
+                if i < len(freevars):
+                    name = freevars[i]
+                else:
+                    name = "__cell__"
+                new_closure.append(_CellType(name))
+            else:
+                new_closure.append(cell)
+        closure = tuple(new_closure)
+    else:
+        closure = None
+
+    new_annotate = _FunctionType(annotate.__code__, globs, closure=closure)
+    return new_annotate(1)
+
+
 def get_ns_annotations(ns, eval_str=True):
     """
     Given a class namespace, attempt to retrieve the
@@ -131,50 +187,14 @@ def get_ns_annotations(ns, eval_str=True):
     annotate = ns.get("__annotate__")
 
     if annotate is not None:
-        # Python 3.14 breaks the old methods of getting annotations
-        # The new annotationlib relies on 'ast' and 'functools' and so is
-        # too slow for this project.
-        # The basic logic is copied from there, however, replacing ForwardRef
-        # with a more basic class.
-
-        try:
-            raw_annotations = annotate(1)
-        except NameError:
-            pass
-        else:
-            return raw_annotations
-
-        # Some modified logic from annotationlib
-        namespace = {**annotate.__builtins__, **annotate.__globals__}
-        globs = _StringGlobs(namespace)
-
-        # if annotate.__closure__:
-        #     freevars = annotate.__code__.co_freevars
-        #     new_closure = []
-        #     for i, cell in enumerate(annotate.__closure__):
-        #         try:
-        #             cell.cell_contents
-        #         except ValueError:
-        #             if i < len(freevars):
-        #                 name = freevars[i]
-        #             else:
-        #                 name = "__cell__"
-        #             new_closure.append(_CellType(name))
-        #         else:
-        #             new_closure.append(cell)
-        #     closure = tuple(new_closure)
-        # else:
-        #     closure = None
-
-        new_annotate = _FunctionType(annotate.__code__, globs, closure=annotate.__closure__)
-        return new_annotate(1)
-
+        raw_annotations = call_annotate_func(annotate)
     else:
         raw_annotations = ns.get("__annotations__", {})
 
-        if not eval_str:
-            return raw_annotations.copy()
-
+    # Unlike annotationlib we still try to evaluate string annotations
+    # This will catch cases where someone has used a literal string for a
+    # single attribute.
+    if eval_str:
         try:
             obj_modulename = ns["__module__"]
         except KeyError:
@@ -196,10 +216,15 @@ def get_ns_annotations(ns, eval_str=True):
 
         context = {**vars(builtins), **obj_globals, **type_params, **ns}
 
-        return {
+        annotations = {
             k: eval_hint(v, context)
             for k, v in raw_annotations.items()
         }
+
+    else:
+        annotations = raw_annotations.copy()
+
+    return annotations
 
 
 def is_classvar(hint):
