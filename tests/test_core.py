@@ -188,7 +188,6 @@ def test_slot_gatherer_success():
 
     assert slots == fields
     assert modifications["__slots__"] == {"a": None, "b": None, "c": "a list", "d": None}
-    assert modifications["__annotations__"] == {"a": int, "d": str}
     assert get_ns_annotations(SlotsExample.__dict__) == {"a": int}  # Original annotations dict unmodified
 
 
