@@ -13,7 +13,6 @@ def test_basic_slotted():
         )
 
     assert SlottedPrefab.__slots__ == {"x": None, "y": "Digits of pi"}
-    assert get_ns_annotations(SlottedPrefab.__dict__) == {"y": float}
 
     ex = SlottedPrefab()
 

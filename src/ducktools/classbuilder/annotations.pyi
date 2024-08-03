@@ -1,3 +1,4 @@
+from collections.abc import Callable
 import typing
 import types
 
@@ -6,6 +7,11 @@ _CopiableMappings = dict[str, typing.Any] | types.MappingProxyType[str, typing.A
 
 class _StringGlobs(dict):
     def __missing__(self, key: _T) -> _T: ...
+
+
+def call_annotate_func(
+        annotate: Callable[[int], dict[str, type | typing.ForwardRef]]
+) -> dict[str, type | str]: ...
 
 
 def eval_hint(

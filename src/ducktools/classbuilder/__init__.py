@@ -707,10 +707,6 @@ def make_slot_gatherer(field_type=Field):
                 "in order to generate a slotclass"
             )
 
-        # Don't want to mutate original annotations so make a copy if it exists
-        # Looking at the dict is a Python3.9 or earlier requirement
-        cls_annotations = get_ns_annotations(cls_dict)
-
         cls_fields = {}
         slot_replacement = {}
 
@@ -724,8 +720,6 @@ def make_slot_gatherer(field_type=Field):
 
             if isinstance(v, field_type):
                 attrib = v
-                if attrib.type is not NOTHING:
-                    cls_annotations[k] = attrib.type
             else:
                 # Plain values treated as defaults
                 attrib = field_type(default=v)
@@ -738,7 +732,6 @@ def make_slot_gatherer(field_type=Field):
         # In this case, slots with documentation and new annotations.
         modifications = {
             "__slots__": slot_replacement,
-            "__annotations__": cls_annotations,
         }
 
         return cls_fields, modifications
