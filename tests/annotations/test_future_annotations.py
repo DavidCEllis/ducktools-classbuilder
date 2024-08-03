@@ -1,4 +1,4 @@
-# Bare forwardrefs only work in 3.14 or later
+from __future__ import annotations
 
 from ducktools.classbuilder.annotations import get_ns_annotations
 
@@ -36,10 +36,10 @@ def test_inner_outer_ref():
 
     cls, annos = make_func()
 
-    # Forwardref given as string if used before it can be evaluated
-    assert annos == {"a_val": str, "b_val": int, "c_val": "hyper_type"}
+    # Only global types can be evaluated
+    assert annos == {"a_val": "inner_type", "b_val": int, "c_val": "hyper_type"}
 
-    # Correctly evaluated if it exists
+    # No extra evaluation
     assert get_ns_annotations(cls.__dict__) == {
-        "a_val": str, "b_val": int, "c_val": float
+        "a_val": "inner_type", "b_val": int, "c_val": "hyper_type"
     }
