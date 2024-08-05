@@ -390,11 +390,13 @@ def frozen_setattr_generator(cls, funcname="__setattr__"):
     if flags.get("slotted", True):
         globs["__setattr_func"] = object.__setattr__
         setattr_method = "__setattr_func(self, name, value)"
+        hasattr_check = "hasattr(self, name)"
     else:
         setattr_method = "self.__dict__[name] = value"
+        hasattr_check = "name in self.__dict__"
 
     body = (
-        f"    if hasattr(self, name) or name not in __field_names:\n"
+        f"    if {hasattr_check} or name not in __field_names:\n"
         f'        raise TypeError(\n'
         f'            f"{{type(self).__name__!r}} object does not support "'
         f'            f"attribute assignment"\n'
