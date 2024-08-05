@@ -9,10 +9,13 @@ from ducktools.classbuilder import (
     builder,
     default_methods,
     eq_maker,
+    frozen_delattr_maker,
+    frozen_setattr_maker,
     get_fields,
     get_flags,
     get_methods,
     init_maker,
+    make_unified_gatherer,
     slot_gatherer,
     slotclass,
 
@@ -163,6 +166,30 @@ def test_frozen_field():
     for k in attr_changes:
         with pytest.raises(TypeError):
             delattr(f, k)
+
+
+def test_frozen_unslotted():
+    # Test a frozen class with defaults left in place
+
+    methods = default_methods | {frozen_setattr_maker, frozen_delattr_maker}
+    gatherer = make_unified_gatherer(Field, leave_default_values=True)
+
+    def b(cls):
+        return builder(cls, methods=methods, gatherer=gatherer,
+                       flags={"frozen": True, "slotted": False})
+
+    @b
+    class Ex:
+        a: int = 41
+        b: str = "Hello"
+
+    ex = Ex()
+
+    with pytest.raises(TypeError):
+        ex.a = 42
+
+    with pytest.raises(TypeError):
+        ex.b = "goodbye"
 
 
 def test_slot_gatherer_success():
