@@ -1,26 +1,15 @@
-from ducktools.classbuilder import (
-    builder,
-    default_methods,
-    get_fields,
-    get_flags,
-    frozen_setattr_maker,
-    frozen_delattr_maker,
-    make_unified_gatherer,
-    Field,
-    GeneratedCode,
-    MethodMaker,
-)
+import ducktools.classbuilder as dtbuild
 
 
-class FreezableField(Field):
+class FreezableField(dtbuild.Field):
     frozen: bool = False
 
 
 def setattr_generator(cls, funcname="__setattr__"):
     globs = {}
 
-    flags = get_flags(cls)
-    fields = get_fields(cls)
+    flags = dtbuild.get_flags(cls)
+    fields = dtbuild.get_fields(cls)
 
     frozen_fields = set(
         name for name, field in fields.items()
@@ -47,14 +36,14 @@ def setattr_generator(cls, funcname="__setattr__"):
         f"        {setattr_method}\n"
     )
 
-    return GeneratedCode(code, globs)
+    return dtbuild.GeneratedCode(code, globs)
 
 
 def delattr_generator(cls, funcname="__delattr__"):
     globs = {}
 
-    flags = get_flags(cls)
-    fields = get_fields(cls)
+    flags = dtbuild.get_flags(cls)
+    fields = dtbuild.get_fields(cls)
 
     frozen_fields = set(
         name for name, field in fields.items()
@@ -79,14 +68,12 @@ def delattr_generator(cls, funcname="__delattr__"):
         f"        {delattr_method}\n"
     )
 
-    return GeneratedCode(code, globs)
+    return dtbuild.GeneratedCode(code, globs)
 
 
-frozen_setattr_field_maker = MethodMaker("__setattr__", setattr_generator)
-frozen_delattr_field_maker = MethodMaker("__delattr__", delattr_generator)
-
-
-gatherer = make_unified_gatherer(FreezableField, leave_default_values=True)
+frozen_setattr_field_maker = dtbuild.MethodMaker("__setattr__", setattr_generator)
+frozen_delattr_field_maker = dtbuild.MethodMaker("__delattr__", delattr_generator)
+gatherer = dtbuild.make_unified_gatherer(FreezableField)
 
 
 def freezable(cls=None, /, *, frozen=False):
@@ -94,37 +81,36 @@ def freezable(cls=None, /, *, frozen=False):
         return lambda cls_: freezable(cls_, frozen=frozen)
 
     # To make a slotted class use a base class with metaclass
-    flags = {
-        "frozen": frozen,
-        "slotted": False,
-    }
+    flags = {"frozen": frozen, "slotted": False}
 
-    cls = builder(
+    cls = dtbuild.builder(
         cls,
         gatherer=gatherer,
-        methods=default_methods,
+        methods=dtbuild.default_methods,
         flags=flags,
     )
 
     # Frozen attributes need to be added afterwards
     # Due to the need to know if frozen fields exist
     if frozen:
-        setattr(cls, "__setattr__", frozen_setattr_maker)
-        setattr(cls, "__delattr__", frozen_delattr_maker)
+        setattr(cls, "__setattr__", dtbuild.frozen_setattr_maker)
+        setattr(cls, "__delattr__", dtbuild.frozen_delattr_maker)
     else:
-        fields = get_fields(cls)
-        frozen_fields = [
-            f for f in fields.values()
-            if getattr(f, "frozen", False)
-        ]
-        if frozen_fields:
+        fields = dtbuild.get_fields(cls)
+        has_frozen_fields = False
+        for f in fields.values():
+            if getattr(f, "frozen", False):
+                has_frozen_fields = True
+                break
+
+        if has_frozen_fields:
             setattr(cls, "__setattr__", frozen_setattr_field_maker)
             setattr(cls, "__delattr__", frozen_delattr_field_maker)
 
     return cls
 
 
-@freezable(frozen=True)
+@freezable
 class X:
     a: int = 2
     b: int = FreezableField(default=12, frozen=True)
@@ -132,5 +118,8 @@ class X:
 
 x = X()
 x.a = 21
-x.b = 43
 
+try:
+    x.b = 43
+except AttributeError as e:
+    print(repr(e))

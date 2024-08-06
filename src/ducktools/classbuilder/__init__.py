@@ -743,7 +743,7 @@ def make_slot_gatherer(field_type=Field):
 
 def make_annotation_gatherer(
     field_type=Field,
-    leave_default_values=True,
+    leave_default_values=False,
 ):
     """
     Create a new annotation gatherer that will work with `Field` instances
@@ -809,7 +809,7 @@ def make_annotation_gatherer(
 
 def make_field_gatherer(
     field_type=Field,
-    leave_default_values=True,
+    leave_default_values=False,
 ):
     def field_attribute_gatherer(cls_or_ns):
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
@@ -842,7 +842,7 @@ def make_field_gatherer(
 
 def make_unified_gatherer(
     field_type=Field,
-    leave_default_values=True,
+    leave_default_values=False,
 ):
     """
     Create a gatherer that will work via first slots, then
@@ -892,7 +892,7 @@ annotation_gatherer = make_annotation_gatherer()
 
 # The unified gatherer used for slot classes must remove default
 # values for slots to work correctly.
-unified_gatherer = make_unified_gatherer(leave_default_values=False)
+unified_gatherer = make_unified_gatherer()
 
 
 # Now the gatherers have been defined, add __repr__ and __eq__ to Field.
@@ -958,7 +958,7 @@ class AnnotationClass(metaclass=SlotMakerMeta):
     def __init_subclass__(
             cls,
             methods=default_methods,
-            gatherer=make_unified_gatherer(leave_default_values=True),
+            gatherer=unified_gatherer,
             **kwargs
     ):
         # Check class dict otherwise this will always be True as this base

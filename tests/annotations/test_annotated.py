@@ -60,9 +60,10 @@ def test_annotation_gatherer():
     for key in "defgh":
         assert key not in annos
 
-    # Instance variables not removed from class
-    # Field replaced with default value on class
-    assert modifications["c"] == "c"
+    # Instance variables to be removed from class
+    assert modifications["a"] is NOTHING
+    assert modifications["b"] is NOTHING
+    assert modifications["c"] is NOTHING
 
 
 def test_make_annotation_gatherer():
@@ -71,7 +72,7 @@ def test_make_annotation_gatherer():
 
     gatherer = make_annotation_gatherer(
         field_type=NewField,
-        leave_default_values=False,
+        leave_default_values=True,
     )
 
     class ExampleAnnotated:
@@ -91,10 +92,11 @@ def test_make_annotation_gatherer():
 
     assert annos["blank_field"] == NewField(type=str)
 
-    # ABC should be present in annos but removed from the class
+    # ABC should be present in annos and in the class
     for key in "abc":
         assert annos[key] == NewField(default=key, type=annotations[key])
-        assert modifications[key] is NOTHING
+
+    assert modifications["c"] == "c"
 
     # Opposite for classvar
     for key in "defgh":
@@ -114,7 +116,10 @@ def test_annotationclass():
         g: Annotated[Annotated[ClassVar[str], ""], ""] = "g"
         h: Annotated[CV[str], ''] = "h"
 
-    for key in "abcdefgh":
+    for key in "abc":
+        assert key not in ExampleAnnotated.__dict__
+
+    for key in "defgh":
         assert key in ExampleAnnotated.__dict__
 
     ex = ExampleAnnotated()
