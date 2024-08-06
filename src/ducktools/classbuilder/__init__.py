@@ -958,7 +958,7 @@ class AnnotationClass(metaclass=SlotMakerMeta):
     def __init_subclass__(
             cls,
             methods=default_methods,
-            gatherer=make_unified_gatherer(leave_default_values=True),
+            gatherer=unified_gatherer,
             **kwargs
     ):
         # Check class dict otherwise this will always be True as this base

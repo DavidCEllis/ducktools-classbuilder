@@ -116,7 +116,10 @@ def test_annotationclass():
         g: Annotated[Annotated[ClassVar[str], ""], ""] = "g"
         h: Annotated[CV[str], ''] = "h"
 
-    for key in "abcdefgh":
+    for key in "abc":
+        assert key not in ExampleAnnotated.__dict__
+
+    for key in "defgh":
         assert key in ExampleAnnotated.__dict__
 
     ex = ExampleAnnotated()
