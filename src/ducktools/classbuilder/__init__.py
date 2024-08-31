@@ -363,15 +363,17 @@ def eq_generator(cls, funcname="__eq__"):
     ]
 
     if field_names:
-        selfvals = ",".join(f"self.{name}" for name in field_names)
-        othervals = ",".join(f"other.{name}" for name in field_names)
-        instance_comparison = f"({selfvals},) == ({othervals},)"
+        instance_comparison = "\n        and ".join(
+            f"self.{name} == other.{name}" for name in field_names
+        )
     else:
         instance_comparison = "True"
 
     code = (
         f"def {funcname}(self, other):\n"
-        f"    return {instance_comparison} if {class_comparison} else NotImplemented\n"
+        f"    return (\n"
+        f"        {instance_comparison}\n"
+        f"    ) if {class_comparison} else NotImplemented\n"
     )
     globs = {}
 
