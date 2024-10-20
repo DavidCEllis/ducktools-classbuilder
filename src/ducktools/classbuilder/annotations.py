@@ -37,6 +37,36 @@ del _cell_factory
 # End evil stuff from types.py
 
 
+class _Stringlike(str):
+    # There are typing operators that are not supported by strings
+    # This adds the 'or' operator '|'
+
+    def __or__(self, other):
+        if isinstance(other, str):
+            other_r = other
+        elif name := getattr(other, "__name__", None):
+            other_r = name
+        else:
+            other_r = str(other)
+
+        return type(self)(f"{self} | {other_r}")
+
+    def __ror__(self, other):
+        if isinstance(other, str):
+            other_r = other
+        elif name := getattr(other, "__name__", None):
+            other_r = name
+        else:
+            other_r = str(other)
+
+        return type(self)(f"{other_r} | {self}")
+
+    def __repr__(self):
+        base = super().__repr__()
+        clsname = type(self).__name__
+        return f"{clsname}({base})"
+
+
 class _StringGlobs(dict):
     """
     Based on the fake globals dictionary used for annotations
@@ -47,7 +77,7 @@ class _StringGlobs(dict):
     is not found.
     """
     def __missing__(self, key):
-        return key
+        return _Stringlike(key)
 
     def __repr__(self):
         cls_name = self.__class__.__name__
@@ -165,7 +195,14 @@ def call_annotate_func(annotate):
         closure = None
 
     new_annotate = _FunctionType(annotate.__code__, globs, closure=closure)
-    return new_annotate(1)
+
+    # Convert _Stringlike back to str
+    annos = {
+        k: str(v) if isinstance(v, _Stringlike) else v
+        for k, v in new_annotate(1).items()
+    }
+
+    return annos
 
 
 def get_ns_annotations(ns, eval_str=True):
