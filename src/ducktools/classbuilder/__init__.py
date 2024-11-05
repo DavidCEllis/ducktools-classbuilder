@@ -654,11 +654,6 @@ class Field(metaclass=SlotMakerMeta):
                 f"{cls_name} cannot define both a default value and a default factory."
             )
 
-        if self.kw_only and not self.init:
-            raise AttributeError(
-                f"{cls_name} cannot be keyword only if it is not in init."
-            )
-
     @classmethod
     def from_field(cls, fld, /, **kwargs):
         """
