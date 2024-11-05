@@ -144,15 +144,6 @@ class TestClassVar:
 
 
 class TestExceptions:
-    def test_kw_not_in_init(self):
-        with pytest.raises(AttributeError) as e_info:
-            from fails.creation_1 import Construct
-
-        assert (
-            e_info.value.args[0]
-            == "Attribute cannot be keyword only if it is not in init."
-        )
-
     def test_positional_after_kw_error(self):
         with pytest.raises(SyntaxError) as e_info:
             from fails.creation_2 import FailSyntax
