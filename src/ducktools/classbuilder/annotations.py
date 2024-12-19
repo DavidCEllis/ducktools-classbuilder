@@ -162,13 +162,19 @@ def call_annotate_func(annotate):
     else:
         return raw_annotations
 
-    # The annotate func may support forwardref natively
-    try:
-        raw_annotations = annotate(2)
-    except NotImplementedError:
-        pass
-    else:
-        return raw_annotations
+    # No longer check for native forwardref support.
+    # Between prerelase versions this enum changed from 2 to 3.
+    # If the values are not guaranteed then this is unusable.
+    # I wouldn't have to do any of this is 'annotationlib' didn't rely on 'ast'
+    # But in doing so it is too slow for this use case!
+
+    # # The annotate func may support forwardref natively
+    # try:
+    #     raw_annotations = annotate(3)
+    # except NotImplementedError:
+    #     pass
+    # else:
+    #     return raw_annotations
 
     # Not supported so we have to implement our own deferred handling
     # Some modified logic from annotationlib
