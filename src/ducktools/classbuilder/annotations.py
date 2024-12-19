@@ -24,19 +24,6 @@ import sys
 import builtins
 
 
-# Evil stuff from types.py
-def _cell_factory():
-    a = 1
-
-    def f():
-        nonlocal a
-    return f.__closure__[0]
-_FunctionType = type(_cell_factory)
-_CellType = type(_cell_factory())
-del _cell_factory
-# End evil stuff from types.py
-
-
 class _Stringlike(str):
     # There are typing operators that are not supported by strings
     # This adds the 'or' operator '|'
@@ -142,75 +129,6 @@ def eval_hint(hint, context=None, *, recursion_limit=2):
     return hint
 
 
-def call_annotate_func(annotate):
-    # Python 3.14 breaks the old methods of getting annotations
-    # The new annotationlib currently relies on 'ast' and 'functools'
-    # that this project tries to avoid importing.
-
-    # The basic logic is copied from there, however, replacing ForwardRef
-    # with a more basic class.
-    # While `annotationlib` is trying to return ForwardRef objects that can
-    # be evaluated later, this module only cares about annotations that can
-    # be evaluated at the point this function is called.
-    # As such we throw away the other information and just return strings
-    # instead of forwardrefs.
-
-    try:
-        raw_annotations = annotate(1)
-    except NameError:
-        pass
-    else:
-        return raw_annotations
-
-    # No longer check for native forwardref support.
-    # Between prerelase versions this enum changed from 2 to 3.
-    # If the values are not guaranteed then this is unusable.
-    # I wouldn't have to do any of this is 'annotationlib' didn't rely on 'ast'
-    # But in doing so it is too slow for this use case!
-
-    # # The annotate func may support forwardref natively
-    # try:
-    #     raw_annotations = annotate(3)
-    # except NotImplementedError:
-    #     pass
-    # else:
-    #     return raw_annotations
-
-    # Not supported so we have to implement our own deferred handling
-    # Some modified logic from annotationlib
-    namespace = {**annotate.__builtins__, **annotate.__globals__}
-    globs = _StringGlobs(namespace)
-
-    # This handles closures where the variable is defined after get annotations is called.
-    if annotate.__closure__:
-        freevars = annotate.__code__.co_freevars
-        new_closure = []
-        for i, cell in enumerate(annotate.__closure__):
-            try:
-                cell.cell_contents
-            except ValueError:
-                if i < len(freevars):
-                    name = freevars[i]
-                else:
-                    name = "__cell__"
-                new_closure.append(_CellType(name))
-            else:
-                new_closure.append(cell)
-        closure = tuple(new_closure)
-    else:
-        closure = None
-
-    new_annotate = _FunctionType(annotate.__code__, globs, closure=closure)
-
-    # Convert _Stringlike back to str
-    annos = {
-        k: str(v) if isinstance(v, _Stringlike) else v
-        for k, v in new_annotate(1).items()
-    }
-
-    return annos
-
-
 def get_ns_annotations(ns, eval_str=True):
     """
     Given a class namespace, attempt to retrieve the
@@ -227,10 +145,16 @@ def get_ns_annotations(ns, eval_str=True):
 
     # In 3.14 the 'canonical' method of getting annotations is to use __annotate__
     # If this doesn't exist, check __annotations__ and treat as 3.13 or earlier.
+    # This is disabled if __future__ annotations are used, however.
     annotate = ns.get("__annotate__")
 
     if annotate is not None:
-        raw_annotations = call_annotate_func(annotate)
+        try:
+            raw_annotations = annotate(1)  # VALUE call
+        except (NameError, AttributeError):
+            # Slow path, only used if annotations can't be evaluated.
+            from annotationlib import Format, call_annotate_function
+            raw_annotations = call_annotate_function(annotate, format=Format.FORWARDREF)
     else:
         raw_annotations = ns.get("__annotations__", {})
 
