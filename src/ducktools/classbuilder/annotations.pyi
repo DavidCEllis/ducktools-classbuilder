@@ -9,11 +9,6 @@ class _StringGlobs(dict):
     def __missing__(self, key: _T) -> _T: ...
 
 
-def call_annotate_func(
-        annotate: Callable[[int], dict[str, type | typing.ForwardRef]]
-) -> dict[str, type | str]: ...
-
-
 def eval_hint(
     hint: type | str,
     context: None | dict[str, typing.Any] = None,
