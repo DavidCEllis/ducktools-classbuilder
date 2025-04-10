@@ -769,7 +769,7 @@ def make_annotation_gatherer(
             if is_classvar(v):
                 continue
 
-            if v is KW_ONLY:
+            if v is KW_ONLY or (isinstance(v, str) and v == "KW_ONLY"):
                 if kw_flag:
                     raise SyntaxError("KW_ONLY sentinel may only appear once.")
                 kw_flag = True
@@ -868,7 +868,7 @@ def make_unified_gatherer(
         # To choose between annotation and attribute gatherers
         # compare sets of names.
         # Don't bother evaluating string annotations, as we only need names
-        cls_annotations = get_ns_annotations(cls_dict, eval_str=False)
+        cls_annotations = get_ns_annotations(cls_dict)
         cls_attributes = {
             k: v for k, v in cls_dict.items() if isinstance(v, field_type)
         }

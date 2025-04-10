@@ -11,5 +11,5 @@ def test_312_generic():
 
     assert get_ns_annotations(vars(X)) == {
         "x": list[X.test_var],
-        "y": list[X.test_var],
+        "y": "list[T]",
     }

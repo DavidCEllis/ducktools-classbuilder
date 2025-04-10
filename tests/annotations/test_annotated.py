@@ -139,6 +139,6 @@ def test_annotationclass():
 def test_annotated_syntax_error():
     with pytest.raises(SyntaxError):
         class ExampleAnnotated(AnnotationClass):
-            a: str = "a"
+            a: str = "a"  # noqa: the error being highlighted is the error we are testing.
             b: "list[str]"
             c: Annotated[str, ""] = Field(default="c")
