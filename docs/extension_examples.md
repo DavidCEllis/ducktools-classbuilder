@@ -469,7 +469,8 @@ To implement this you need to create a new annotated_gatherer function.
 >       If you need to change the value of a field use Field.from_field(...) to make a new instance.
 
 ```python
-from __future__ import annotations
+# Don't use __future__ annotations with get_ns_annotations in this case 
+# as it doesn't evaluate string annotations.
 
 import types
 from typing import Annotated, Any, ClassVar, get_origin
