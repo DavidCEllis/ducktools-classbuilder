@@ -25,11 +25,7 @@ import sys
 def get_ns_annotations(ns):
     """
     Given a class namespace, attempt to retrieve the
-    annotations dictionary and evaluate strings.
-
-    Note: This only evaluates in the context of module level globals
-    and values in the class namespace. Non-local variables will not
-    be evaluated.
+    annotations dictionary.
 
     :param ns: Class namespace (eg cls.__dict__)
     :return: dictionary of annotations
