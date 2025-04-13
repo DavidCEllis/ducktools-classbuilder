@@ -32,20 +32,22 @@ def get_ns_annotations(ns):
     """
 
     annotations = ns.get("__annotations__")
-    if annotations:
+    if annotations is not None:
         annotations = annotations.copy()
-    elif sys.version_info > (3, 14):
+    else:
         # See if we're using PEP-649 annotations
-        # Sorry this is slow, nothing I can do about this.
-        from annotationlib import Format, call_annotate_function
-        annotate = ns.get("__annotate__")  # Works in the alphas, but may break
-        if not annotate:
-            # There are plans to remove this attribute
-            from annotationlib import get_annotate_function
-            annotate = get_annotate_function(ns)
-
-        if annotate:
-            annotations = call_annotate_function(annotate, format=Format.FORWARDREF)
+        # Guarding this with a try/except instead of a version check
+        # In case there's a change and PEP-649 somehow doesn't make 3.14
+        try:
+            from annotationlib import Format, call_annotate_function, get_annotate_function
+        except ImportError:
+            pass
+        else:
+            annotate = ns.get("__annotate__")  # Works in the alphas, but may break
+            if not annotate:
+                annotate = get_annotate_function(ns)
+            if annotate:
+                annotations = call_annotate_function(annotate, format=Format.FORWARDREF)
 
     if annotations is None:
         annotations = {}
