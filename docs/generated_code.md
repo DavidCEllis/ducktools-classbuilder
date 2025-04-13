@@ -7,11 +7,14 @@ There is a helper function `get_methods` that can be used to obtain the names an
 methods that have been attached to the class by the builder.
 
 ```python
-from ducktools.classbuilder import AnnotationClass, get_methods
+from ducktools.classbuilder import SlotFields, get_methods, slotclass
 
-class Example(AnnotationClass):
-    a: str = "a"
-    b: str = "b"
+@slotclass
+class Example:
+    __slots__ = SlotFields(
+        a='a',
+        b='b'
+    )
 
 print(get_methods(Example))
 ```
@@ -28,12 +31,15 @@ These can then be used to examine the generated source code and global variables
 to the `exec` function. This can be useful for debugging code generators.
 
 ```python
-from ducktools.classbuilder import AnnotationClass, get_methods
+from ducktools.classbuilder import SlotFields, get_methods, slotclass
 
-class Example(AnnotationClass):
-    a: str = "a"
-    b: str = "b"
-
+@slotclass
+class Example:
+    __slots__ = SlotFields(
+        a='a',
+        b='b',
+    )
+    
 methods = get_methods(Example)
 
 for method in methods.values():

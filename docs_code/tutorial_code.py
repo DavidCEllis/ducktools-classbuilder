@@ -81,10 +81,13 @@ report_maker = dtbuild.MethodMaker("report", report_generator)
 
 
 # View the generated code by testing on a demo class
-class CodegenDemo(dtbuild.AnnotationClass):
-    field_1: str = "Field one"
-    field_2: str = "Field two"
-    field_3: str = "Field three"
+@dtbuild.slotclass
+class CodegenDemo:
+    __slots__ = dtbuild.SlotFields(
+        field_1="Field one",
+        field_2="Field two",
+        field_3="Field three",
+    )
 
 
 print(report_generator(CodegenDemo).source_code)

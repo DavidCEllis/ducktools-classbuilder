@@ -21,7 +21,7 @@ def test_slots_created():
     slots = ExampleAnnotated.__slots__  # noqa
     expected_slots = SlotFields({
         "a": Field(default="a", type=str),
-        "b": Field(default="b", type=List[str]),
+        "b": Field(default="b", type="List[str]"),
         "c": Field(default="c", type=Annotated[str, ""])
     })
 

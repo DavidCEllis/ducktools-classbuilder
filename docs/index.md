@@ -65,15 +65,44 @@ ex = SlottedDC()
 print(ex)
 ```
 
-## Annotation Class Usage ##
+## Using Annotations ##
 
-There is an additional AnnotationClass base class that allows creating slotted classes
-using annotations. This has to be a base class with a specific metaclass in order to 
-create the `__slots__` field *before* the class has been generated in order to work
-correctly.
+It is possible to create slotted classes using Annotations.
+There is a `Prefab` base class in the `prefab` submodule that does this,
+but it also easy to implement using the provided tools.
+
+In order to correctly implement `__slots__` this needs to be done
+using a metaclass as `__slots__` must be defined before the **class**
+is created.
 
 ```python
-from ducktools.classbuilder import AnnotationClass
+from ducktools.classbuilder import (
+    SlotMakerMeta, 
+    annotation_gatherer,
+    builder,
+    check_argument_order,
+    default_methods,
+)
+
+
+class AnnotationClass(metaclass=SlotMakerMeta):
+    __slots__ = {}
+
+    def __init_subclass__(
+            cls,
+            methods=default_methods,
+            gatherer=annotation_gatherer,
+            **kwargs
+    ):
+        # Check class dict otherwise this will always be True as this base
+        # class uses slots.
+        slots = "__slots__" in cls.__dict__
+
+        builder(cls, gatherer=gatherer, methods=methods, flags={"slotted": slots})
+        check_argument_order(cls)
+        super().__init_subclass__(**kwargs)
+
+
 
 class AnnotatedDC(AnnotationClass):
     the_answer: int = 42

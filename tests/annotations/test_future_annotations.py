@@ -14,7 +14,7 @@ def test_bare_forwardref():
 
     annos = get_ns_annotations(Ex.__dict__)
 
-    assert annos == {'a': str, 'b': Path, 'c': "plain_forwardref"}
+    assert annos == {'a': "str", 'b': "Path", 'c': "plain_forwardref"}
 
 
 def test_inner_outer_ref():
@@ -37,9 +37,23 @@ def test_inner_outer_ref():
     cls, annos = make_func()
 
     # Only global types can be evaluated
-    assert annos == {"a_val": "inner_type", "b_val": int, "c_val": "hyper_type"}
+    assert annos == {"a_val": "inner_type", "b_val": "global_type", "c_val": "hyper_type"}
 
     # No extra evaluation
     assert get_ns_annotations(cls.__dict__) == {
-        "a_val": "inner_type", "b_val": int, "c_val": "hyper_type"
+        "a_val": "inner_type", "b_val": "global_type", "c_val": "hyper_type"
     }
+
+
+def test_not_evaluated():
+    class EvalCheck:
+        def __class_getitem__(cls, item):
+            raise KeyError("This should not be raised")
+        def __getattr__(self, key):
+            raise AttributeError("This should also not be raised")
+
+    class DontEval:
+        a: EvalCheck['str']  # The test is that the exception does not occur as this is not evaluated
+        b: EvalCheck.missing_attribute
+
+    get_ns_annotations(DontEval.__dict__)

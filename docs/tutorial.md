@@ -146,9 +146,15 @@ def report_generator(cls, funcname="report"):
 report_maker = dtbuild.MethodMaker("report", report_generator)
 ```
 
-We can take a quick look at what this generates by applying it to an `AnnotationClass`:
+We can take a quick look at what this generates by applying it to a `slotclass`:
 ```python
-class CodegenDemo(dtbuild.AnnotationClass):
+@dtbuild.slotclass
+class CodegenDemo:
+    __slots__ = dtbuild.SlotFields(
+        field_1="Field one",
+        field_2="Field two",
+        field_3="Field three",       
+    )
     field_1: str = "Field one"
     field_2: str = "Field two"
     field_3: str = "Field three"
