@@ -77,11 +77,11 @@ is created.
 
 ```python
 from ducktools.classbuilder import (
-    SlotMakerMeta, 
-    annotation_gatherer,
+    SlotMakerMeta,
     builder,
     check_argument_order,
     default_methods,
+    unified_gatherer,
 )
 
 
@@ -91,7 +91,7 @@ class AnnotationClass(metaclass=SlotMakerMeta):
     def __init_subclass__(
             cls,
             methods=default_methods,
-            gatherer=annotation_gatherer,
+            gatherer=unified_gatherer,
             **kwargs
     ):
         # Check class dict otherwise this will always be True as this base
@@ -103,12 +103,11 @@ class AnnotationClass(metaclass=SlotMakerMeta):
         super().__init_subclass__(**kwargs)
 
 
-
 class AnnotatedDC(AnnotationClass):
     the_answer: int = 42
     the_question: str = "What do you get if you multiply six by nine?"
 
-    
+
 ex = AnnotatedDC()
 print(ex)
 ```
