@@ -25,7 +25,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dynamic = ['version']
-license = {file = "LICENSE.md"}
 
 [project.optional-dependencies]
 testing = ["pytest>=8.2", "pytest-cov", "typing_extensions"]
