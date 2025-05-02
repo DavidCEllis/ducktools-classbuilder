@@ -77,11 +77,11 @@ def get_ns_annotations(ns):
             # See if we're using PEP-649 annotations
             annotate = ns.get("__annotate__")  # Works in the early alphas
             if not annotate:
-                annotate = _lazy_annotationlib.get_annotate_function(ns)
+                annotate = _lazy_annotationlib.get_ns_annotate(ns)
             if annotate:
                 annotations = _lazy_annotationlib.call_annotate_function(
                     annotate,
-                    format=_lazy_annotationlib.FORWARDREF
+                    format=_lazy_annotationlib.Format.FORWARDREF
                 )
         except ImportError:
             pass
