@@ -812,6 +812,7 @@ def make_annotation_gatherer(
 def make_field_gatherer(
     field_type=Field,
     leave_default_values=False,
+    assign_types=True,
 ):
     def field_attribute_gatherer(cls_or_ns):
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
@@ -824,7 +825,11 @@ def make_field_gatherer(
             for k, v in cls_dict.items()
             if isinstance(v, field_type)
         }
-        cls_annotations = get_ns_annotations(cls_dict)
+
+        if assign_types:
+            cls_annotations = get_ns_annotations(cls_dict)
+        else:
+            cls_annotations = {}
 
         cls_modifications = {}
 
@@ -835,7 +840,7 @@ def make_field_gatherer(
             else:
                 cls_modifications[name] = NOTHING
 
-            if (anno := cls_annotations.get(name, NOTHING)) is not NOTHING:
+            if assign_types and (anno := cls_annotations.get(name, NOTHING)) is not NOTHING:
                 cls_attributes[name] = field_type.from_field(attrib, type=anno)
 
         return cls_attributes, cls_modifications
