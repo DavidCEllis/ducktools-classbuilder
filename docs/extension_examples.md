@@ -116,6 +116,25 @@ You could also choose to yield tuples of `name, value` pairs in your implementat
 
 ### Extending Field ###
 
+The `Field` class can also be extended as if it is a slotclass, with annotations or
+with `Field` declarations.
+
+One notable caveat - if you want to use a `default_factory` in extending `Field` you
+need to declare `default=FIELD_NOTHING` also in order for default to be ignored. This
+is a special case for `Field` and is not needed in general.
+
+```python
+from ducktools.classbuilder import Field, FIELD_NOTHING
+
+class MetadataField(Field):
+    metadata: dict = Field(default=FIELD_NOTHING, default_factory=dict)
+```
+
+In regular classes the `__init__` function generator considers `NOTHING` to be an 
+ignored value, but for `Field` subclasses it is a valid value so `FIELD_NOTHING` is
+the ignored term. This is all because `None` *is* a valid value and can't be used
+as a sentinel for Fields (otherwise `Field(default=None)` couldn't work).
+
 #### Positional Only Arguments? ####
 
 This is possible, but a little longer as we also need to modify multiple methods

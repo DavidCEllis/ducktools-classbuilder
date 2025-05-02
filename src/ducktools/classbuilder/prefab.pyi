@@ -50,6 +50,7 @@ class Attribute(Field):
 
     iter: bool
     serialize: bool
+    metadata: dict
 
     def __init__(
         self,
@@ -64,6 +65,7 @@ class Attribute(Field):
         iter: bool = True,
         kw_only: bool = False,
         serialize: bool = True,
+        metadata: dict | None = None,
     ) -> None: ...
 
     def __repr__(self) -> str: ...
@@ -74,8 +76,6 @@ def attribute(
     *,
     default: typing.Any | _NothingType = NOTHING,
     default_factory: typing.Any | _NothingType = NOTHING,
-    type: type | _NothingType = NOTHING,
-    doc: str | None = None,
     init: bool = True,
     repr: bool = True,
     compare: bool = True,
@@ -84,6 +84,9 @@ def attribute(
     serialize: bool = True,
     exclude_field: bool = False,
     private: bool = False,
+    doc: str | None = None,
+    metadata: dict | None = None,
+    type: type | _NothingType = NOTHING,
 ) -> Attribute: ...
 
 def prefab_gatherer(cls_or_ns: type | MappingProxyType) -> tuple[dict[str, Attribute], dict[str, typing.Any]]: ...
