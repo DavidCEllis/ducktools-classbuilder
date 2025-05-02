@@ -22,6 +22,20 @@
 import sys
 
 
+def _get_get_annotate_function():  # noqa
+    # Temporary function to handle changes in CPython that have not yet been merged
+    try:
+        import annotationlib
+    except ImportError:
+        return None
+
+    func = getattr(annotationlib, "get_annotate_from_class_namespace", None)
+    if func is None:
+        func = getattr(annotationlib, "get_annotate_function")
+
+    return func
+
+
 def get_ns_annotations(ns):
     """
     Given a class namespace, attempt to retrieve the
@@ -39,11 +53,12 @@ def get_ns_annotations(ns):
         # Guarding this with a try/except instead of a version check
         # In case there's a change and PEP-649 somehow doesn't make 3.14
         try:
-            from annotationlib import Format, call_annotate_function, get_annotate_function
+            from annotationlib import Format, call_annotate_function
+            get_annotate_function = _get_get_annotate_function()
         except ImportError:
             pass
         else:
-            annotate = ns.get("__annotate__")  # Works in the alphas, but may break
+            annotate = ns.get("__annotate__")  # Works in the early alphas
             if not annotate:
                 annotate = get_annotate_function(ns)
             if annotate:

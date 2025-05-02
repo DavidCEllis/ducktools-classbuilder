@@ -26,6 +26,7 @@ def _get_inst_fields(inst: typing.Any) -> dict[str, typing.Any]: ...
 class _NothingType:
     def __repr__(self) -> str: ...
 NOTHING: _NothingType
+FIELD_NOTHING: _NothingType
 
 # noinspection PyPep8Naming
 class _KW_ONLY_TYPE:

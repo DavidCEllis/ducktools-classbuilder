@@ -50,6 +50,7 @@ class Attribute(Field):
 
     iter: bool
     serialize: bool
+    metadata: dict
 
     def __init__(
         self,
@@ -64,6 +65,7 @@ class Attribute(Field):
         iter: bool = True,
         kw_only: bool = False,
         serialize: bool = True,
+        metadata: dict | None = None,
     ) -> None: ...
 
     def __repr__(self) -> str: ...

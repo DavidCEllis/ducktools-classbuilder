@@ -26,7 +26,7 @@ A 'prebuilt' implementation of class generation.
 Includes pre and post init functions along with other methods.
 """
 from . import (
-    INTERNALS_DICT, NOTHING,
+    INTERNALS_DICT, NOTHING, FIELD_NOTHING,
     Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
     builder, get_flags, get_fields,
     make_unified_gatherer,
@@ -289,10 +289,12 @@ class Attribute(Field):
     :param kw_only: Make this argument keyword only in init
     :param serialize: Include this attribute in methods that serialize to dict
     :param doc: Parameter documentation for slotted classes
+    :param metadata: Additional non-construction related metadata
     :param type: Type of this attribute (for slotted classes)
     """
     iter: bool = True
     serialize: bool = True
+    metadata: dict = Field(default=FIELD_NOTHING, default_factory=dict)
 
 
 # noinspection PyShadowingBuiltins
@@ -309,6 +311,7 @@ def attribute(
     exclude_field=False,
     private=False,
     doc=None,
+    metadata=None,
     type=NOTHING,
 ):
     """
@@ -326,6 +329,7 @@ def attribute(
     :param exclude_field: Shorthand for setting repr, compare, iter and serialize to False
     :param private: Short for init, repr, compare, iter, serialize = False, must have default or factory
     :param doc: Parameter documentation for slotted classes
+    :param metadata: Dictionary for additional non-construction metadata
     :param type: Type of this attribute (for slotted classes)
 
     :return: Attribute generated with these parameters.
@@ -356,6 +360,7 @@ def attribute(
         serialize=serialize,
         doc=doc,
         type=type,
+        metadata=metadata,
     )
 
 

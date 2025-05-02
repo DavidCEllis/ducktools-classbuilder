@@ -99,11 +99,16 @@ def _get_inst_fields(inst):
 # As 'None' can be a meaningful value we need a sentinel value
 # to use to show no value has been provided.
 class _NothingType:
+    def __init__(self, custom=None):
+        self.custom = custom
     def __repr__(self):
+        if self.custom:
+            return f"<{self.custom} NOTHING OBJECT>"
         return "<NOTHING OBJECT>"
 
 
 NOTHING = _NothingType()
+FIELD_NOTHING = _NothingType("FIELD")
 
 
 # KW_ONLY sentinel 'type' to use to indicate all subsequent attributes are
@@ -432,11 +437,11 @@ frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
 default_methods = frozenset({init_maker, repr_maker, eq_maker})
 
-# Special `__init__` maker for 'Field' subclasses
+# Special `__init__` maker for 'Field' subclasses - needs its own NOTHING option
 _field_init_maker = MethodMaker(
     funcname="__init__",
     code_generator=get_init_generator(
-        null=_NothingType(),
+        null=FIELD_NOTHING,
         extra_code=["self.validate_field()"],
     )
 )
@@ -649,7 +654,7 @@ class Field(metaclass=SlotMakerMeta):
 
     def validate_field(self):
         cls_name = self.__class__.__name__
-        if self.default is not NOTHING and self.default_factory is not NOTHING:
+        if type(self.default) is not _NothingType and type(self.default_factory) is not _NothingType:
             raise AttributeError(
                 f"{cls_name} cannot define both a default value and a default factory."
             )
