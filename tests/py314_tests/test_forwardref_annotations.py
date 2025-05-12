@@ -1,11 +1,13 @@
 # Bare forwardrefs only work in 3.14 or later
 
 from ducktools.classbuilder.annotations import get_ns_annotations
-from annotationlib import ForwardRef
 
 from pathlib import Path
 
+from _test_support import EqualToForwardRef
+
 global_type = int
+
 
 def test_bare_forwardref():
     class Ex:
@@ -15,7 +17,7 @@ def test_bare_forwardref():
 
     annos = get_ns_annotations(Ex.__dict__)
 
-    assert annos == {'a': str, 'b': Path, 'c': ForwardRef("plain_forwardref")}
+    assert annos == {'a': str, 'b': Path, 'c': EqualToForwardRef("plain_forwardref")}
 
 
 def test_inner_outer_ref():
@@ -38,7 +40,7 @@ def test_inner_outer_ref():
     cls, annos = make_func()
 
     # Forwardref given as string if used before it can be evaluated
-    assert annos == {"a_val": str, "b_val": int, "c_val": ForwardRef("hyper_type")}
+    assert annos == {"a_val": str, "b_val": int, "c_val": EqualToForwardRef("hyper_type")}
 
     # Correctly evaluated if it exists
     assert get_ns_annotations(cls.__dict__) == {
