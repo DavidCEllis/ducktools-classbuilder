@@ -4,7 +4,8 @@ from typing_extensions import dataclass_transform
 
 import inspect
 
-from collections.abc import Callable
+# Suppress weird pylance error
+from collections.abc import Callable  # type: ignore
 
 from . import (
     NOTHING,
