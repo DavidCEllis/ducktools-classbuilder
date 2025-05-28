@@ -33,7 +33,7 @@
 import os
 
 from .annotations import get_ns_annotations, is_classvar
-from ._version import __version__, __version_tuple__
+from ._version import __version__, __version_tuple__  # noqa: F401
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -280,7 +280,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
 
         assigns = "\n    ".join(assignments) if assignments else "pass\n"
         code = (
-            f"def {funcname}(self, {args}):\n" 
+            f"def {funcname}(self, {args}):\n"
             f"    {assigns}\n"
         )
         # Handle additional function calls
@@ -663,10 +663,10 @@ class Field(metaclass=SlotMakerMeta):
     def from_field(cls, fld, /, **kwargs):
         """
         Create an instance of field or subclass from another field.
-        
-        This is intended to be used to convert a base 
+
+        This is intended to be used to convert a base
         Field into a subclass.
-        
+
         :param fld: field class to convert
         :param kwargs: Additional keyword arguments for subclasses
         :return: new field subclass instance
@@ -762,7 +762,9 @@ def make_annotation_gatherer(
         else:
             cls_dict = cls_or_ns.__dict__
 
-        cls_fields: dict[str, field_type] = {}
+        # This should really be dict[str, field_type] but static analysis
+        # doesn't understand this.
+        cls_fields: dict[str, Field] = {}
         modifications = {}
 
         cls_annotations = get_ns_annotations(cls_dict)

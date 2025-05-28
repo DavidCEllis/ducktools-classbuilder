@@ -36,7 +36,7 @@ from . import (
 
 # These aren't used but are re-exported for ease of use
 # noinspection PyUnresolvedReferences
-from . import SlotFields, KW_ONLY
+from . import SlotFields, KW_ONLY  # noqa: F401
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
