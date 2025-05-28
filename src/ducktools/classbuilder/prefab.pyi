@@ -128,20 +128,39 @@ class Prefab(metaclass=SlotMakerMeta):
 
 # For some reason PyCharm can't see 'attribute'?!?
 # noinspection PyUnresolvedReferences
+@typing.overload
 @dataclass_transform(field_specifiers=(Attribute, attribute))
 def prefab(
-    cls: type[_T] | None = None,
+    cls: type[_T],
+    /,
     *,
-    init: bool = True,
-    repr: bool = True,
-    eq: bool = True,
-    iter: bool = False,
-    match_args: bool = True,
-    kw_only: bool = False,
-    frozen: bool = False,
-    dict_method: bool = False,
-    recursive_repr: bool = False,
-) -> type[_T] | Callable[[type[_T]], type[_T]]: ...
+    init: bool = ...,
+    repr: bool = ...,
+    eq: bool = ...,
+    iter: bool = ...,
+    match_args: bool = ...,
+    kw_only: bool = ...,
+    frozen: bool = ...,
+    dict_method: bool = ...,
+    recursive_repr: bool = ...,
+) -> type[_T]: ...
+
+@typing.overload
+@dataclass_transform(field_specifiers=(Attribute, attribute))
+def prefab(
+    cls: None = None,
+    /,
+    *,
+    init: bool = ...,
+    repr: bool = ...,
+    eq: bool = ...,
+    iter: bool = ...,
+    match_args: bool = ...,
+    kw_only: bool = ...,
+    frozen: bool = ...,
+    dict_method: bool = ...,
+    recursive_repr: bool = ...,
+) -> Callable[[type[_T]], type[_T]]: ...
 
 def build_prefab(
     class_name: str,

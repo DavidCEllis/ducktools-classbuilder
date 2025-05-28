@@ -25,7 +25,7 @@ import sys
 class _LazyAnnotationLib:
     def __getattr__(self, item):
         global _lazyannotationlib
-        import annotationlib
+        import annotationlib  # type: ignore - this is a Python 3.14 library
         _lazyannotationlib = annotationlib
         return getattr(annotationlib, item)
 
