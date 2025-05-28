@@ -4,7 +4,8 @@ from typing_extensions import dataclass_transform
 
 import inspect
 
-from collections.abc import Callable
+# Suppress weird pylance error
+from collections.abc import Callable  # type: ignore
 
 from . import (
     NOTHING,
@@ -58,36 +59,73 @@ class Attribute(Field):
         default: typing.Any | _NothingType = NOTHING,
         default_factory: typing.Any | _NothingType = NOTHING,
         type: type | _NothingType = NOTHING,
-        doc: str | None = None,
-        init: bool = True,
-        repr: bool = True,
-        compare: bool = True,
-        iter: bool = True,
-        kw_only: bool = False,
-        serialize: bool = True,
-        metadata: dict | None = None,
+        doc: str | None = ...,
+        init: bool = ...,
+        repr: bool = ...,
+        compare: bool = ...,
+        iter: bool = ...,
+        kw_only: bool = ...,
+        serialize: bool = ...,
+        metadata: dict | None = ...,
     ) -> None: ...
 
     def __repr__(self) -> str: ...
     def __eq__(self, other: Attribute | object) -> bool: ...
     def validate_field(self) -> None: ...
 
+@typing.overload
 def attribute(
     *,
-    default: typing.Any | _NothingType = NOTHING,
-    default_factory: typing.Any | _NothingType = NOTHING,
-    init: bool = True,
-    repr: bool = True,
-    compare: bool = True,
-    iter: bool = True,
-    kw_only: bool = False,
-    serialize: bool = True,
-    exclude_field: bool = False,
-    private: bool = False,
-    doc: str | None = None,
-    metadata: dict | None = None,
-    type: type | _NothingType = NOTHING,
-) -> Attribute: ...
+    default: _T,
+    default_factory: _NothingType = NOTHING,
+    init: bool = ...,
+    repr: bool = ...,
+    compare: bool = ...,
+    iter: bool = ...,
+    kw_only: bool = ...,
+    serialize: bool = ...,
+    exclude_field: bool = ...,
+    private: bool = ...,
+    doc: str | None = ...,
+    metadata: dict | None = ...,
+    type: type | _NothingType = ...,
+) -> _T: ...
+
+@typing.overload
+def attribute(
+    *,
+    default: _NothingType = NOTHING,
+    default_factory: Callable[[], _T],
+    init: bool = ...,
+    repr: bool = ...,
+    compare: bool = ...,
+    iter: bool = ...,
+    kw_only: bool = ...,
+    serialize: bool = ...,
+    exclude_field: bool = ...,
+    private: bool = ...,
+    doc: str | None = ...,
+    metadata: dict | None = ...,
+    type: type | _NothingType = ...,
+) -> _T: ...
+
+@typing.overload
+def attribute(
+    *,
+    default: _NothingType = NOTHING,
+    default_factory: _NothingType = NOTHING,
+    init: bool = ...,
+    repr: bool = ...,
+    compare: bool = ...,
+    iter: bool = ...,
+    kw_only: bool = ...,
+    serialize: bool = ...,
+    exclude_field: bool = ...,
+    private: bool = ...,
+    doc: str | None = ...,
+    metadata: dict | None = ...,
+    type: type | _NothingType = ...,
+) -> typing.Any: ...
 
 def prefab_gatherer(cls_or_ns: type | MappingProxyType) -> tuple[dict[str, Attribute], dict[str, typing.Any]]: ...
 
@@ -111,7 +149,8 @@ _T = typing.TypeVar("_T")
 # noinspection PyUnresolvedReferences
 @dataclass_transform(field_specifiers=(Attribute, attribute))
 class Prefab(metaclass=SlotMakerMeta):
-    _meta_gatherer: Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]
+    _meta_gatherer: Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]] = ...
+    __slots__: dict[str, typing.Any] = ...
     def __init_subclass__(
         cls,
         init: bool = True,

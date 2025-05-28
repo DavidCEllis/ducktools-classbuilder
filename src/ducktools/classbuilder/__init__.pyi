@@ -5,7 +5,6 @@ import inspect
 
 from collections.abc import Callable
 from types import MappingProxyType
-from typing_extensions import dataclass_transform
 
 _py_type = type | str  # Alias for type hint values
 _CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
@@ -243,18 +242,6 @@ def slotclass(
 
 
 _gatherer_type = Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]
-
-
-@dataclass_transform(field_specifiers=(Field,))
-class AnnotationClass(metaclass=SlotMakerMeta):
-    __slots__: dict
-
-    def __init_subclass__(
-        cls,
-        methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
-        gatherer: _gatherer_type = unified_gatherer,
-        **kwargs,
-    ) -> None: ...
 
 class GatheredFields:
     __slots__: dict[str, None]

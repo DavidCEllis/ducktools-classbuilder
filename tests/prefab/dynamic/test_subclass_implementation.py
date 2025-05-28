@@ -2,7 +2,7 @@ import inspect
 
 import pytest
 
-from ducktools.classbuilder.prefab import Prefab, Attribute, SlotFields
+from ducktools.classbuilder.prefab import Prefab, Attribute, SlotFields, get_attributes
 
 
 class TestConstructionForms:
@@ -178,3 +178,49 @@ class TestClassArguments:
         assert params['a'].kind == inspect.Parameter.KEYWORD_ONLY
         assert params['b'].kind == inspect.Parameter.KEYWORD_ONLY
         assert params['b'].default == 1
+
+
+def test_slots_weakref():
+    import weakref
+
+    class WeakrefClass(Prefab):
+        a: int = 1
+        b: int = 2
+        __weakref__: dict
+
+    flds = get_attributes(WeakrefClass)
+    assert 'a' in flds
+    assert 'b' in flds
+    assert '__weakref__' not in flds
+
+    slots = WeakrefClass.__slots__
+    assert 'a' in slots
+    assert 'b' in slots
+    assert '__weakref__' in slots
+
+    # Test weakrefs can be created
+    inst = WeakrefClass()
+    ref = weakref.ref(inst)
+    assert ref == inst.__weakref__
+
+
+def test_has_dict():
+    class DictClass(Prefab):
+        a: int = 1
+        b: int = 2
+        __dict__: dict
+
+    flds = get_attributes(DictClass)
+    assert 'a' in flds
+    assert 'b' in flds
+    assert '__dict__' not in flds
+
+    slots = DictClass.__slots__
+    assert 'a' in slots
+    assert 'b' in slots
+    assert '__dict__' in slots
+
+    # Test if __dict__ is included new values can be added
+    inst = DictClass()
+    inst.c = 42
+    assert inst.__dict__ == {"c": 42}

@@ -19,7 +19,6 @@ from ducktools.classbuilder import (
     slot_gatherer,
     slotclass,
 
-    AnnotationClass,
     Field,
     GatheredFields,
     GeneratedCode,
@@ -371,30 +370,6 @@ def test_slotclass_weakref():
     assert ref == inst.__weakref__
 
 
-def test_annotationclass_weakref():
-    import weakref
-
-    class WeakrefClass(AnnotationClass):
-        a: int = 1
-        b: int = 2
-        __weakref__: dict
-
-    flds = get_fields(WeakrefClass)
-    assert 'a' in flds
-    assert 'b' in flds
-    assert '__weakref__' not in flds
-
-    slots = WeakrefClass.__slots__
-    assert 'a' in slots
-    assert 'b' in slots
-    assert '__weakref__' in slots
-
-    # Test weakrefs can be created
-    inst = WeakrefClass()
-    ref = weakref.ref(inst)
-    assert ref == inst.__weakref__
-
-
 def test_slotclass_dict():
     @slotclass
     class DictClass:
@@ -403,28 +378,6 @@ def test_slotclass_dict():
             b=2,
             __dict__=None,
         )
-
-    flds = get_fields(DictClass)
-    assert 'a' in flds
-    assert 'b' in flds
-    assert '__dict__' not in flds
-
-    slots = DictClass.__slots__
-    assert 'a' in slots
-    assert 'b' in slots
-    assert '__dict__' in slots
-
-    # Test if __dict__ is included new values can be added
-    inst = DictClass()
-    inst.c = 42
-    assert inst.__dict__ == {"c": 42}
-
-
-def test_annotationclass_dict():
-    class DictClass(AnnotationClass):
-        a: int = 1
-        b: int = 2
-        __dict__: dict
 
     flds = get_fields(DictClass)
     assert 'a' in flds

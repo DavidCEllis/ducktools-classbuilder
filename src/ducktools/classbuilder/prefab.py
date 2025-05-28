@@ -294,7 +294,7 @@ class Attribute(Field):
     """
     iter: bool = True
     serialize: bool = True
-    metadata: dict = Field(default=FIELD_NOTHING, default_factory=dict)
+    metadata: dict = Field(default=FIELD_NOTHING, default_factory=dict)  # type: ignore
 
 
 # noinspection PyShadowingBuiltins
@@ -551,7 +551,7 @@ def _make_prefab(
 
 class Prefab(metaclass=SlotMakerMeta):
     _meta_gatherer = prefab_gatherer
-    __slots__ = {}
+    __slots__ = {}  # type: ignore
 
     # noinspection PyShadowingBuiltins
     def __init_subclass__(

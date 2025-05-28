@@ -47,7 +47,7 @@ _UNDER_TESTING = os.environ.get("PYTEST_VERSION") is not None
 # Obtain types the same way types.py does in pypy
 # See: https://github.com/pypy/pypy/blob/19d9fa6be11165116dd0839b9144d969ab426ae7/lib-python/3/types.py#L61-L73
 class _C: __slots__ = 's'  # noqa
-_MemberDescriptorType = type(_C.s)  # noqa
+_MemberDescriptorType = type(_C.s)  # type: ignore
 _MappingProxyType = type(type.__dict__)
 del _C
 
@@ -959,24 +959,6 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
         check_argument_order(cls)
 
     return cls
-
-
-class AnnotationClass(metaclass=SlotMakerMeta):
-    __slots__ = {}
-
-    def __init_subclass__(
-            cls,
-            methods=default_methods,
-            gatherer=unified_gatherer,
-            **kwargs
-    ):
-        # Check class dict otherwise this will always be True as this base
-        # class uses slots.
-        slots = "__slots__" in cls.__dict__
-
-        builder(cls, gatherer=gatherer, methods=methods, flags={"slotted": slots})
-        check_argument_order(cls)
-        super().__init_subclass__(**kwargs)
 
 
 @slotclass
