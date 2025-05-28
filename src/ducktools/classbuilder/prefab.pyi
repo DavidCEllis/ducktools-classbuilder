@@ -132,7 +132,6 @@ class Prefab(metaclass=SlotMakerMeta):
 @dataclass_transform(field_specifiers=(Attribute, attribute))
 def prefab(
     cls: type[_T],
-    /,
     *,
     init: bool = ...,
     repr: bool = ...,
@@ -149,7 +148,6 @@ def prefab(
 @dataclass_transform(field_specifiers=(Attribute, attribute))
 def prefab(
     cls: None = None,
-    /,
     *,
     init: bool = ...,
     repr: bool = ...,
