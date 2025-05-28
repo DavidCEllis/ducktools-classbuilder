@@ -108,6 +108,7 @@ def attribute(
     type: type | _NothingType = ...,
 ) -> _T: ...
 
+@typing.overload
 def attribute(
     *,
     default: _NothingType = NOTHING,
@@ -147,7 +148,8 @@ _T = typing.TypeVar("_T")
 # noinspection PyUnresolvedReferences
 @dataclass_transform(field_specifiers=(Attribute, attribute))
 class Prefab(metaclass=SlotMakerMeta):
-    _meta_gatherer: Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]
+    _meta_gatherer: Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]] = ...
+    __slots__: dict[str, typing.Any] = ...
     def __init_subclass__(
         cls,
         init: bool = True,
