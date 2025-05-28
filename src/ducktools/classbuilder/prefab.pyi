@@ -125,13 +125,45 @@ class Prefab(metaclass=SlotMakerMeta):
         recursive_repr: bool = False,
     ) -> None: ...
 
+# As far as I can tell these are the correct types
+# But mypy.stubtest crashes trying to analyse them
+# Due to the combination of overload and dataclass_transform
+# @typing.overload
+# def prefab(
+#     cls: None = None,
+#     *,
+#     init: bool = ...,
+#     repr: bool = ...,
+#     eq: bool = ...,
+#     iter: bool = ...,
+#     match_args: bool = ...,
+#     kw_only: bool = ...,
+#     frozen: bool = ...,
+#     dict_method: bool = ...,
+#     recursive_repr: bool = ...,
+# ) -> Callable[[type[_T]], type[_T]]: ...
 
-# For some reason PyCharm can't see 'attribute'?!?
-# noinspection PyUnresolvedReferences
-@typing.overload
+# @dataclass_transform(field_specifiers=(Attribute, attribute))
+# @typing.overload
+# def prefab(
+#     cls: type[_T],
+#     *,
+#     init: bool = ...,
+#     repr: bool = ...,
+#     eq: bool = ...,
+#     iter: bool = ...,
+#     match_args: bool = ...,
+#     kw_only: bool = ...,
+#     frozen: bool = ...,
+#     dict_method: bool = ...,
+#     recursive_repr: bool = ...,
+# ) -> type[_T]: ...
+
+# As mypy crashes, and the only difference is the return type
+# just return `Any` for now to avoid the overload.
 @dataclass_transform(field_specifiers=(Attribute, attribute))
 def prefab(
-    cls: type[_T],
+    cls: type[_T] | None = ...,
     *,
     init: bool = ...,
     repr: bool = ...,
@@ -142,23 +174,7 @@ def prefab(
     frozen: bool = ...,
     dict_method: bool = ...,
     recursive_repr: bool = ...,
-) -> type[_T]: ...
-
-@typing.overload
-@dataclass_transform(field_specifiers=(Attribute, attribute))
-def prefab(
-    cls: None = None,
-    *,
-    init: bool = ...,
-    repr: bool = ...,
-    eq: bool = ...,
-    iter: bool = ...,
-    match_args: bool = ...,
-    kw_only: bool = ...,
-    frozen: bool = ...,
-    dict_method: bool = ...,
-    recursive_repr: bool = ...,
-) -> Callable[[type[_T]], type[_T]]: ...
+) -> typing.Any: ...
 
 def build_prefab(
     class_name: str,
