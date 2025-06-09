@@ -385,6 +385,36 @@ def eq_generator(cls, funcname="__eq__"):
     return GeneratedCode(code, globs)
 
 
+def replace_generator(cls, funcname="__replace__"):
+    # Generate the replace method for built classes
+    # unlike the dataclasses implementation this is generated
+    attribs = get_fields(cls)
+    
+    # This is essentially the as_dict generator for prefabs
+    # except based on attrib.init instead of .serialize
+    vals = ", ".join(
+        f"'{name}': self.{name}"
+        for name, attrib in attribs.items()
+        if attrib.init
+    )
+    init_dict = f"{{{vals}}}"
+
+    code = (
+        f"def {funcname}(self, /, **changes):\n"
+        f"    new_kwargs = {init_dict}\n"
+        f"    for name, value in changes.items():\n"
+        f"        if name not in new_kwargs:\n"    
+        f"            raise TypeError(\n"
+        f"                f\"{{name!r}} is not a valid replacable \"\n"
+        f"                f\"field on {{self.__class__.__name__!r}}\"\n"
+        f"            )\n"
+        f"        new_kwargs[name] = value\n"
+        f"    return self.__class__(**new_kwargs)\n"
+    )
+    globs = {}
+    return GeneratedCode(code, globs)
+
+
 def frozen_setattr_generator(cls, funcname="__setattr__"):
     globs = {}
     field_names = set(get_fields(cls))
@@ -433,6 +463,7 @@ def frozen_delattr_generator(cls, funcname="__delattr__"):
 init_maker = MethodMaker("__init__", init_generator)
 repr_maker = MethodMaker("__repr__", repr_generator)
 eq_maker = MethodMaker("__eq__", eq_generator)
+replace_maker = MethodMaker("__replace__", replace_generator)
 frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
 default_methods = frozenset({init_maker, repr_maker, eq_maker})

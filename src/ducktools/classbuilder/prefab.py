@@ -30,7 +30,7 @@ from . import (
     Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
     builder, get_flags, get_fields,
     make_unified_gatherer,
-    frozen_setattr_maker, frozen_delattr_maker, eq_maker,
+    eq_maker, frozen_setattr_maker, frozen_delattr_maker, replace_maker,
     get_repr_generator,
 )
 
@@ -441,6 +441,8 @@ def _make_prefab(
     if dict_method:
         methods.add(asdict_maker)
 
+    methods.add(replace_maker)
+
     flags = {
         "kw_only": kw_only,
         "slotted": slotted,
@@ -779,3 +781,8 @@ def as_dict(o):
         for name, attrib in flds.items()
         if attrib.serialize
     }
+
+def replace(obj, /, **changes):
+    if not is_prefab_instance(obj):
+        raise TypeError("replace() should be called on prefab instances")
+    return obj.__replace__(**changes)
