@@ -37,7 +37,10 @@ where = ["src"]
 
 [tool.setuptools_scm]
 version_file = "src/ducktools/classbuilder/_version.py"
-version_file_template = "__version__ = \"{version}\"\n__version_tuple__ = {version_tuple}\n"
+version_file_template = """
+__version__ = "{version}"
+__version_tuple__ = {version_tuple}
+"""
 
 [project.urls]
 "Homepage" = "https://github.com/davidcellis/ducktools-classbuilder"
