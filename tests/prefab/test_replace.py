@@ -13,10 +13,10 @@ from ducktools.classbuilder.prefab import (
 
 replace_funcs = [prefab_replace]
 if sys.version_info >= (3, 13):  # 3.13 test against the copy version too
-    replace_funcs.append(copy.replace)
+    replace_funcs.append(copy.replace)  # type: ignore
 
 
-def ex_classes():
+def ex_classes() -> tuple[type, type]:
     @prefab
     class ExDecorator:
         a: int = 1
