@@ -26,7 +26,7 @@ classifiers = [
 dynamic = ['version']
 
 [project.optional-dependencies]
-testing = ["pytest>=8.2", "pytest-cov", "typing_extensions"]
+testing = ["pytest>=8.2", "pytest-cov"]
 type_checking = ["mypy"]
 performance_tests = ["attrs", "pydantic"]
 docs = ["sphinx", "myst-parser", "sphinx_rtd_theme"]

@@ -1,3 +1,6 @@
+# This module commits intentional typing related crimes, ignore any errors
+# type: ignore
+
 from __future__ import annotations
 
 from ducktools.classbuilder.annotations import get_ns_annotations
