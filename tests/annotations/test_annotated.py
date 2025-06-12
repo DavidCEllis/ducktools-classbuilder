@@ -1,12 +1,14 @@
+# This module commits intentional typing related crimes, ignore any errors
+# type: ignore
+
 """
-Tests to check that typing.Annotated / typing_extensions.Annotated
+Tests to check that typing.Annotated
 does not interfere when wrapping ClassVar
 """
 
 import sys
 
-from typing import ClassVar
-from typing_extensions import Annotated
+from typing import Annotated, ClassVar
 
 from ducktools.classbuilder import (
     Field, SlotFields, NOTHING,
