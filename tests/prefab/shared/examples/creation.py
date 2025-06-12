@@ -1,11 +1,6 @@
 import sys
 import typing
-from typing import ClassVar
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
+from typing import Annotated, ClassVar
 
 from ducktools.classbuilder.prefab import prefab, attribute
 
@@ -73,11 +68,11 @@ class IgnoreAnnotatedClassVars:
     # Ignore v and w for python 3.10 or earlier
     # as plain classvar is an error there.
     if sys.version_info >= (3, 11):
-        v: Annotated[ClassVar, "v"] = 12
-        w: "Annotated[ClassVar, 'w']" = 24
-    x: Annotated[typing.ClassVar[int], "x"] = 42
-    y: Annotated[ClassVar[str], "y"] = "Apple"
-    z: "Annotated[ClassVar[float], 'z']" = 3.14
+        v: Annotated[ClassVar, "v"] = 12  # type: ignore
+        w: "Annotated[ClassVar, 'w']" = 24  # type: ignore
+    x: Annotated[typing.ClassVar[int], "x"] = 42  # type: ignore
+    y: Annotated[ClassVar[str], "y"] = "Apple"  # type: ignore
+    z: "Annotated[ClassVar[float], 'z']" = 3.14  # type: ignore
     actual: str = "Test"
 
 
@@ -102,7 +97,7 @@ class SplitVarDef:
 class SplitVarDefReverseOrder:
     # This should still work in the reverse order
     x = "test"
-    x: str
+    x: str  # type: ignore
 
 
 @prefab
@@ -126,9 +121,9 @@ class HorribleMess:
     # Nobody should write a class like this, but it should still work
     x: str
     x = attribute(default="fake_test", init=False, repr=False)
-    x: str = "test"  # This should override the init and repr False statements
+    x: str = "test"  # type: ignore  # This should override the init and repr False statements
     y: str = "test_2"
-    y: str
+    y: str  # type: ignore
 
 
 @prefab
