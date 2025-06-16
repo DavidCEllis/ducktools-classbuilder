@@ -8,3 +8,7 @@ if sys.version_info < (3, 16):
     collect_ignore.extend(
         f"py3{i+1}_tests" for i in range(minor_ver, 16)
     )
+
+
+def pytest_report_header():
+    return f"virtualenv: {sys.prefix}"
