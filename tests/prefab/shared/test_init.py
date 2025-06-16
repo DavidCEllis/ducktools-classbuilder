@@ -69,13 +69,9 @@ def test_no_default():
     with pytest.raises(TypeError) as e_info:
         x = Coordinate(1)
 
-    # Error message was changed in 3.10 to __qualname__ from __name__
-    if sys.version_info[:2] >= (3, 10):
-        error_message = (
-            "Coordinate.__init__() missing 1 required positional argument: 'y'"
-        )
-    else:
-        error_message = "__init__() missing 1 required positional argument: 'y'"
+    error_message = (
+        "Coordinate.__init__() missing 1 required positional argument: 'y'"
+    )
 
     assert e_info.value.args[0] == error_message
 
