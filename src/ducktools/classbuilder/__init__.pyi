@@ -13,6 +13,7 @@ __version__: str
 __version_tuple__: tuple[str | int, ...]
 INTERNALS_DICT: str
 META_GATHERER_NAME: str
+GATHERED_DATA: str
 
 def get_fields(cls: type, *, local: bool = False) -> dict[str, Field]: ...
 
@@ -122,7 +123,8 @@ class SlotMakerMeta(type):
         name: str,
         bases: tuple[type, ...],
         ns: dict[str, typing.Any],
-        slots: bool = True,
+        slots: bool = ...,
+        gatherer: Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]] | None = ...,
         **kwargs: typing.Any,
     ) -> _T: ...
 
@@ -167,6 +169,9 @@ class Field(metaclass=SlotMakerMeta):
 _ReturnsField = Callable[..., Field]
 _FieldType = typing.TypeVar("_FieldType", bound=Field)
 
+def pre_gathered_gatherer(
+    cls_or_ns: type | _CopiableMappings
+) -> tuple[dict[str, Field | _FieldType], dict[str, typing.Any]]: ...
 
 @typing.overload
 def make_slot_gatherer(
@@ -206,13 +211,15 @@ def make_field_gatherer(
 @typing.overload
 def make_unified_gatherer(
     field_type: type[_FieldType],
-    leave_default_values: bool = False,
+    leave_default_values: bool = ...,
+    ignore_annotations: bool = ...,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
 
 @typing.overload
 def make_unified_gatherer(
-    field_type: _ReturnsField = Field,
-    leave_default_values: bool = False,
+    field_type: _ReturnsField = ...,
+    leave_default_values: bool = ...,
+    ignore_annotations: bool = ...,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 
@@ -246,7 +253,7 @@ def slotclass(
 _gatherer_type = Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]
 
 class GatheredFields:
-    __slots__: dict[str, None]
+    __slots__: tuple[str, ...]
 
     fields: dict[str, Field]
     modifications: dict[str, typing.Any]
@@ -262,4 +269,4 @@ class GatheredFields:
 
     def __repr__(self) -> str: ...
     def __eq__(self, other) -> bool: ...
-    def __call__(self, cls: type) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
+    def __call__(self, cls_dict: type | dict[str, typing.Any]) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...

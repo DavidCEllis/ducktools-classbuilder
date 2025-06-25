@@ -115,14 +115,13 @@ def reportclass(cls):
 slot_gatherer = dtbuild.make_slot_gatherer(CustomField)
 
 
-class ReportClass(metaclass=dtbuild.SlotMakerMeta):
+class ReportClass(metaclass=dtbuild.SlotMakerMeta, gatherer=fields_attribute_gatherer):
     __slots__ = {}
-    _meta_gatherer = fields_attribute_gatherer
-
+    
     def __init_subclass__(cls):
-        # Check if the metaclass has generated slots
-        meta_slotted = '__slots__' in vars(cls) and isinstance(cls.__slots__, dtbuild.SlotFields)
-        gatherer = slot_gatherer if meta_slotted else fields_attribute_gatherer
+        # Check if the metaclass has pre-gathered data
+        pre_gathered = dtbuild.GATHERED_DATA in vars(cls)
+        gatherer = dtbuild.pre_gathered_gatherer if pre_gathered else fields_attribute_gatherer
         methods = {
             dtbuild.eq_maker,
             dtbuild.repr_maker,
@@ -130,7 +129,6 @@ class ReportClass(metaclass=dtbuild.SlotMakerMeta):
             report_maker
         }
 
-        # The class may still have slots unrelated to code generation
         slotted = "__slots__" in vars(cls)
         flags = {"slotted": slotted}
 

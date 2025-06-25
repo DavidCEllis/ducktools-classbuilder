@@ -6,9 +6,10 @@ from ducktools.classbuilder import (
     default_methods,
     get_fields,
     get_methods,
-    slot_gatherer,
+    pre_gathered_gatherer,
     Field,
     SlotMakerMeta,
+    GATHERED_DATA,
     NOTHING,
 )
 
@@ -110,16 +111,15 @@ def annotatedclass(cls=None, *, kw_only=False):
 
 
 # As a base class with slots
-class AnnotatedClass(metaclass=SlotMakerMeta):
-    # This attribute tells the slotmaker to use this gatherer
-    _meta_gatherer = annotated_gatherer
-
+class AnnotatedClass(metaclass=SlotMakerMeta, gatherer=annotated_gatherer):
+    
     def __init_subclass__(cls, kw_only=False, **kwargs):
+        pre_gathered = GATHERED_DATA in cls.__dict__
         slots = "__slots__" in cls.__dict__
 
         # if slots is True then fields will already be present in __slots__
         # Use the slot_gatherer for this case
-        gatherer = slot_gatherer if slots else annotated_gatherer
+        gatherer = pre_gathered_gatherer if pre_gathered else annotated_gatherer
 
         builder(
             cls,
@@ -139,10 +139,10 @@ if __name__ == "__main__":
     class X:
         x: str
         y: ClassVar[str] = "This should be ignored"
-        z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"
-        a: Annotated[int, NO_INIT] = "Not In __init__ signature"
+        z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"  # type: ignore
+        a: Annotated[int, NO_INIT] = "Not In __init__ signature"  # type: ignore
         b: Annotated[str, NO_REPR] = "Not In Repr"
-        c: Annotated[list[str], NO_COMPARE] = Field(default_factory=list)
+        c: Annotated[list[str], NO_COMPARE] = Field(default_factory=list)  # type: ignore
         d: Annotated[str, IGNORE_ALL] = "Not Anywhere"
         e: Annotated[str, KW_ONLY, NO_COMPARE]
 
@@ -150,23 +150,23 @@ if __name__ == "__main__":
     class Y(AnnotatedClass):
         x: str
         y: ClassVar[str] = "This should be ignored"
-        z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"
-        a: Annotated[int, NO_INIT] = "Not In __init__ signature"
+        z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"  # type: ignore
+        a: Annotated[int, NO_INIT] = "Not In __init__ signature"  # type: ignore
         b: Annotated[str, NO_REPR] = "Not In Repr"
-        c: Annotated[list[str], NO_COMPARE] = Field(default_factory=list)
+        c: Annotated[list[str], NO_COMPARE] = Field(default_factory=list)  # type: ignore
         d: Annotated[str, IGNORE_ALL] = "Not Anywhere"
         e: Annotated[str, KW_ONLY, NO_COMPARE]
 
 
     # Unslotted Demo
-    ex = X("Value of x", e="Value of e")
+    ex = X("Value of x", e="Value of e")  # type: ignore
     print(ex, "\n")
 
     pp(get_fields(X))
     print("\n")
 
     # Slotted Demo
-    ex = Y("Value of x", e="Value of e")
+    ex = Y("Value of x", e="Value of e")  # type: ignore
     print(ex, "\n")
 
     print(f"Slots: {Y.__dict__.get('__slots__')}")

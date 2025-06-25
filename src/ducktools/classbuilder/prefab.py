@@ -551,8 +551,7 @@ def _make_prefab(
     return cls
 
 
-class Prefab(metaclass=SlotMakerMeta):
-    _meta_gatherer = prefab_gatherer
+class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
     __slots__ = {}  # type: ignore
 
     # noinspection PyShadowingBuiltins

@@ -48,6 +48,7 @@ hash_maker: MethodMaker
 class Attribute(Field):
     __slots__: dict
     __signature__: inspect.Signature
+    __classbuilder_gathered_fields__: tuple[dict[str, Field], dict[str, typing.Any]]
 
     iter: bool
     serialize: bool

@@ -38,7 +38,7 @@ from ._version import __version__, __version_tuple__  # noqa: F401
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
 META_GATHERER_NAME = "_meta_gatherer"
-
+GATHERED_DATA = "__classbuilder_gathered_fields__"
 
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
@@ -575,21 +575,25 @@ class SlotMakerMeta(type):
 
     Will not convert `ClassVar` hinted values.
     """
-    def __new__(cls, name, bases, ns, slots=True, **kwargs):
+    def __new__(cls, name, bases, ns, slots=True, gatherer=None, **kwargs):
         # This should only run if slots=True is declared
         # and __slots__ have not already been defined
-        if slots and "__slots__" not in ns:
+        if slots and "__slots__" not in ns:            
             # Check if a different gatherer has been set in any base classes
             # Default to unified gatherer
-            gatherer = ns.get(META_GATHERER_NAME, None)
-            if not gatherer:
-                for base in bases:
-                    if g := getattr(base, META_GATHERER_NAME, None):
-                        gatherer = g
-                        break
+            if gatherer is None:
+                gatherer = ns.get(META_GATHERER_NAME, None)
+                if not gatherer:
+                    for base in bases:
+                        if g := getattr(base, META_GATHERER_NAME, None):
+                            gatherer = g
+                            break
 
-            if not gatherer:
-                gatherer = unified_gatherer
+                if not gatherer:
+                    gatherer = unified_gatherer
+
+            # Set the gatherer in the namespace
+            ns[META_GATHERER_NAME] = gatherer
 
             # Obtain slots from annotations or attributes
             cls_fields, cls_modifications = gatherer(ns)
@@ -599,8 +603,24 @@ class SlotMakerMeta(type):
                 else:
                     ns[k] = v
 
+            slots = {}
+            fields = {}
+
+            for k, v in cls_fields.items():
+                slots[k] = v.doc
+                if k not in {"__weakref__", "__dict__"}:
+                    fields[k] = v
+
             # Place slots *after* everything else to be safe
-            ns["__slots__"] = SlotFields(cls_fields)
+            ns["__slots__"] = slots
+
+            # Place pre-gathered field data - modifications are already applied
+            modifications = {}
+            ns[GATHERED_DATA] = fields, modifications
+        
+        else:
+            if gatherer is not None:
+                ns[META_GATHERER_NAME] = gatherer
 
         new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
@@ -709,6 +729,15 @@ class Field(metaclass=SlotMakerMeta):
         argument_dict = {**_get_inst_fields(fld), **kwargs}
 
         return cls(**argument_dict)
+
+
+def pre_gathered_gatherer(cls_or_ns):
+    if isinstance(cls_or_ns, (_MappingProxyType, dict)):
+        cls_dict = cls_or_ns
+    else:
+        cls_dict = cls_or_ns.__dict__
+    
+    return cls_dict[GATHERED_DATA]
 
 
 def make_slot_gatherer(field_type=Field):
@@ -887,6 +916,7 @@ def make_field_gatherer(
 def make_unified_gatherer(
     field_type=Field,
     leave_default_values=False,
+    ignore_annotations=False,
 ):
     """
     Create a gatherer that will work via first slots, then
@@ -895,6 +925,7 @@ def make_unified_gatherer(
 
     :param field_type: The field class to use for gathering
     :param leave_default_values: leave default values in place
+    :param ignore_annotations: don't attempt to read annotations
     :return: gatherer function
     """
     slot_g = make_slot_gatherer(field_type)
@@ -907,27 +938,35 @@ def make_unified_gatherer(
         else:
             cls_dict = cls_or_ns.__dict__
 
+        cls_gathered = cls_dict.get(GATHERED_DATA)
+        if cls_gathered:
+            return pre_gathered_gatherer(cls_dict)
+
         cls_slots = cls_dict.get("__slots__")
 
         if isinstance(cls_slots, SlotFields):
             return slot_g(cls_dict)
 
-        # To choose between annotation and attribute gatherers
-        # compare sets of names.
-        # Don't bother evaluating string annotations, as we only need names
-        cls_annotations = get_ns_annotations(cls_dict)
-        cls_attributes = {
-            k: v for k, v in cls_dict.items() if isinstance(v, field_type)
-        }
+        if ignore_annotations:
+            return attrib_g(cls_dict)
+        else:
+            # To choose between annotation and attribute gatherers
+            # compare sets of names.
+            # Don't bother evaluating string annotations, as we only need names
+            cls_annotations = get_ns_annotations(cls_dict)
+            cls_attributes = {
+                k: v for k, v in cls_dict.items() if isinstance(v, field_type)
+            }
 
-        cls_annotation_names = cls_annotations.keys()
-        cls_attribute_names = cls_attributes.keys()
+            cls_annotation_names = cls_annotations.keys()
+            cls_attribute_names = cls_attributes.keys()
 
-        if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
-            # All `Field` values have annotations, so use annotation gatherer
-            return anno_g(cls_dict)
+            if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
+                # All `Field` values have annotations, so use annotation gatherer
+                return anno_g(cls_dict)
 
-        return attrib_g(cls_dict)
+            return attrib_g(cls_dict)
+        
     return field_unified_gatherer
 
 
@@ -996,15 +1035,23 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     return cls
 
 
-@slotclass
+# Gatherer logic
 class GatheredFields:
     """
-    A helper gatherer for fields that have been gathered externally.
+    Helper class to store gathered field data
     """
-    __slots__ = SlotFields(
-        fields=Field(),
-        modifications=Field(),
-    )
+    __slots__ = ("fields", "modifications")
 
-    def __call__(self, cls):
+    def __init__(self, fields, modifications):
+        self.fields = fields
+        self.modifications = modifications
+
+    def __eq__(self, other):
+        if type(self) is type(other):
+            return self.fields == other.fields and self.modifications == other.modifications
+        
+    def __repr__(self):
+        return f"{type(self).__name__}(fields={self.fields!r}, modifications={self.modifications!r})"
+
+    def __call__(self, cls_dict):
         return self.fields, self.modifications

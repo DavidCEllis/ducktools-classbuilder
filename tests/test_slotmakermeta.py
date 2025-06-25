@@ -1,6 +1,6 @@
 from typing import Annotated, ClassVar, List
 
-from ducktools.classbuilder import Field, SlotFields, NOTHING, SlotMakerMeta
+from ducktools.classbuilder import Field, SlotFields, NOTHING, SlotMakerMeta, GATHERED_DATA
 
 import pytest
 
@@ -19,13 +19,20 @@ def test_slots_created():
     assert hasattr(ExampleAnnotated, "__slots__")
 
     slots = ExampleAnnotated.__slots__  # noqa
-    expected_slots = SlotFields({
-        "a": Field(default="a", type=str),
-        "b": Field(default="b", type="List[str]"),
-        "c": Field(default="c", type=Annotated[str, ""])
-    })
+    expected_slots = {"a": None, "b": None, "c": None}
 
     assert slots == expected_slots
+
+    expected_fields = {
+        "a": Field(default="a", type=str), 
+        "b": Field(default="b", type="List[str]"), 
+        "c": Field(default="c", type=Annotated[str, ""]),
+    }
+
+    fields, modifications = getattr(ExampleAnnotated, GATHERED_DATA)
+
+    assert fields == expected_fields
+    assert modifications == {}
 
 
 def test_slots_correct_subclass():
@@ -37,12 +44,8 @@ def test_slots_correct_subclass():
     class ExampleChild(ExampleBase):
         d: str = "d"
 
-    assert ExampleBase.__slots__ == SlotFields(    # noqa
-        a=Field(type=str),
-        b=Field(default="b", type=str),
-        c=Field(default="c", type=str),
-    )
-    assert ExampleChild.__slots__ == SlotFields(d=Field(default="d", type=str))  # noqa
+    assert ExampleBase.__slots__ == {"a": None, "b": None, "c": None}
+    assert ExampleChild.__slots__ == {"d": None}
 
     inst = ExampleChild()
 
@@ -63,7 +66,11 @@ def test_slots_attribute():
         y: str = Field(default="y")
         z = Field(default="z")
 
-    assert ExampleBase.__slots__ == SlotFields(  # noqa
-        y=Field(default="y", type=str),
-        z=Field(default="z"),
-    )
+    assert ExampleBase.__slots__ == {"y": None, "z": None}
+
+
+def test_made_doc():
+    class ExampleBase(metaclass=SlotMakerMeta):
+        x: str = Field(doc="Test")
+
+    assert ExampleBase.__slots__ == {"x": "Test"}
