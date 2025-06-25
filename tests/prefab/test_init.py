@@ -30,12 +30,12 @@ class CoordinateDefaults:
 
 @prefab
 class MutableDefault:
-    x = attribute(default=list())
+    x = attribute(default=list())  # type: ignore
 
 
 @prefab
 class FactoryDefault:
-    x = attribute(default_factory=list)
+    x = attribute(default_factory=list)  # type: ignore
 
 
 @prefab

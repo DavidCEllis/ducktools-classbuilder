@@ -1,10 +1,59 @@
 import pytest
 
 from ducktools.classbuilder.annotations import get_ns_annotations
+from ducktools.classbuilder.prefab import attribute, prefab, KW_ONLY
+
+
+# Test Classes
+@prefab
+class KWBasic:
+    x = attribute(kw_only=True)
+    y = attribute(kw_only=True)
+
+
+@prefab
+class KWOrdering:
+    x = attribute(default=2, kw_only=True)
+    y = attribute()
+
+
+@prefab
+class KWBase:
+    x = attribute(default=2, kw_only=True)
+
+
+@prefab
+class KWChild(KWBase):
+    y = attribute()
+
+
+@prefab(kw_only=True)
+class KWPrefabArgument:
+    x = attribute()
+    y = attribute()
+
+
+@prefab(kw_only=True)
+class KWPrefabArgumentOverrides:
+    x = attribute()
+    y = attribute(kw_only=False)
+
+
+@prefab
+class KWFlagNoDefaults:
+    x: int
+    _: KW_ONLY  # type: ignore
+    y: int
+
+
+@prefab
+class KWFlagXDefault:
+    x: int = 1
+    _: KW_ONLY  # type: ignore
+    y: int  # type: ignore
+
 
 def test_kw_only_basic():
-    from kw_only import KWBasic
-
     # Check the typeerror is raised for
     # trying to use positional arguments
     with pytest.raises(TypeError):
@@ -15,8 +64,6 @@ def test_kw_only_basic():
 
 
 def test_kw_only_ordering():
-    from kw_only import KWOrdering
-
     with pytest.raises(TypeError):
         x = KWOrdering(1, 2)
 
@@ -26,8 +73,6 @@ def test_kw_only_ordering():
 
 
 def test_kw_only_inheritance():
-    from kw_only import KWChild
-
     with pytest.raises(TypeError):
         x = KWChild(1, 2)
 
@@ -39,8 +84,6 @@ def test_kw_only_inheritance():
 
 
 def test_kw_only_prefab_argument():
-    from kw_only import KWPrefabArgument
-
     with pytest.raises(TypeError):
         x = KWPrefabArgument(1, 2)
 
@@ -51,8 +94,6 @@ def test_kw_only_prefab_argument():
 
 
 def test_kw_only_prefab_argument_overrides():
-    from kw_only import KWPrefabArgumentOverrides
-
     with pytest.raises(TypeError):
         x = KWPrefabArgumentOverrides(1, 2)
 
@@ -63,8 +104,6 @@ def test_kw_only_prefab_argument_overrides():
 
 
 def test_kw_flag_no_defaults():
-    from kw_only import KWFlagNoDefaults
-
     annotations = get_ns_annotations(KWFlagNoDefaults.__dict__)
 
     assert "_" in annotations
@@ -81,8 +120,6 @@ def test_kw_flag_no_defaults():
 
 
 def test_kw_flat_defaults():
-    from kw_only import KWFlagXDefault
-
     with pytest.raises(TypeError):
         x = KWFlagXDefault(1, 2)
 
