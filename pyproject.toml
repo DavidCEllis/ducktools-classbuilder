@@ -62,3 +62,8 @@ addopts= "--cov=src/ --cov-report=term-missing"
 testpaths = [
     "tests",
 ]
+
+[tool.mypy]
+# A combination of types in stubs and tests using dataclass syntax
+# means that there are a number of annotations in otherwise unannotated areas
+disable_error_code = ["annotation-unchecked"]
