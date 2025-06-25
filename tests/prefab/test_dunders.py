@@ -119,44 +119,67 @@ def test_match_args_disabled():
         _ = NoMatchArgs.__match_args__
 
 
-def test_dunders_not_overwritten():
-    @prefab
-    class DundersExist:
-        x: int
-        y: int
+class TestKeepDefined:
+    def test_keep_init(self):
+        @prefab
+        class KeepDefinedMethods:
+            x: int = -1
+            y: int = -1
 
-        __match_args__ = ("x",)  # type: ignore
+            def __init__(self, x=0, y=0):
+                self.x = 1
+                self.y = 1
 
-        def __init__(self, x, y):
-            self.x = 2 * x
-            self.y = 3 * y
+        x = KeepDefinedMethods(42)
 
-        def __repr__(self):
-            return "NOT_REPLACED"
+        assert x.x == 1
+        assert x.y == 1
 
-        def __eq__(self, other):
-            return True
+    def test_keep_repr(self):
+        @prefab
+        class KeepDefinedMethods:
+            x: int = -1
+            y: int = -1
 
-        def __iter__(self):
-            yield self.x
+            def __repr__(self):
+                return "ORIGINAL REPR"
 
+        x = KeepDefinedMethods()
+        assert repr(x) == "ORIGINAL REPR"
 
-    x = DundersExist(0, 0)
-    y = DundersExist(1, 1)
+    def test_keep_eq(self):
+        @prefab
+        class KeepDefinedMethods:
+            x: int = -1
+            y: int = -1
 
-    # __match_args__
-    assert DundersExist.__match_args__ == ("x",)
+            def __eq__(self, other):
+                return False
 
-    # __init__
-    assert (x.x, x.y) == (0, 0)
-    assert (y.x, y.y) == (2, 3)
+        x = KeepDefinedMethods()
 
-    # __repr__
-    assert repr(x) == repr(y) == "NOT_REPLACED"
+        assert x != x
 
-    # __eq__
-    assert x == y
+    def test_keep_iter(self):
+        @prefab(iter=True, match_args=True)
+        class KeepDefinedMethods:
+            x: int = -1
+            y: int = -1
 
-    # __iter__
-    for item in y:
-        assert item is y.x
+            def __iter__(self):
+                yield from ["ORIGINAL ITER"]
+
+        x = KeepDefinedMethods()
+
+        y = list(x)
+        assert y[0] == "ORIGINAL ITER"
+
+    def test_keep_match_args(self):
+        @prefab(iter=True, match_args=True)
+        class KeepDefinedMethods:
+            x: int = -1
+            y: int = -1
+
+            __match_args__ = ("x",)  # type: ignore
+
+        assert KeepDefinedMethods.__match_args__ == ("x",)
