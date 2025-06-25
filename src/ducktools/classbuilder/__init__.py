@@ -116,7 +116,7 @@ FIELD_NOTHING = _NothingType("FIELD")
 # noinspection PyPep8Naming
 class _KW_ONLY_META(type):
     def __repr__(self):
-        return "<KW_ONLY Sentinel Object>"
+        return "<KW_ONLY Sentinel>"
 
 
 class KW_ONLY(metaclass=_KW_ONLY_META):
