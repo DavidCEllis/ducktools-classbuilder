@@ -4,24 +4,47 @@ import pytest
 from ducktools.classbuilder.prefab import attribute, prefab, SlotFields
 
 
+# Classes with REPR checks
+@prefab
+class Coordinate:
+    x: float
+    y: float
+
+@prefab
+class Coordinate3D(Coordinate):
+    z: float
+
+@prefab
+class CoordinateTime:
+    t: float
+
+@prefab
+class Coordinate4D(CoordinateTime, Coordinate3D):
+    pass
+
+@prefab
+class CoordinateNoXRepr:
+    x: float = attribute(repr=False)
+    y: float
+
+
+@prefab
+class NoXReprNoXInit:
+    _type = attribute(default=None, init=False, repr=False)
+
+
+# Tests
 def test_repr():
-    from dunders import Coordinate
-
     expected_repr = "Coordinate(x=1, y=2)"
-
     assert repr(Coordinate(1, 2)) == expected_repr
 
 
 def test_repr_exclude():
-    from dunders import CoordinateNoXRepr
-
     expected_repr = "<generated class CoordinateNoXRepr; y=2>"
     assert repr(CoordinateNoXRepr(1, 2)) == expected_repr
 
 
 def test_repr_init_exclude():
-    from dunders import NoXReprNoXInit
-
     x = NoXReprNoXInit()
     assert x._type == None
 
@@ -30,7 +53,10 @@ def test_repr_init_exclude():
 
 
 def test_iter():
-    from dunders import CoordinateIter
+    @prefab(iter=True)
+    class CoordinateIter:
+        x: float
+        y: float
 
     x = CoordinateIter(1, 2)
 
@@ -64,8 +90,6 @@ def test_iter_exclude():
 
 
 def test_eq():
-    from dunders import Coordinate4D
-
     x = Coordinate4D(1, 2, 3, 4)
     y = Coordinate4D(1, 2, 3, 4)
 
@@ -74,8 +98,6 @@ def test_eq():
 
 
 def test_neq():
-    from dunders import Coordinate4D
-
     x = Coordinate4D(1, 2, 3, 4)
     y = Coordinate4D(5, 6, 7, 8)
 
@@ -84,20 +106,40 @@ def test_neq():
 
 
 def test_match_args():
-    from dunders import Coordinate4D
-
     assert Coordinate4D.__match_args__ == ("x", "y", "z", "t")
 
 
 def test_match_args_disabled():
-    from dunders import NoMatchArgs
+    @prefab(match_args=False)
+    class NoMatchArgs:
+        x: float
+        y: float
 
     with pytest.raises(AttributeError):
         _ = NoMatchArgs.__match_args__
 
 
 def test_dunders_not_overwritten():
-    from dunders import DundersExist
+    @prefab
+    class DundersExist:
+        x: int
+        y: int
+
+        __match_args__ = ("x",)  # type: ignore
+
+        def __init__(self, x, y):
+            self.x = 2 * x
+            self.y = 3 * y
+
+        def __repr__(self):
+            return "NOT_REPLACED"
+
+        def __eq__(self, other):
+            return True
+
+        def __iter__(self):
+            yield self.x
+
 
     x = DundersExist(0, 0)
     y = DundersExist(1, 1)
