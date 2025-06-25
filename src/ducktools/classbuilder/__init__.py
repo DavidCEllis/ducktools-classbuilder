@@ -124,7 +124,6 @@ class KW_ONLY(metaclass=_KW_ONLY_META):
     Sentinel Class to indicate that variables declared after
     this sentinel are to be converted to KW_ONLY arguments.
     """
-    pass
 
 
 class GeneratedCode:
