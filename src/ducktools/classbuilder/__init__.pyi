@@ -28,11 +28,11 @@ class _NothingType:
 NOTHING: _NothingType
 FIELD_NOTHING: _NothingType
 
-# noinspection PyPep8Naming
-class _KW_ONLY_TYPE:
+class _KW_ONLY_META(type):
     def __repr__(self) -> str: ...
 
-KW_ONLY: _KW_ONLY_TYPE
+class KW_ONLY(metaclass=_KW_ONLY_META): ...
+
 # Stub Only
 @typing.type_check_only
 class _CodegenType(typing.Protocol):

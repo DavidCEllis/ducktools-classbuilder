@@ -2,7 +2,7 @@ from ducktools.classbuilder.prefab import prefab, attribute
 from ducktools.classbuilder import INTERNALS_DICT
 
 
-def test_dynamic_internals():
+def test_internals_dict():
     @prefab
     class X:
         x: int

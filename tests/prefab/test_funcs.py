@@ -1,12 +1,29 @@
 """Tests related to serialization to JSON or Pickle"""
+from pathlib import Path
 
 from ducktools.classbuilder.prefab import prefab, attribute, SlotFields
 from ducktools.classbuilder.prefab import is_prefab, is_prefab_instance, as_dict
 
 
-def test_is_prefab():
-    from funcs_prefabs import Coordinate  # noqa
+@prefab
+class Coordinate:
+    x: float
+    y: float
 
+
+@prefab(dict_method=True)
+class CachedCoordinate:
+    x: float
+    y: float
+
+
+@prefab
+class PicklePrefab:
+    x = attribute(default=800)
+    y = attribute(default=Path("Settings.json"))
+
+
+def test_is_prefab():
     # The Class is a prefab
     assert is_prefab(Coordinate)
 
@@ -15,8 +32,6 @@ def test_is_prefab():
 
 
 def test_is_prefab_instance():
-    from funcs_prefabs import Coordinate  # noqa
-
     # 'Coordinate' is not a prefab instance, it is a class
     assert not is_prefab_instance(Coordinate)
 
@@ -26,8 +41,6 @@ def test_is_prefab_instance():
 
 # Serialization tests
 def test_as_dict():
-    from funcs_prefabs import Coordinate, CachedCoordinate  # noqa
-
     x = Coordinate(1, 2)
 
     expected_dict = {"x": 1, "y": 2}
@@ -85,8 +98,6 @@ def test_as_dict_excludes():
     assert as_dict(user4) == user4_out
 
 def test_picklable():
-    from funcs_prefabs import PicklePrefab  # noqa
-
     picktest = PicklePrefab()
 
     import pickle

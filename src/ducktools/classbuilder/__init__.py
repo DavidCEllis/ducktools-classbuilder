@@ -114,12 +114,17 @@ FIELD_NOTHING = _NothingType("FIELD")
 # KW_ONLY sentinel 'type' to use to indicate all subsequent attributes are
 # keyword only
 # noinspection PyPep8Naming
-class _KW_ONLY_TYPE:
+class _KW_ONLY_META(type):
     def __repr__(self):
         return "<KW_ONLY Sentinel Object>"
 
 
-KW_ONLY = _KW_ONLY_TYPE()
+class KW_ONLY(metaclass=_KW_ONLY_META):
+    """
+    Sentinel Class to indicate that variables declared after
+    this sentinel are to be converted to KW_ONLY arguments.
+    """
+    pass
 
 
 class GeneratedCode:
