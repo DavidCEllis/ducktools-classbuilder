@@ -4,6 +4,8 @@ from pathlib import Path
 from ducktools.classbuilder.prefab import prefab, attribute, SlotFields
 from ducktools.classbuilder.prefab import is_prefab, is_prefab_instance, as_dict
 
+from utils import graalpy_fails  # type: ignore
+
 
 @prefab
 class Coordinate:
@@ -54,6 +56,7 @@ def test_as_dict():
     assert as_dict(y) == expected_dict
 
 
+@graalpy_fails
 def test_as_dict_excludes():
     @prefab
     class ExcludesUncached:

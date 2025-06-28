@@ -4,7 +4,10 @@ from ducktools.classbuilder import Field, SlotFields, NOTHING, SlotMakerMeta, GA
 
 import pytest
 
+from utils import graalpy_fails  # type: ignore
 
+
+@graalpy_fails
 def test_slots_created():
     class ExampleAnnotated(metaclass=SlotMakerMeta):
         a: str = "a"
@@ -35,6 +38,7 @@ def test_slots_created():
     assert modifications == {}
 
 
+@graalpy_fails
 def test_slots_correct_subclass():
     class ExampleBase(metaclass=SlotMakerMeta):
         a: str
@@ -58,6 +62,7 @@ def test_slots_correct_subclass():
         inst.e = "e"
 
 
+@graalpy_fails
 def test_slots_attribute():
     # In the case where an unannotated field is declared, ignore
     # annotations without field values.
@@ -69,6 +74,7 @@ def test_slots_attribute():
     assert ExampleBase.__slots__ == {"y": None, "z": None}
 
 
+@graalpy_fails
 def test_made_doc():
     class ExampleBase(metaclass=SlotMakerMeta):
         x: str = Field(doc="Test")

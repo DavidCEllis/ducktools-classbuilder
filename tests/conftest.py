@@ -1,4 +1,10 @@
 import sys
+from pathlib import Path
+
+
+_helpers = str(Path(__file__).parent / "helpers")
+sys.path.insert(0, _helpers)
+
 
 collect_ignore: list[str] = []
 

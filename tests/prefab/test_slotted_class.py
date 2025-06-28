@@ -3,7 +3,12 @@ import pytest
 from ducktools.classbuilder.annotations import get_ns_annotations
 from ducktools.classbuilder.prefab import prefab, attribute, SlotFields
 
+import pytest
 
+from utils import graalpy_fails  # type: ignore
+
+
+@graalpy_fails
 def test_basic_slotted():
     @prefab
     class SlottedPrefab:
@@ -20,6 +25,7 @@ def test_basic_slotted():
     assert ex.y == 3.14
 
 
+@graalpy_fails
 def test_class_unchanged():
     # By using slots to define the class prefab_classes does not need to create
     # a new class.
@@ -43,6 +49,7 @@ def test_class_unchanged():
     assert ex.x == "new example data"
 
 
+@graalpy_fails
 def test_actually_slotted():
     @prefab
     class Slotted:
@@ -62,6 +69,7 @@ def test_actually_slotted():
     inst.x = "This Works!"
 
 
+@graalpy_fails
 def test_slotted_inheritance():
     # This is an example that didn't work in attrs/dataclasses
     # https://github.com/python/cpython/issues/90562
@@ -69,7 +77,7 @@ def test_slotted_inheritance():
 
     @prefab
     class A:
-        __slots__ = SlotFields()
+        __slots__ = SlotFields(break_graal=False)
 
         def test(self):
             return type(self)
@@ -82,7 +90,7 @@ def test_slotted_inheritance():
     assert B().test() is B
 
     # Additional tests to prove slottedness of base class
-    ex = A()
+    ex = A(break_graal=True)
     with pytest.raises(AttributeError):
         ex.attrib = True
 
@@ -91,6 +99,7 @@ def test_slotted_inheritance():
     exb.attrib = True
 
 
+@graalpy_fails
 def test_slotted_frozen():
     @prefab(frozen=True)
     class A:

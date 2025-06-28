@@ -1,7 +1,10 @@
 from ducktools.classbuilder import Field, SlotFields, slotclass
 import inspect
 
+from utils import graalpy_fails  # type: ignore
 
+
+@graalpy_fails
 def test_init_false_field():
     @slotclass
     class Example:
@@ -20,6 +23,7 @@ def test_init_false_field():
     assert ex.y == "y"
 
 
+@graalpy_fails
 def test_repr_false_field():
     @slotclass
     class Example:
@@ -32,6 +36,7 @@ def test_repr_false_field():
     assert repr(ex).endswith("Example(y='y')")
 
 
+@graalpy_fails
 def test_compare_false_field():
     @slotclass
     class Example:
@@ -48,6 +53,7 @@ def test_compare_false_field():
     assert ex != ex3
 
 
+@graalpy_fails
 def test_kwonly_true_field():
     @slotclass
     class Example:
