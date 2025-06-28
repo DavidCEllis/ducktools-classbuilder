@@ -784,7 +784,7 @@ def _build_field():
         "compare": Field(default=True, doc=field_docs["compare"]),
         "kw_only": Field(default=False, doc=field_docs["kw_only"])
     }
-    modifications = {}
+    modifications = {"__slots__": field_docs}
 
     field_methods = {repr_maker, eq_maker}
     if _UNDER_TESTING:
