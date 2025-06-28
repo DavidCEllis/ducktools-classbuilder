@@ -627,6 +627,30 @@ class SlotMakerMeta(type):
         return new_cls
 
 
+# This class is set up before fields as it will be used to generate the Fields
+# for Field itself so Field can have generated __eq__, __repr__ and other methods
+class GatheredFields:
+    """
+    Helper class to store gathered field data
+    """
+    __slots__ = ("fields", "modifications")
+
+    def __init__(self, fields, modifications):
+        self.fields = fields
+        self.modifications = modifications
+
+    def __eq__(self, other):
+        if type(self) is type(other):
+            return self.fields == other.fields and self.modifications == other.modifications
+        
+    def __repr__(self):
+        return f"{type(self).__name__}(fields={self.fields!r}, modifications={self.modifications!r})"
+
+    def __call__(self, cls_dict):
+        # cls_dict will be provided, but isn't needed
+        return self.fields, self.modifications
+
+
 # The Field class can finally be defined.
 # The __init__ method has to be written manually so Fields can be created
 # However after this, the other methods can be generated.
@@ -652,17 +676,18 @@ class Field(metaclass=SlotMakerMeta):
     :param compare: Include in the class __eq__.
     :param kw_only: Make this a keyword only parameter in __init__.
     """
-    # If this base class did not define __slots__ the metaclass would break it.
-    # This will be replaced by the builder.
-    __slots__ = SlotFields(
-        default=NOTHING,
-        default_factory=NOTHING,
-        type=NOTHING,
-        doc=None,
-        init=True,
-        repr=True,
-        compare=True,
-        kw_only=False,
+
+    # Plain slots are required as part of bootstrapping
+    # This prevents SlotMakerMeta from trying to generate 'Field's
+    __slots__ = (
+        "default",
+        "default_factory",
+        "type",
+        "doc",
+        "init",
+        "repr",
+        "compare",
+        "kw_only",
     )
 
     # noinspection PyShadowingBuiltins
@@ -696,6 +721,7 @@ class Field(metaclass=SlotMakerMeta):
         self.validate_field()
 
     def __init_subclass__(cls, frozen=False):
+        # Subclasses of Field can be created as if they are dataclasses
         field_methods = {_field_init_maker, repr_maker, eq_maker}
         if frozen or _UNDER_TESTING:
             field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
@@ -731,7 +757,58 @@ class Field(metaclass=SlotMakerMeta):
         return cls(**argument_dict)
 
 
+def _build_field():
+    # Complete the construction of the Field class
+    field_docs = {
+        "default": "Standard default value to be used for attributes with this field.",
+        "default_factory": 
+            "A zero-argument function to be called to generate a default value, "
+            "useful for mutable obects like lists.",
+        "type": "The type of the attribute to be assigned by this field.",
+        "doc": 
+            "The documentation for the attribute that appears when calling "
+            "help(...) on the class. (Only in slotted classes).",
+        "init": "Include this attribute in the class __init__ parameters.",
+        "repr": "Include this attribute in the class __repr__",
+        "compare": "Include this attribute in the class __eq__ method",
+        "kw_only": "Make this a keyword only parameter in __init__",
+    }
+
+    fields = {
+        "default": Field(default=NOTHING, doc=field_docs["default"]),
+        "default_factory": Field(default=NOTHING, doc=field_docs["default_factory"]),
+        "type": Field(default=NOTHING, doc=field_docs["type"]),
+        "doc": Field(default=None, doc=field_docs["doc"]),
+        "init": Field(default=True, doc=field_docs["init"]),
+        "repr": Field(default=True, doc=field_docs["repr"]),
+        "compare": Field(default=True, doc=field_docs["compare"]),
+        "kw_only": Field(default=False, doc=field_docs["kw_only"])
+    }
+    modifications = {}
+
+    field_methods = {repr_maker, eq_maker}
+    if _UNDER_TESTING:
+        field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+
+    builder(
+        Field,
+        gatherer=GatheredFields(fields, modifications),
+        methods=field_methods,
+        flags={"slotted": True, "kw_only": True},
+    )
+
+
+_build_field()
+del _build_field
+
+
 def pre_gathered_gatherer(cls_or_ns):
+    """
+    Retrieve fields previously gathered by SlotMakerMeta
+
+    :param cls_or_ns: Class to gather field information from (or class namespace)
+    :return: dict of field_name: Field(...) and modifications to be performed by the builder
+    """
     if isinstance(cls_or_ns, (_MappingProxyType, dict)):
         cls_dict = cls_or_ns
     else:
@@ -754,7 +831,7 @@ def make_slot_gatherer(field_type=Field):
         Gather field information for class generation based on __slots__
 
         :param cls_or_ns: Class to gather field information from (or class namespace)
-        :return: dict of field_name: Field(...)
+        :return: dict of field_name: Field(...) and modifications to be performed by the builder
         """
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
             cls_dict = cls_or_ns
@@ -978,19 +1055,6 @@ annotation_gatherer = make_annotation_gatherer()
 unified_gatherer = make_unified_gatherer()
 
 
-# Now the gatherers have been defined, add __repr__ and __eq__ to Field.
-_field_methods = {repr_maker, eq_maker}
-if _UNDER_TESTING:
-    _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
-
-builder(
-    Field,
-    gatherer=slot_gatherer,
-    methods=_field_methods,
-    flags={"slotted": True, "kw_only": True},
-)
-
-
 def check_argument_order(cls):
     """
     Raise a SyntaxError if the argument order will be invalid for a generated
@@ -1033,25 +1097,3 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
         check_argument_order(cls)
 
     return cls
-
-
-# Gatherer logic
-class GatheredFields:
-    """
-    Helper class to store gathered field data
-    """
-    __slots__ = ("fields", "modifications")
-
-    def __init__(self, fields, modifications):
-        self.fields = fields
-        self.modifications = modifications
-
-    def __eq__(self, other):
-        if type(self) is type(other):
-            return self.fields == other.fields and self.modifications == other.modifications
-        
-    def __repr__(self):
-        return f"{type(self).__name__}(fields={self.fields!r}, modifications={self.modifications!r})"
-
-    def __call__(self, cls_dict):
-        return self.fields, self.modifications
