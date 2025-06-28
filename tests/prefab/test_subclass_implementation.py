@@ -5,6 +5,10 @@ import pytest
 from ducktools.classbuilder.prefab import Prefab, Attribute, SlotFields, get_attributes
 
 
+from utils import graalpy_fails  # type: ignore
+
+
+@graalpy_fails
 class TestConstructionForms:
     """
     Test the 3 different ways of constructing prefabs
@@ -180,13 +184,14 @@ class TestClassArguments:
         assert params['b'].default == 1
 
 
+@graalpy_fails
 def test_slots_weakref():
     import weakref
 
     class WeakrefClass(Prefab):
         a: int = 1
         b: int = 2
-        __weakref__: dict
+        __weakref__: dict  # type: ignore
 
     flds = get_attributes(WeakrefClass)
     assert 'a' in flds
@@ -208,7 +213,7 @@ def test_has_dict():
     class DictClass(Prefab):
         a: int = 1
         b: int = 2
-        __dict__: dict
+        __dict__: dict  # type: ignore
 
     flds = get_attributes(DictClass)
     assert 'a' in flds

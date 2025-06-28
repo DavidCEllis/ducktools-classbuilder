@@ -5,6 +5,9 @@ from ducktools.classbuilder.annotations import get_ns_annotations
 from ducktools.classbuilder.prefab import build_prefab, prefab, attribute, PrefabError
 
 
+from utils import graalpy_fails  # type: ignore
+
+
 def test_build_basic_prefab():
     DynamicTestClass = build_prefab(
         "DynamicTestClass",
@@ -94,6 +97,7 @@ def test_kwonly_class():
         c: int = attribute()  # kw_only should be ignored
 
 
+@graalpy_fails
 def test_build_slotted():
     SlottedClass = build_prefab(
         "SlottedClass",

@@ -3,6 +3,8 @@
 import pytest
 from ducktools.classbuilder.prefab import attribute, prefab, SlotFields
 
+from utils import graalpy_fails  # type: ignore
+
 
 # Classes with REPR checks
 @prefab
@@ -64,6 +66,7 @@ def test_iter():
     assert y == [1, 2]
 
 
+@graalpy_fails
 def test_iter_exclude():
     @prefab(iter=True)
     class IterExcludeEmpty:

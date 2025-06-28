@@ -27,6 +27,8 @@ from ducktools.classbuilder import (
 )
 from ducktools.classbuilder.annotations import get_ns_annotations
 
+from utils import graalpy_fails  # type: ignore
+
 
 def test_get_fields_flags_methods():
     local_fields = {"Example": Field()}
@@ -191,6 +193,7 @@ def test_frozen_unslotted():
         ex.b = "goodbye"
 
 
+@graalpy_fails
 def test_slot_gatherer_success():
 
     fields = {
@@ -237,6 +240,7 @@ def test_slot_gatherer_failure():
         slot_gatherer(DictSlots)
 
 
+@graalpy_fails
 def test_slotclass_empty():
     @slotclass
     class SlotClass:
@@ -249,6 +253,7 @@ def test_slotclass_empty():
     assert ex == ex2
 
 
+@graalpy_fails
 def test_slotclass_methods():
 
     class SlotClass:
@@ -265,6 +270,7 @@ def test_slotclass_methods():
     assert "__eq__" in SlotClass.__dict__
 
 
+@graalpy_fails
 def test_slotclass_attributes():
     @slotclass
     class SlotClass:
@@ -298,6 +304,7 @@ def test_slotclass_attributes():
     assert repr(ex3) == f"{prefix}SlotClass(a=1, b=2, c=[1, 2, 3])"
 
 
+@graalpy_fails
 def test_slotclass_nodefault():
     @slotclass
     class SlotClass:
@@ -319,6 +326,7 @@ def test_slotclass_nodefault():
     assert ex2.c == [8, 16, 32]
 
 
+@graalpy_fails
 def test_slotclass_ordering():
     with pytest.raises(SyntaxError):
         # Non-default argument after default
@@ -330,6 +338,7 @@ def test_slotclass_ordering():
             )
 
 
+@graalpy_fails
 def test_slotclass_norepr_noeq():
     @slotclass(methods={init_maker})
     class SlotClass:
@@ -343,6 +352,7 @@ def test_slotclass_norepr_noeq():
     assert "__eq__" not in SlotClass.__dict__
 
 
+@graalpy_fails
 def test_slotclass_weakref():
     import weakref
 
@@ -370,6 +380,7 @@ def test_slotclass_weakref():
     assert ref == inst.__weakref__
 
 
+@graalpy_fails
 def test_slotclass_dict():
     @slotclass
     class DictClass:
@@ -447,6 +458,7 @@ def test_fieldclass_frozen():
         delattr(f, "new_attribute")
 
 
+@graalpy_fails
 def test_builder_noclass():
     mini_slotclass = builder(gatherer=slot_gatherer, methods={init_maker})
 
@@ -500,6 +512,7 @@ def test_gatheredfields():
     )
 
 
+@graalpy_fails
 def test_signature():
     # This used to fail
     @slotclass
@@ -509,6 +522,7 @@ def test_signature():
     assert str(inspect.signature(SigClass)) == "(x=42)"
 
 
+@graalpy_fails
 def test_subclass_method_not_overwritten():
     @slotclass
     class X:

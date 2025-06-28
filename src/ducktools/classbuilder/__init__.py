@@ -38,7 +38,7 @@ from ._version import __version__, __version_tuple__  # noqa: F401
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
 META_GATHERER_NAME = "_meta_gatherer"
-
+GATHERED_DATA = "__classbuilder_gathered_fields__"
 
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
@@ -116,7 +116,7 @@ FIELD_NOTHING = _NothingType("FIELD")
 # noinspection PyPep8Naming
 class _KW_ONLY_META(type):
     def __repr__(self):
-        return "<KW_ONLY Sentinel Object>"
+        return "<KW_ONLY Sentinel>"
 
 
 class KW_ONLY(metaclass=_KW_ONLY_META):
@@ -124,7 +124,6 @@ class KW_ONLY(metaclass=_KW_ONLY_META):
     Sentinel Class to indicate that variables declared after
     this sentinel are to be converted to KW_ONLY arguments.
     """
-    pass
 
 
 class GeneratedCode:
@@ -576,21 +575,25 @@ class SlotMakerMeta(type):
 
     Will not convert `ClassVar` hinted values.
     """
-    def __new__(cls, name, bases, ns, slots=True, **kwargs):
+    def __new__(cls, name, bases, ns, slots=True, gatherer=None, **kwargs):
         # This should only run if slots=True is declared
         # and __slots__ have not already been defined
-        if slots and "__slots__" not in ns:
+        if slots and "__slots__" not in ns:            
             # Check if a different gatherer has been set in any base classes
             # Default to unified gatherer
-            gatherer = ns.get(META_GATHERER_NAME, None)
-            if not gatherer:
-                for base in bases:
-                    if g := getattr(base, META_GATHERER_NAME, None):
-                        gatherer = g
-                        break
+            if gatherer is None:
+                gatherer = ns.get(META_GATHERER_NAME, None)
+                if not gatherer:
+                    for base in bases:
+                        if g := getattr(base, META_GATHERER_NAME, None):
+                            gatherer = g
+                            break
 
-            if not gatherer:
-                gatherer = unified_gatherer
+                if not gatherer:
+                    gatherer = unified_gatherer
+
+            # Set the gatherer in the namespace
+            ns[META_GATHERER_NAME] = gatherer
 
             # Obtain slots from annotations or attributes
             cls_fields, cls_modifications = gatherer(ns)
@@ -600,12 +603,52 @@ class SlotMakerMeta(type):
                 else:
                     ns[k] = v
 
+            slots = {}
+            fields = {}
+
+            for k, v in cls_fields.items():
+                slots[k] = v.doc
+                if k not in {"__weakref__", "__dict__"}:
+                    fields[k] = v
+
             # Place slots *after* everything else to be safe
-            ns["__slots__"] = SlotFields(cls_fields)
+            ns["__slots__"] = slots
+
+            # Place pre-gathered field data - modifications are already applied
+            modifications = {}
+            ns[GATHERED_DATA] = fields, modifications
+        
+        else:
+            if gatherer is not None:
+                ns[META_GATHERER_NAME] = gatherer
 
         new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
         return new_cls
+
+
+# This class is set up before fields as it will be used to generate the Fields
+# for Field itself so Field can have generated __eq__, __repr__ and other methods
+class GatheredFields:
+    """
+    Helper class to store gathered field data
+    """
+    __slots__ = ("fields", "modifications")
+
+    def __init__(self, fields, modifications):
+        self.fields = fields
+        self.modifications = modifications
+
+    def __eq__(self, other):
+        if type(self) is type(other):
+            return self.fields == other.fields and self.modifications == other.modifications
+        
+    def __repr__(self):
+        return f"{type(self).__name__}(fields={self.fields!r}, modifications={self.modifications!r})"
+
+    def __call__(self, cls_dict):
+        # cls_dict will be provided, but isn't needed
+        return self.fields, self.modifications
 
 
 # The Field class can finally be defined.
@@ -633,17 +676,18 @@ class Field(metaclass=SlotMakerMeta):
     :param compare: Include in the class __eq__.
     :param kw_only: Make this a keyword only parameter in __init__.
     """
-    # If this base class did not define __slots__ the metaclass would break it.
-    # This will be replaced by the builder.
-    __slots__ = SlotFields(
-        default=NOTHING,
-        default_factory=NOTHING,
-        type=NOTHING,
-        doc=None,
-        init=True,
-        repr=True,
-        compare=True,
-        kw_only=False,
+
+    # Plain slots are required as part of bootstrapping
+    # This prevents SlotMakerMeta from trying to generate 'Field's
+    __slots__ = (
+        "default",
+        "default_factory",
+        "type",
+        "doc",
+        "init",
+        "repr",
+        "compare",
+        "kw_only",
     )
 
     # noinspection PyShadowingBuiltins
@@ -677,6 +721,7 @@ class Field(metaclass=SlotMakerMeta):
         self.validate_field()
 
     def __init_subclass__(cls, frozen=False):
+        # Subclasses of Field can be created as if they are dataclasses
         field_methods = {_field_init_maker, repr_maker, eq_maker}
         if frozen or _UNDER_TESTING:
             field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
@@ -712,6 +757,66 @@ class Field(metaclass=SlotMakerMeta):
         return cls(**argument_dict)
 
 
+def _build_field():
+    # Complete the construction of the Field class
+    field_docs = {
+        "default": "Standard default value to be used for attributes with this field.",
+        "default_factory": 
+            "A zero-argument function to be called to generate a default value, "
+            "useful for mutable obects like lists.",
+        "type": "The type of the attribute to be assigned by this field.",
+        "doc": 
+            "The documentation for the attribute that appears when calling "
+            "help(...) on the class. (Only in slotted classes).",
+        "init": "Include this attribute in the class __init__ parameters.",
+        "repr": "Include this attribute in the class __repr__",
+        "compare": "Include this attribute in the class __eq__ method",
+        "kw_only": "Make this a keyword only parameter in __init__",
+    }
+
+    fields = {
+        "default": Field(default=NOTHING, doc=field_docs["default"]),
+        "default_factory": Field(default=NOTHING, doc=field_docs["default_factory"]),
+        "type": Field(default=NOTHING, doc=field_docs["type"]),
+        "doc": Field(default=None, doc=field_docs["doc"]),
+        "init": Field(default=True, doc=field_docs["init"]),
+        "repr": Field(default=True, doc=field_docs["repr"]),
+        "compare": Field(default=True, doc=field_docs["compare"]),
+        "kw_only": Field(default=False, doc=field_docs["kw_only"])
+    }
+    modifications = {"__slots__": field_docs}
+
+    field_methods = {repr_maker, eq_maker}
+    if _UNDER_TESTING:
+        field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+
+    builder(
+        Field,
+        gatherer=GatheredFields(fields, modifications),
+        methods=field_methods,
+        flags={"slotted": True, "kw_only": True},
+    )
+
+
+_build_field()
+del _build_field
+
+
+def pre_gathered_gatherer(cls_or_ns):
+    """
+    Retrieve fields previously gathered by SlotMakerMeta
+
+    :param cls_or_ns: Class to gather field information from (or class namespace)
+    :return: dict of field_name: Field(...) and modifications to be performed by the builder
+    """
+    if isinstance(cls_or_ns, (_MappingProxyType, dict)):
+        cls_dict = cls_or_ns
+    else:
+        cls_dict = cls_or_ns.__dict__
+    
+    return cls_dict[GATHERED_DATA]
+
+
 def make_slot_gatherer(field_type=Field):
     """
     Create a new annotation gatherer that will work with `Field` instances
@@ -726,7 +831,7 @@ def make_slot_gatherer(field_type=Field):
         Gather field information for class generation based on __slots__
 
         :param cls_or_ns: Class to gather field information from (or class namespace)
-        :return: dict of field_name: Field(...)
+        :return: dict of field_name: Field(...) and modifications to be performed by the builder
         """
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
             cls_dict = cls_or_ns
@@ -888,6 +993,7 @@ def make_field_gatherer(
 def make_unified_gatherer(
     field_type=Field,
     leave_default_values=False,
+    ignore_annotations=False,
 ):
     """
     Create a gatherer that will work via first slots, then
@@ -896,6 +1002,7 @@ def make_unified_gatherer(
 
     :param field_type: The field class to use for gathering
     :param leave_default_values: leave default values in place
+    :param ignore_annotations: don't attempt to read annotations
     :return: gatherer function
     """
     slot_g = make_slot_gatherer(field_type)
@@ -908,27 +1015,35 @@ def make_unified_gatherer(
         else:
             cls_dict = cls_or_ns.__dict__
 
+        cls_gathered = cls_dict.get(GATHERED_DATA)
+        if cls_gathered:
+            return pre_gathered_gatherer(cls_dict)
+
         cls_slots = cls_dict.get("__slots__")
 
         if isinstance(cls_slots, SlotFields):
             return slot_g(cls_dict)
 
-        # To choose between annotation and attribute gatherers
-        # compare sets of names.
-        # Don't bother evaluating string annotations, as we only need names
-        cls_annotations = get_ns_annotations(cls_dict)
-        cls_attributes = {
-            k: v for k, v in cls_dict.items() if isinstance(v, field_type)
-        }
+        if ignore_annotations:
+            return attrib_g(cls_dict)
+        else:
+            # To choose between annotation and attribute gatherers
+            # compare sets of names.
+            # Don't bother evaluating string annotations, as we only need names
+            cls_annotations = get_ns_annotations(cls_dict)
+            cls_attributes = {
+                k: v for k, v in cls_dict.items() if isinstance(v, field_type)
+            }
 
-        cls_annotation_names = cls_annotations.keys()
-        cls_attribute_names = cls_attributes.keys()
+            cls_annotation_names = cls_annotations.keys()
+            cls_attribute_names = cls_attributes.keys()
 
-        if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
-            # All `Field` values have annotations, so use annotation gatherer
-            return anno_g(cls_dict)
+            if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
+                # All `Field` values have annotations, so use annotation gatherer
+                return anno_g(cls_dict)
 
-        return attrib_g(cls_dict)
+            return attrib_g(cls_dict)
+        
     return field_unified_gatherer
 
 
@@ -938,19 +1053,6 @@ annotation_gatherer = make_annotation_gatherer()
 # The unified gatherer used for slot classes must remove default
 # values for slots to work correctly.
 unified_gatherer = make_unified_gatherer()
-
-
-# Now the gatherers have been defined, add __repr__ and __eq__ to Field.
-_field_methods = {repr_maker, eq_maker}
-if _UNDER_TESTING:
-    _field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
-
-builder(
-    Field,
-    gatherer=slot_gatherer,
-    methods=_field_methods,
-    flags={"slotted": True, "kw_only": True},
-)
 
 
 def check_argument_order(cls):
@@ -995,17 +1097,3 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
         check_argument_order(cls)
 
     return cls
-
-
-@slotclass
-class GatheredFields:
-    """
-    A helper gatherer for fields that have been gathered externally.
-    """
-    __slots__ = SlotFields(
-        fields=Field(),
-        modifications=Field(),
-    )
-
-    def __call__(self, cls):
-        return self.fields, self.modifications
