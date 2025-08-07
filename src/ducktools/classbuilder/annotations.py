@@ -46,9 +46,9 @@ def get_func_annotations(func):
         annotations = func.__annotations__
     except Exception:
         if sys.version_info >= (3, 14):
-            annotations = _LazyAnnotationLib.get_annotations(
+            annotations = _lazy_annotationlib.get_annotations(
                 func,
-                format=_LazyAnnotationLib.Format.FORWARDREF,
+                format=_lazy_annotationlib.Format.FORWARDREF,
             )
         else:
             raise

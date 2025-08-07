@@ -1,6 +1,6 @@
 # Bare forwardrefs only work in 3.14 or later
 
-from ducktools.classbuilder.annotations import get_ns_annotations
+from ducktools.classbuilder.annotations import get_ns_annotations, get_func_annotations
 
 from pathlib import Path
 
@@ -45,4 +45,15 @@ def test_inner_outer_ref():
     # Correctly evaluated if it exists
     assert get_ns_annotations(cls.__dict__) == {
         "a_val": str, "b_val": int, "c_val": float
+    }
+
+
+def test_func_annotations():
+    def forwardref_func(x: unknown) -> str:
+        return ''
+
+    annos = get_func_annotations(forwardref_func)
+    assert annos == {
+        'x': EqualToForwardRef("unknown", owner=forwardref_func),
+        'return': str
     }
