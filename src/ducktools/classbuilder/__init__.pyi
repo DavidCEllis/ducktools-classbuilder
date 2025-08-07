@@ -1,5 +1,6 @@
 import types
 import typing
+import typing_extensions
 
 import inspect
 
@@ -57,7 +58,7 @@ class MethodMaker:
     def __get__(self, instance, cls) -> Callable: ...
 
 class _SignatureMaker:
-    def __get__(self, instance, cls) -> inspect.Signature: ...
+    def __get__(self, instance, cls=None) -> typing_extensions.Never: ...
 
 signature_maker: _SignatureMaker
 
@@ -141,7 +142,7 @@ class Field(metaclass=SlotMakerMeta):
 
     __slots__: dict[str, str]
     __classbuilder_internals__: dict
-    __signature__: inspect.Signature
+    __signature__: _SignatureMaker
 
     def __init__(
         self,

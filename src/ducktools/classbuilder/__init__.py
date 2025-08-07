@@ -217,15 +217,23 @@ class _SignatureMaker:
     # help(cls) will fail along with inspect.signature(cls)
     # This signature maker descriptor is placed to override __signature__ and force
     # the `__init__` signature to be generated first if the signature is requested.
-    def __get__(self, instance, cls):
-        import inspect  # Deferred inspect import
-        _ = cls.__init__  # force generation of `__init__` function
-        # Remove this attribute from the class
-        # This prevents recursion back into this __get__ method.
-        delattr(cls, "__signature__")
-        sig = inspect.signature(cls)
-        setattr(cls, "__signature__", sig)
-        return sig
+    def __get__(self, instance, cls=None):
+        if cls is None:
+            cls = type(instance)
+
+        # force generation of `__init__` function
+        _ = cls.__init__
+
+        if instance is None:
+            raise AttributeError(
+                f"type object {cls.__name__!r} "
+                "has no attribute '__signature__'"
+            )
+        else:
+            raise AttributeError(
+                f"{cls.__name__!r} object"
+                "has no attribute '__signature__'"
+            )
 
 
 signature_maker = _SignatureMaker()
@@ -393,7 +401,7 @@ def replace_generator(cls, funcname="__replace__"):
     # Generate the replace method for built classes
     # unlike the dataclasses implementation this is generated
     attribs = get_fields(cls)
-    
+
     # This is essentially the as_dict generator for prefabs
     # except based on attrib.init instead of .serialize
     vals = ", ".join(
@@ -407,7 +415,7 @@ def replace_generator(cls, funcname="__replace__"):
         f"def {funcname}(self, /, **changes):\n"
         f"    new_kwargs = {init_dict}\n"
         f"    for name, value in changes.items():\n"
-        f"        if name not in new_kwargs:\n"    
+        f"        if name not in new_kwargs:\n"
         f"            raise TypeError(\n"
         f"                f\"{{name!r}} is not a valid replacable \"\n"
         f"                f\"field on {{self.__class__.__name__!r}}\"\n"
@@ -578,7 +586,7 @@ class SlotMakerMeta(type):
     def __new__(cls, name, bases, ns, slots=True, gatherer=None, **kwargs):
         # This should only run if slots=True is declared
         # and __slots__ have not already been defined
-        if slots and "__slots__" not in ns:            
+        if slots and "__slots__" not in ns:
             # Check if a different gatherer has been set in any base classes
             # Default to unified gatherer
             if gatherer is None:
@@ -617,7 +625,7 @@ class SlotMakerMeta(type):
             # Place pre-gathered field data - modifications are already applied
             modifications = {}
             ns[GATHERED_DATA] = fields, modifications
-        
+
         else:
             if gatherer is not None:
                 ns[META_GATHERER_NAME] = gatherer
@@ -642,7 +650,7 @@ class GatheredFields:
     def __eq__(self, other):
         if type(self) is type(other):
             return self.fields == other.fields and self.modifications == other.modifications
-        
+
     def __repr__(self):
         return f"{type(self).__name__}(fields={self.fields!r}, modifications={self.modifications!r})"
 
@@ -761,11 +769,11 @@ def _build_field():
     # Complete the construction of the Field class
     field_docs = {
         "default": "Standard default value to be used for attributes with this field.",
-        "default_factory": 
+        "default_factory":
             "A zero-argument function to be called to generate a default value, "
             "useful for mutable obects like lists.",
         "type": "The type of the attribute to be assigned by this field.",
-        "doc": 
+        "doc":
             "The documentation for the attribute that appears when calling "
             "help(...) on the class. (Only in slotted classes).",
         "init": "Include this attribute in the class __init__ parameters.",
@@ -813,7 +821,7 @@ def pre_gathered_gatherer(cls_or_ns):
         cls_dict = cls_or_ns
     else:
         cls_dict = cls_or_ns.__dict__
-    
+
     return cls_dict[GATHERED_DATA]
 
 
@@ -1043,7 +1051,7 @@ def make_unified_gatherer(
                 return anno_g(cls_dict)
 
             return attrib_g(cls_dict)
-        
+
     return field_unified_gatherer
 
 

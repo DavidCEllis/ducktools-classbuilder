@@ -34,6 +34,8 @@ from . import (
     get_repr_generator,
 )
 
+from .annotations import get_func_annotations
+
 # These aren't used but are re-exported for ease of use
 # noinspection PyUnresolvedReferences
 from . import SlotFields, KW_ONLY  # noqa: F401
@@ -98,7 +100,7 @@ def init_generator(cls, funcname="__init__"):
             func_arglist.extend(arglist)
 
             if extra_funcname == POST_INIT_FUNC:
-                post_init_annotations.update(func.__annotations__)
+                post_init_annotations.update(get_func_annotations(func))
 
     pos_arglist = []
     kw_only_arglist = []
@@ -204,11 +206,11 @@ def init_generator(cls, funcname="__init__"):
         post_init_call = ""
 
     code = (
-        f"def {funcname}(self, {args}):\n"
+        f"def {funcname}(self, {args}) -> None:\n"
         f"{pre_init_call}\n"
         f"{body}\n"
         f"{post_init_call}\n"
-        )
+    )
 
     return GeneratedCode(code, globs)
 

@@ -33,6 +33,29 @@ class _LazyAnnotationLib:
 _lazy_annotationlib = _LazyAnnotationLib()
 
 
+def get_func_annotations(func):
+    """
+    Given a function, return the annotations dictionary
+
+    :param func: function object
+    :return: dictionary of annotations
+    """
+    # This method exists for use by prefab in getting annotations from
+    # the __prefab_post_init__ function
+    try:
+        annotations = func.__annotations__
+    except Exception:
+        if sys.version_info >= (3, 14):
+            annotations = _lazy_annotationlib.get_annotations(
+                func,
+                format=_lazy_annotationlib.Format.FORWARDREF,
+            )
+        else:
+            raise
+
+    return annotations
+
+
 def get_ns_annotations(ns):
     """
     Given a class namespace, attempt to retrieve the
