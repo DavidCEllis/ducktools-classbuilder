@@ -1,5 +1,6 @@
 import types
 import typing
+import typing_extensions
 
 import inspect
 
@@ -57,7 +58,7 @@ class MethodMaker:
     def __get__(self, instance, cls) -> Callable: ...
 
 class _SignatureMaker:
-    def __get__(self, instance, cls=None) -> typing.Never: ...
+    def __get__(self, instance, cls=None) -> typing_extensions.Never: ...
 
 signature_maker: _SignatureMaker
 
