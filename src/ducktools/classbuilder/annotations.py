@@ -24,9 +24,9 @@ import sys
 
 class _LazyAnnotationLib:
     def __getattr__(self, item):
-        global _lazyannotationlib
+        global _lazy_annotationlib
         import annotationlib  # type: ignore
-        _lazyannotationlib = annotationlib
+        _lazy_annotationlib = annotationlib
         return getattr(annotationlib, item)
 
 
@@ -81,6 +81,35 @@ def get_ns_annotations(ns):
         annotations = {}
 
     return annotations
+
+
+def make_annotate_func(annos):
+    type_repr = _lazy_annotationlib.type_repr
+    Format = _lazy_annotationlib.Format
+    ForwardRef = _lazy_annotationlib.ForwardRef
+    # Construct an annotation function from __annotations__
+    def annotate_func(format):
+        match format:
+            case Format.VALUE:
+                for v in annos.values():
+                    if isinstance(v, ForwardRef):
+                        raise NameError(f"name {v.__arg__!r} is not defined")
+                return annos
+            case Format.FORWARDREF:
+                return annos
+            case Format.STRING:
+                string_annos = {}
+                for k, v in annos.items():
+                    if isinstance(v, str):
+                        string_annos[k] = v
+                    elif isinstance(v, ForwardRef):
+                        string_annos[k] = v.__arg__
+                    else:
+                        string_annos[k] = type_repr(v)
+                return string_annos
+            case _:
+                raise NotImplementedError(format)
+    return annotate_func
 
 
 def is_classvar(hint):

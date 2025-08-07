@@ -33,7 +33,7 @@
 import os
 import sys
 
-from .annotations import get_ns_annotations, is_classvar
+from .annotations import get_ns_annotations, is_classvar, make_annotate_func
 from ._version import __version__, __version_tuple__  # noqa: F401
 
 # Change this name if you make heavy modifications
@@ -208,7 +208,11 @@ class MethodMaker:
 
         # Apply annotations
         if gen.annotations is not None:
-            method.__annotations__ = gen.annotations
+            if sys.version_info >= (3, 14):
+                anno_func = make_annotate_func(gen.annotations)
+                method.__annotate__ = anno_func
+            else:
+                method.__annotations__ = gen.annotations
 
         # Replace this descriptor on the class with the generated function
         setattr(gen_cls, self.funcname, method)

@@ -195,7 +195,7 @@ def init_generator(cls, funcname="__init__"):
         post_init_call = ""
 
     code = (
-        f"def {funcname}(self, {args}) -> None:\n"
+        f"def {funcname}(self, {args}):\n"
         f"{pre_init_call}\n"
         f"{body}\n"
         f"{post_init_call}\n"

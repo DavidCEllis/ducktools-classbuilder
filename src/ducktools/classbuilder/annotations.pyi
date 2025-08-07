@@ -1,3 +1,4 @@
+from collections.abc import Callable
 import typing
 import types
 
@@ -10,6 +11,10 @@ def get_func_annotations(
 def get_ns_annotations(
     ns: _CopiableMappings,
 ) -> dict[str, typing.Any]: ...
+
+def make_annotate_func(
+    annos: dict[str, typing.Any]
+) -> Callable[[int], dict[str, typing.Any]]: ...
 
 def is_classvar(
     hint: object,
