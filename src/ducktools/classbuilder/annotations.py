@@ -55,6 +55,7 @@ def get_func_annotations(func):
 
     return annotations
 
+
 def get_ns_annotations(ns):
     """
     Given a class namespace, attempt to retrieve the
