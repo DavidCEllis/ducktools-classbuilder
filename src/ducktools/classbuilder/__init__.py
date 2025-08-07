@@ -221,17 +221,17 @@ class _SignatureMaker:
         if cls is None:
             cls = type(instance)
 
-        _ = cls.__init__  # force generation of `__init__` function
+        # force generation of `__init__` function
+        _ = cls.__init__
 
-        # Raise the expected attribute error
         if instance is None:
             raise AttributeError(
-                f"type object {self.__class__.__name__} "
+                f"type object {cls.__name__!r} "
                 "has no attribute '__signature__'"
             )
         else:
             raise AttributeError(
-                f"{self.__class__.__name__} object"
+                f"{cls.__name__!r} object"
                 "has no attribute '__signature__'"
             )
 

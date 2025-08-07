@@ -288,3 +288,9 @@ def test_inherited_signature():
 
     assert str(base_signature) == "(x: int, y: str = 'Base') -> None"
     assert str(inherited_signature) == "(x=42, y='Inherited') -> None"
+
+    with pytest.raises(AttributeError):
+        Base.__signature__
+
+    with pytest.raises(AttributeError):
+        Inherited.__signature__
