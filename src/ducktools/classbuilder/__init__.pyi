@@ -40,15 +40,19 @@ class KW_ONLY(metaclass=_KW_ONLY_META): ...
 class _CodegenType(typing.Protocol):
     def __call__(self, cls: type, funcname: str = ...) -> GeneratedCode: ...
 
-
 class GeneratedCode:
-    __slots__: tuple[str, str]
+    __slots__: tuple[str, ...]
     source_code: str
     globs: dict[str, typing.Any]
+    annotations: dict[str, typing.Any]
 
-    def __init__(self, source_code: str, globs: dict[str, typing.Any]) -> None: ...
+    def __init__(
+        self,
+        source_code: str,
+        globs: dict[str, typing.Any],
+        annotations: dict[str, typing.Any] | None = ...,
+    ) -> None: ...
     def __repr__(self) -> str: ...
-
 
 class MethodMaker:
     funcname: str
