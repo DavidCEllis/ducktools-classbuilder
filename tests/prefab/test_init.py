@@ -260,11 +260,11 @@ def test_signature():
     import inspect
 
     init_sig = inspect.signature(TypeSignatureInit.__init__)
-    assert str(init_sig) == "(self, x: int, y: str = 'Test')"
+    assert str(init_sig) == "(self, x: int, y: str = 'Test') -> None"
 
 
 def test_partial_signature():
     import inspect
 
     init_sig = inspect.signature(PartialTypeSignatureInit.__init__)
-    assert str(init_sig) == "(self, x, y: str = 'Test')"
+    assert str(init_sig) == "(self, x, y: str = 'Test') -> None"
