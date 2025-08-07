@@ -31,6 +31,7 @@
 # Field itself sidesteps this by defining __slots__ to avoid that branch.
 
 import os
+import sys
 
 from .annotations import get_ns_annotations, is_classvar
 from ._version import __version__, __version_tuple__  # noqa: F401
@@ -131,19 +132,25 @@ class GeneratedCode:
     This class provides a return value for the generated output from source code
     generators.
     """
-    __slots__ = ("source_code", "globs")
+    __slots__ = ("source_code", "globs", "annotations")
 
-    def __init__(self, source_code, globs):
+    def __init__(self, source_code, globs, annotations=None):
         self.source_code = source_code
         self.globs = globs
+        self.annotations = annotations
 
     def __repr__(self):
         first_source_line = self.source_code.split("\n")[0]
-        return f"GeneratorOutput(source_code='{first_source_line} ...', globs={self.globs!r})"
+        return (
+            f"GeneratorOutput(source_code='{first_source_line} ...', "
+            f"globs={self.globs!r}, annotations={self.annotations!r})"
+        )
 
     def __eq__(self, other):
         if self.__class__ is other.__class__:
-            return (self.source_code, self.globs) == (other.source_code, other.globs)
+            return (self.source_code, self.globs, self.annotations) == (
+                other.source_code, other.globs, other.annotations
+            )
         return NotImplemented
 
 
@@ -198,6 +205,10 @@ class MethodMaker:
             # This might be a property or some other special
             # descriptor. Don't try to rename.
             pass
+
+        # Apply annotations
+        if gen.annotations is not None:
+            method.__annotations__ = gen.annotations
 
         # Replace this descriptor on the class with the generated function
         setattr(gen_cls, self.funcname, method)
