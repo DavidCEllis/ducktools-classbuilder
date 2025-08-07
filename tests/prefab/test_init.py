@@ -268,3 +268,23 @@ def test_partial_signature():
 
     init_sig = inspect.signature(PartialTypeSignatureInit.__init__)
     assert str(init_sig) == "(self, x, y: str = 'Test') -> None"
+
+
+def test_inherited_signature():
+    import inspect
+
+    @prefab
+    class Base:
+        x: int
+        y: str = "Base"
+
+    class Inherited(Base):
+        def __init__(self, x=42, y="Inherited") -> None:
+            self.x = x
+            self.y = y
+
+    base_signature = inspect.signature(Base)
+    inherited_signature = inspect.signature(Inherited)
+
+    assert str(base_signature) == "(x: int, y: str = 'Base') -> None"
+    assert str(inherited_signature) == "(x=42, y='Inherited') -> None"
