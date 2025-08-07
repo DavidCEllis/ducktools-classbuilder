@@ -84,26 +84,27 @@ def get_ns_annotations(ns):
 
 
 def make_annotate_func(annos):
+    # Only used in 3.14 or later so no sys.version_info gate
+
     type_repr = _lazy_annotationlib.type_repr
     Format = _lazy_annotationlib.Format
     ForwardRef = _lazy_annotationlib.ForwardRef
     # Construct an annotation function from __annotations__
     def annotate_func(format):
         match format:
-            case Format.VALUE:
-                for v in annos.values():
-                    if isinstance(v, ForwardRef):
-                        raise NameError(f"name {v.__arg__!r} is not defined")
-                return annos
-            case Format.FORWARDREF:
-                return annos
+            case Format.VALUE | Format.FORWARDREF:
+                return {
+                    k: v.evaluate(format=format)
+                    if isinstance(v, ForwardRef) else v
+                    for k, v in annos.items()
+                }
             case Format.STRING:
                 string_annos = {}
                 for k, v in annos.items():
                     if isinstance(v, str):
                         string_annos[k] = v
                     elif isinstance(v, ForwardRef):
-                        string_annos[k] = v.__arg__
+                        string_annos[k] = v.evaluate(format=Format.STRING)
                     else:
                         string_annos[k] = type_repr(v)
                 return string_annos
