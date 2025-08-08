@@ -64,6 +64,7 @@ def get_attributes(cls):
 # Method Generators
 def init_generator(cls, funcname="__init__"):
     globs = {}
+    annotations = {}
     # Get the internals dictionary and prepare attributes
     attributes = get_attributes(cls)
     flags = get_flags(cls)
@@ -106,41 +107,29 @@ def init_generator(cls, funcname="__init__"):
     kw_only_arglist = []
     for name, attrib in attributes.items():
         # post_init annotations can be used to broaden types.
-        if name in post_init_annotations:
-            globs[f"_{name}_type"] = post_init_annotations[name]
-        elif attrib.type is not NOTHING:
-            globs[f"_{name}_type"] = attrib.type
-
         if attrib.init:
+            if name in post_init_annotations:
+                annotations[name] = post_init_annotations[name]
+            elif attrib.type is not NOTHING:
+                annotations[name] = attrib.type
+
             if attrib.default is not NOTHING:
                 if isinstance(attrib.default, (str, int, float, bool)):
                     # Just use the literal in these cases
-                    if attrib.type is NOTHING:
-                        arg = f"{name}={attrib.default!r}"
-                    else:
-                        arg = f"{name}: _{name}_type = {attrib.default!r}"
+                    arg = f"{name}={attrib.default!r}"
                 else:
                     # No guarantee repr will work for other objects
                     # so store the value in a variable and put it
                     # in the globals dict for eval
-                    if attrib.type is NOTHING:
-                        arg = f"{name}=_{name}_default"
-                    else:
-                        arg = f"{name}: _{name}_type = _{name}_default"
+                    arg = f"{name}=_{name}_default"
                     globs[f"_{name}_default"] = attrib.default
             elif attrib.default_factory is not NOTHING:
                 # Use NONE here and call the factory later
                 # This matches the behaviour of compiled
-                if attrib.type is NOTHING:
-                    arg = f"{name}=None"
-                else:
-                    arg = f"{name}: _{name}_type = None"
+                arg = f"{name}=None"
                 globs[f"_{name}_factory"] = attrib.default_factory
             else:
-                if attrib.type is NOTHING:
-                    arg = name
-                else:
-                    arg = f"{name}: _{name}_type"
+                arg = name
             if attrib.kw_only or kw_only:
                 kw_only_arglist.append(arg)
             else:
@@ -206,13 +195,19 @@ def init_generator(cls, funcname="__init__"):
         post_init_call = ""
 
     code = (
-        f"def {funcname}(self, {args}) -> None:\n"
+        f"def {funcname}(self, {args}):\n"
         f"{pre_init_call}\n"
         f"{body}\n"
         f"{post_init_call}\n"
     )
 
-    return GeneratedCode(code, globs)
+    if annotations:
+        annotations["return"] = None
+    else:
+        # If there are no annotations, return an unannotated init function
+        annotations = None
+
+    return GeneratedCode(code, globs, annotations)
 
 
 def iter_generator(cls, funcname="__iter__"):
