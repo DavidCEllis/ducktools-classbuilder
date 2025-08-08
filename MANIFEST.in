@@ -1,13 +1,5 @@
-graft src
-graft tests
-graft docs
-
-prune */build
-prune */dist
-prune */.pytest_cache
+exclude .readthedocs.yaml
 
 prune .github
 prune docs_code
 prune perf
-
-global-exclude *~ *.py[cod] *.so
