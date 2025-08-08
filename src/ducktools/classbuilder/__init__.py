@@ -209,8 +209,14 @@ class MethodMaker:
         # Apply annotations
         if gen.annotations is not None:
             if sys.version_info >= (3, 14):
-                anno_func = make_annotate_func(gen.annotations)
-                method.__annotate__ = anno_func
+                # If __annotations__ exists on the class, either they
+                # are user defined or they are using __future__ annotations.
+                # In this case, just write __annotations__
+                if "__annotations__" in gen_cls.__dict__:
+                    method.__annotations__ = gen.annotations
+                else:
+                    anno_func = make_annotate_func(gen.annotations)
+                    method.__annotate__ = anno_func
             else:
                 method.__annotations__ = gen.annotations
 
