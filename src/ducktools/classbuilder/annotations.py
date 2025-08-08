@@ -90,7 +90,7 @@ def make_annotate_func(annos):
     Format = _lazy_annotationlib.Format
     ForwardRef = _lazy_annotationlib.ForwardRef
     # Construct an annotation function from __annotations__
-    def annotate_func(format):
+    def annotate_func(format, /):
         match format:
             case Format.VALUE | Format.FORWARDREF:
                 return {
