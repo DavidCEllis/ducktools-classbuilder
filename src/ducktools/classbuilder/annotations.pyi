@@ -13,6 +13,7 @@ def get_ns_annotations(
 ) -> dict[str, typing.Any]: ...
 
 def make_annotate_func(
+    cls: type,
     annos: dict[str, typing.Any]
 ) -> Callable[[int], dict[str, typing.Any]]: ...
 

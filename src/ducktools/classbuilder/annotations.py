@@ -83,14 +83,15 @@ def get_ns_annotations(ns):
     return annotations
 
 
-def make_annotate_func(annos):
+def make_annotate_func(cls, annos):
     # Only used in 3.14 or later so no sys.version_info gate
 
+    get_annotations = _lazy_annotationlib.get_annotations
     type_repr = _lazy_annotationlib.type_repr
     Format = _lazy_annotationlib.Format
     ForwardRef = _lazy_annotationlib.ForwardRef
     # Construct an annotation function from __annotations__
-    def annotate_func(format, /):
+    def __annotate__(format, /):
         match format:
             case Format.VALUE | Format.FORWARDREF:
                 return {
@@ -99,18 +100,22 @@ def make_annotate_func(annos):
                     for k, v in annos.items()
                 }
             case Format.STRING:
+                cls_annotations = {}
+                for base in reversed(cls.__mro__):
+                    cls_annotations.update(
+                        get_annotations(base, format=Format.STRING)
+                    )
                 string_annos = {}
                 for k, v in annos.items():
-                    if isinstance(v, str):
-                        string_annos[k] = v
-                    elif isinstance(v, ForwardRef):
-                        string_annos[k] = v.evaluate(format=Format.STRING)
-                    else:
+                    try:
+                        string_annos[k] = cls_annotations[k]
+                    except KeyError:
+                        # Likely a return value
                         string_annos[k] = type_repr(v)
                 return string_annos
             case _:
                 raise NotImplementedError(format)
-    return annotate_func
+    return __annotate__
 
 
 def is_classvar(hint):
