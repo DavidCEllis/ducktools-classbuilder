@@ -132,24 +132,36 @@ class GeneratedCode:
     This class provides a return value for the generated output from source code
     generators.
     """
-    __slots__ = ("source_code", "globs", "annotations")
+    __slots__ = ("source_code", "globs", "annotations", "extra_annotation_func")
 
-    def __init__(self, source_code, globs, annotations=None):
+    def __init__(self, source_code, globs, annotations=None, extra_annotation_func=None):
         self.source_code = source_code
         self.globs = globs
         self.annotations = annotations
+
+        # extra annotation function to evaluate if needed, required for post_init
+        self.extra_annotation_func = extra_annotation_func
 
     def __repr__(self):
         first_source_line = self.source_code.split("\n")[0]
         return (
             f"GeneratorOutput(source_code='{first_source_line} ...', "
-            f"globs={self.globs!r}, annotations={self.annotations!r})"
+            f"globs={self.globs!r}, annotations={self.annotations!r}, "
+            f"extra_annotation_func={self.extra_annotation_func!r})"
         )
 
     def __eq__(self, other):
         if self.__class__ is other.__class__:
-            return (self.source_code, self.globs, self.annotations) == (
-                other.source_code, other.globs, other.annotations
+            return (
+                self.source_code,
+                self.globs,
+                self.annotations,
+                self.extra_annotation_func
+                ) == (
+                other.source_code,
+                other.globs,
+                other.annotations,
+                other.extra_annotation_func
             )
         return NotImplemented
 
@@ -215,7 +227,11 @@ class MethodMaker:
                 if "__annotations__" in gen_cls.__dict__:
                     method.__annotations__ = gen.annotations
                 else:
-                    anno_func = make_annotate_func(gen_cls, gen.annotations)
+                    anno_func = make_annotate_func(
+                        gen_cls,
+                        gen.annotations,
+                        gen.extra_annotation_func,
+                    )
                     anno_func.__qualname__ = f"{gen_cls.__qualname__}.{self.funcname}.__annotate__"
                     method.__annotate__ = anno_func
             else:

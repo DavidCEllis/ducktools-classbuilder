@@ -83,7 +83,7 @@ def get_ns_annotations(ns):
     return annotations
 
 
-def make_annotate_func(cls, annos):
+def make_annotate_func(cls, annos, extra_annotation_func=None):
     # Only used in 3.14 or later so no sys.version_info gate
 
     get_annotations = _lazy_annotationlib.get_annotations
@@ -93,26 +93,31 @@ def make_annotate_func(cls, annos):
     # Construct an annotation function from __annotations__
     def __annotate__(format, /):
         match format:
-            case Format.VALUE | Format.FORWARDREF:
-                return {
-                    k: v.evaluate(format=format)
-                    if isinstance(v, ForwardRef) else v
-                    for k, v in annos.items()
-                }
-            case Format.STRING:
+            case Format.VALUE | Format.FORWARDREF | Format.STRING:
                 cls_annotations = {}
+
                 for base in reversed(cls.__mro__):
                     cls_annotations.update(
-                        get_annotations(base, format=Format.STRING)
+                        get_annotations(base, format=format)
                     )
-                string_annos = {}
+
+                if extra_annotation_func:
+                    cls_annotations.update(
+                        get_annotations(extra_annotation_func, format=format)
+                    )
+
+                new_annos = {}
                 for k, v in annos.items():
                     try:
-                        string_annos[k] = cls_annotations[k]
+                        new_annos[k] = cls_annotations[k]
                     except KeyError:
                         # Likely a return value
-                        string_annos[k] = type_repr(v)
-                return string_annos
+                        if format == Format.STRING:
+                            new_annos[k] = type_repr(v)
+                        else:
+                            new_annos[k] = v
+
+                return new_annos
             case _:
                 raise NotImplementedError(format)
     return __annotate__

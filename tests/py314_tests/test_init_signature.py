@@ -4,7 +4,7 @@ import pytest
 
 
 from ducktools.classbuilder.prefab import Prefab, prefab
-from _test_support import EqualToForwardRef
+from _test_support import EqualToForwardRef, SimpleEqualToForwardRef
 
 
 # Aliases for alias test
@@ -72,6 +72,27 @@ def test_late_defined_annotations(format, expected):
 @pytest.mark.parametrize(
     ["format", "expected"],
     [
+        (Format.VALUE, {"return": None, "x": str, "y": list[int]}),
+        (Format.FORWARDREF, {"return": None, "x": str, "y": list[int]}),
+        (Format.STRING, {"return": "None", "x": "str", "y": "list[late_definition]"}),
+    ]
+)
+def test_late_defined_contained_annotations(format, expected):
+    @prefab
+    class Example:
+        x: str
+        y: list[late_definition]
+
+    late_definition = int
+
+    annos = get_annotations(Example.__init__, format=format)
+
+    assert annos == expected
+
+
+@pytest.mark.parametrize(
+    ["format", "expected"],
+    [
         (Format.VALUE, {"return": None, "x": int, "y": type_str}),
         (Format.FORWARDREF, {"return": None, "x": int, "y": type_str}),
         (Format.STRING, {"return": "None", "x": "assign_int", "y": "type_str"}),
@@ -94,7 +115,7 @@ def test_alias_defined_annotations(format, expected):
 @pytest.mark.parametrize(
     ["format", "expected"],
     [
-        (Format.FORWARDREF, {"return": None, "x": str, "y": EqualToForwardRef("undefined")}),
+        (Format.FORWARDREF, {"return": None, "x": str, "y": SimpleEqualToForwardRef("undefined")}),
         (Format.STRING, {"return": "None", "x": "str", "y": "undefined"}),
     ]
 )
@@ -137,3 +158,43 @@ def test_raises_with_fake_globals():
 
     with pytest.raises(NotImplementedError):
         annos = Example.__init__.__annotate__(Format.VALUE_WITH_FAKE_GLOBALS)
+
+
+def test_with_post_init():
+    @prefab
+    class Example:
+        x: str
+        y: list[undefined]
+
+        def __prefab_post_init__(self, y: list[undefined] | None) -> None:
+            ...
+
+    with pytest.raises(NameError):
+        _ = get_annotations(Example.__init__, format=Format.VALUE)
+
+    annos = get_annotations(Example.__init__, format=Format.FORWARDREF)
+
+    # Check the y annotations separately as the union breaks the equality check
+    y_anno = annos["y"]
+    expected_y_anno = list[SimpleEqualToForwardRef("undefined")] | None
+    for actual, expected in zip(y_anno.__args__, expected_y_anno.__args__):
+        assert actual == expected
+
+    assert annos == {
+        "x": str,
+        "y": y_anno,
+        "return": None,
+    }
+
+    # Now assign something to undefined
+    undefined = int
+
+    annos = get_annotations(Example.__init__)
+
+    # Call directly as get_annotations will use VALUE as it succeeds
+    assert annos == Example.__init__.__annotate__(Format.FORWARDREF)
+    assert annos == {"x": str, "y": list[int] | None, "return": None}
+
+    # Check string annotations
+    annos = get_annotations(Example.__init__, format=Format.STRING)
+    assert annos == {"x": "str", "y": "list[undefined] | None", "return": "None"}
