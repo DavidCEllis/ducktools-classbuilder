@@ -40,3 +40,17 @@ class EqualToForwardRef:
         if self.__owner__ is not None:
             extra.append(f", owner={self.__owner__!r}")
         return f"EqualToForwardRef({self.__forward_arg__!r}{''.join(extra)})"
+
+
+class SimpleEqualToForwardRef:
+    def __init__(self, arg):
+        self.__forward_arg__ = arg
+
+    def __eq__(self, other):
+        if not isinstance(other, (SimpleEqualToForwardRef, ForwardRef)):
+            return NotImplemented
+        else:
+            return self.__forward_arg__ == other.__forward_arg__
+
+    def __repr__(self):
+        return f"SimpleEqualToForwardRef({self.__forward_arg__!r})"

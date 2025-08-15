@@ -203,11 +203,16 @@ def init_generator(cls, funcname="__init__"):
 
     if annotations:
         annotations["return"] = None
+        if post_init := getattr(cls, POST_INIT_FUNC, None):
+            extra_annotation_func = post_init
+        else:
+            extra_annotation_func = None
     else:
         # If there are no annotations, return an unannotated init function
         annotations = None
+        extra_annotation_func = None
 
-    return GeneratedCode(code, globs, annotations)
+    return GeneratedCode(code, globs, annotations, extra_annotation_func)
 
 
 def iter_generator(cls, funcname="__iter__"):

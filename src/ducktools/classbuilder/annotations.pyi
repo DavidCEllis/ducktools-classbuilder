@@ -14,7 +14,8 @@ def get_ns_annotations(
 
 def make_annotate_func(
     cls: type,
-    annos: dict[str, typing.Any]
+    annos: dict[str, typing.Any],
+    extra_annotation_func: types.FunctionType | None = ...,
 ) -> Callable[[int], dict[str, typing.Any]]: ...
 
 def is_classvar(

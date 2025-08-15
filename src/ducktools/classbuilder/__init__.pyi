@@ -45,12 +45,14 @@ class GeneratedCode:
     source_code: str
     globs: dict[str, typing.Any]
     annotations: dict[str, typing.Any]
+    extra_annotation_func: None | types.FunctionType
 
     def __init__(
         self,
         source_code: str,
         globs: dict[str, typing.Any],
         annotations: dict[str, typing.Any] | None = ...,
+        extra_annotation_func: None | types.FunctionType = ...,
     ) -> None: ...
     def __repr__(self) -> str: ...
 
