@@ -146,13 +146,22 @@ class GeneratedCode:
         first_source_line = self.source_code.split("\n")[0]
         return (
             f"GeneratorOutput(source_code='{first_source_line} ...', "
-            f"globs={self.globs!r}, annotations={self.annotations!r})"
+            f"globs={self.globs!r}, annotations={self.annotations!r}, "
+            f"extra_annotation_func={self.extra_annotation_func!r})"
         )
 
     def __eq__(self, other):
         if self.__class__ is other.__class__:
-            return (self.source_code, self.globs, self.annotations) == (
-                other.source_code, other.globs, other.annotations
+            return (
+                self.source_code,
+                self.globs,
+                self.annotations,
+                self.extra_annotation_func
+                ) == (
+                other.source_code,
+                other.globs,
+                other.annotations,
+                other.extra_annotation_func
             )
         return NotImplemented
 
