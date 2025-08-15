@@ -215,7 +215,7 @@ class MethodMaker:
                 if "__annotations__" in gen_cls.__dict__:
                     method.__annotations__ = gen.annotations
                 else:
-                    anno_func = make_annotate_func(gen.annotations)
+                    anno_func = make_annotate_func(gen_cls, gen.annotations)
                     method.__annotate__ = anno_func
             else:
                 method.__annotations__ = gen.annotations

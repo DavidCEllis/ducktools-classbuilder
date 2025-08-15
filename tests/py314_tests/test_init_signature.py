@@ -66,12 +66,12 @@ def test_late_defined_annotations(format, expected):
     [
         (Format.VALUE, {"return": None, "x": int, "y": type_str}),
         (Format.FORWARDREF, {"return": None, "x": int, "y": type_str}),
-        (Format.STRING, {"return": "None", "x": "int", "y": "type_str"}),
+        (Format.STRING, {"return": "None", "x": "assign_int", "y": "type_str"}),
     ]
 )
 def test_alias_defined_annotations(format, expected):
     # Test the behaviour of type aliases and regular types
-    # Type Alias names should be kept while regular assignments will be lost
+    # Both names should be kept in string annotations
 
     @prefab
     class Example:
@@ -99,6 +99,15 @@ def test_forwardref_annotation(format, expected):
     annos = get_annotations(Example.__init__, format=format)
 
     assert annos == expected
+
+
+def test_contained_string_annotation():
+    class Example(Prefab):
+        x: list[undefined]
+
+    annos = get_annotations(Example.__init__, format=Format.STRING)
+
+    assert annos == {"return": "None", "x": "list[undefined]"}
 
 
 def test_forwardref_raises():
