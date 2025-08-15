@@ -91,7 +91,7 @@ def make_annotate_func(cls, annos):
     Format = _lazy_annotationlib.Format
     ForwardRef = _lazy_annotationlib.ForwardRef
     # Construct an annotation function from __annotations__
-    def annotate_func(format, /):
+    def __annotate__(format, /):
         match format:
             case Format.VALUE | Format.FORWARDREF:
                 return {
@@ -110,11 +110,12 @@ def make_annotate_func(cls, annos):
                     try:
                         string_annos[k] = cls_annotations[k]
                     except KeyError:
+                        # Likely a return value
                         string_annos[k] = type_repr(v)
                 return string_annos
             case _:
                 raise NotImplementedError(format)
-    return annotate_func
+    return __annotate__
 
 
 def is_classvar(hint):

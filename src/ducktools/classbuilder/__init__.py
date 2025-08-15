@@ -216,6 +216,7 @@ class MethodMaker:
                     method.__annotations__ = gen.annotations
                 else:
                     anno_func = make_annotate_func(gen_cls, gen.annotations)
+                    anno_func.__qualname__ = f"{gen_cls.__qualname__}.{self.funcname}.__annotate__"
                     method.__annotate__ = anno_func
             else:
                 method.__annotations__ = gen.annotations

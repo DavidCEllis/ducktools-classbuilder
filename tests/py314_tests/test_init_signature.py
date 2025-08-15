@@ -39,6 +39,14 @@ def test_resolvable_annotations(format, expected):
     assert annos == expected
 
 
+def test_annotate_qualname():
+    @prefab
+    class Example:
+        x: str
+
+    assert Example.__init__.__annotate__.__qualname__ == f"{Example.__qualname__}.__init__.__annotate__"
+
+
 @pytest.mark.parametrize(
     ["format", "expected"],
     [
