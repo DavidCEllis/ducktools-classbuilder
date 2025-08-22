@@ -127,7 +127,7 @@ def test_repr_field():
     f4 = Field(default=True, type=bool)
     f5 = Field(default=True, doc="True or False")
 
-    repr_ending = "init=True, repr=True, compare=True, kw_only=False, forward_type=None"
+    repr_ending = "init=True, repr=True, compare=True, kw_only=False"
 
     nothing_repr = repr(NOTHING)
 
@@ -505,7 +505,7 @@ def test_gatheredfields():
         "GatheredFields("
         "fields={'x': Field("
         "default=1, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None, "
-        "init=True, repr=True, compare=True, kw_only=False, forward_type=None"
+        "init=True, repr=True, compare=True, kw_only=False"
         ")}, "
         "modifications={'x': <NOTHING OBJECT>}"
         ")"

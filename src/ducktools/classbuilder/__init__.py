@@ -834,7 +834,7 @@ def _build_field():
         "repr": Field(default=True, doc=field_docs["repr"]),
         "compare": Field(default=True, doc=field_docs["compare"]),
         "kw_only": Field(default=False, doc=field_docs["kw_only"]),
-        "forward_type": Field(default=None, doc=field_docs["forward_type"]),
+        "forward_type": Field(default=None, doc=field_docs["forward_type"], repr=False),
     }
     modifications = {"__slots__": field_docs}
 
