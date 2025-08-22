@@ -48,7 +48,7 @@ def get_func_annotations(func):
 
 
 # This is simplified under 3.13 or earlier
-def get_ns_annotations(ns):
+def get_ns_annotations(ns, cls=None):
     annotations = ns.get("__annotations__")
     if annotations is not None:
         annotations = annotations.copy()
