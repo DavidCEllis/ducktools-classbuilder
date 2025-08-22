@@ -20,6 +20,9 @@ from ducktools.classbuilder.annotations import (
     get_ns_annotations,
 )
 
+from _type_support import matches_type
+
+
 CV = ClassVar
 
 
@@ -90,9 +93,9 @@ def test_make_annotation_gatherer():
 
     annos, modifications = gatherer(ExampleAnnotated)
 
-    annotations = get_ns_annotations(vars(ExampleAnnotated))
+    annotations = get_ns_annotations(vars(ExampleAnnotated), ExampleAnnotated)
 
-    assert annos["blank_field"] == NewField(type=str)
+    assert annos["blank_field"] == NewField(type=matches_type(str))
 
     # ABC should be present in annos and in the class
     for key in "abc":
