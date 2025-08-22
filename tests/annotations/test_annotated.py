@@ -89,6 +89,7 @@ def test_make_annotation_gatherer():
         h: Annotated[CV[str], ''] = "h"
 
     annos, modifications = gatherer(ExampleAnnotated)
+
     annotations = get_ns_annotations(vars(ExampleAnnotated))
 
     assert annos["blank_field"] == NewField(type=str)

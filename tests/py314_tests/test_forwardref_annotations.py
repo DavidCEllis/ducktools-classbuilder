@@ -3,8 +3,9 @@
 from ducktools.classbuilder.annotations import get_ns_annotations, get_func_annotations
 
 from pathlib import Path
+from typing import Annotated, ClassVar
 
-from _test_support import EqualToForwardRef
+from _test_support import EqualToForwardRef, SimpleEqualToForwardRef
 
 global_type = int
 
@@ -57,3 +58,36 @@ def test_func_annotations():
         'x': EqualToForwardRef("unknown", owner=forwardref_func),
         'return': str
     }
+
+
+def test_ns_annotations():
+    # The 3.14 annotations version of test_ns_annotations
+    CV = ClassVar
+
+    class AnnotatedClass:
+        a: str
+        b: "str"
+        c: list[str]
+        d: "list[str]"
+        e: ClassVar[str]
+        f: "ClassVar[str]"
+        g: "ClassVar[forwardref]"
+        h: "Annotated[ClassVar[str], '']"
+        i: "Annotated[ClassVar[forwardref], '']"
+        j: "CV[str]"
+
+    annos = get_ns_annotations(vars(AnnotatedClass))
+
+    assert annos == {
+        'a': SimpleEqualToForwardRef("str"),
+        'b': "str",
+        'c': SimpleEqualToForwardRef("list[str]"),
+        'd': "list[str]",
+        'e': SimpleEqualToForwardRef("ClassVar[str]"),
+        'f': "ClassVar[str]",
+        'g': "ClassVar[forwardref]",
+        'h': "Annotated[ClassVar[str], '']",
+        'i': "Annotated[ClassVar[forwardref], '']",
+        'j': "CV[str]",
+    }
+

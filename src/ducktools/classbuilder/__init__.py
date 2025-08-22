@@ -33,7 +33,19 @@
 import os
 import sys
 
-from .annotations import get_ns_annotations, is_classvar, make_annotate_func
+try:
+    # Use the internal C module if it is available
+    from _types import (  # type: ignore
+        MemberDescriptorType as _MemberDescriptorType,
+        MappingProxyType as _MappingProxyType
+    )
+except ImportError:
+    from types import (
+        MemberDescriptorType as _MemberDescriptorType,
+        MappingProxyType as _MappingProxyType,
+    )
+
+from .annotations import get_ns_annotations, is_classvar, make_annotate_func, evaluate_forwardref
 from ._version import __version__, __version_tuple__  # noqa: F401
 
 # Change this name if you make heavy modifications
@@ -44,13 +56,6 @@ GATHERED_DATA = "__classbuilder_gathered_fields__"
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = os.environ.get("PYTEST_VERSION") is not None
-
-# Obtain types the same way types.py does in pypy
-# See: https://github.com/pypy/pypy/blob/19d9fa6be11165116dd0839b9144d969ab426ae7/lib-python/3/types.py#L61-L73
-class _C: __slots__ = 's'  # noqa
-_MemberDescriptorType = type(_C.s)  # type: ignore
-_MappingProxyType = type(type.__dict__)
-del _C
 
 
 def get_fields(cls, *, local=False):
@@ -132,22 +137,18 @@ class GeneratedCode:
     This class provides a return value for the generated output from source code
     generators.
     """
-    __slots__ = ("source_code", "globs", "annotations", "extra_annotation_func")
+    __slots__ = ("source_code", "globs", "annotations")
 
-    def __init__(self, source_code, globs, annotations=None, extra_annotation_func=None):
+    def __init__(self, source_code, globs, annotations=None):
         self.source_code = source_code
         self.globs = globs
         self.annotations = annotations
-
-        # extra annotation function to evaluate if needed, required for post_init
-        self.extra_annotation_func = extra_annotation_func
 
     def __repr__(self):
         first_source_line = self.source_code.split("\n")[0]
         return (
             f"GeneratorOutput(source_code='{first_source_line} ...', "
-            f"globs={self.globs!r}, annotations={self.annotations!r}, "
-            f"extra_annotation_func={self.extra_annotation_func!r})"
+            f"globs={self.globs!r}, annotations={self.annotations!r})"
         )
 
     def __eq__(self, other):
@@ -156,12 +157,10 @@ class GeneratedCode:
                 self.source_code,
                 self.globs,
                 self.annotations,
-                self.extra_annotation_func
                 ) == (
                 other.source_code,
                 other.globs,
                 other.annotations,
-                other.extra_annotation_func
             )
         return NotImplemented
 
@@ -227,11 +226,7 @@ class MethodMaker:
                 if "__annotations__" in gen_cls.__dict__:
                     method.__annotations__ = gen.annotations
                 else:
-                    anno_func = make_annotate_func(
-                        gen_cls,
-                        gen.annotations,
-                        gen.extra_annotation_func,
-                    )
+                    anno_func = make_annotate_func(gen.annotations)
                     anno_func.__qualname__ = f"{gen_cls.__qualname__}.{self.funcname}.__annotate__"
                     method.__annotate__ = anno_func
             else:
@@ -532,6 +527,10 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     """
     The main builder for class generation
 
+    If the GATHERED_DATA attribute exists on the class it will be used instead of
+    the provided gatherer and 3.14 annotations will be updated with links to
+    the class.
+
     :param cls: Class to be analysed and have methods generated
     :param gatherer: Function to gather field information
     :type gatherer: Callable[[type], tuple[dict[str, Field], dict[str, Any]]]
@@ -557,7 +556,18 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     internals = {}
     setattr(cls, INTERNALS_DICT, internals)
 
-    cls_fields, modifications = gatherer(cls)
+    cls_gathered = cls.__dict__.get(GATHERED_DATA)
+
+    if cls_gathered:
+        cls_fields, modifications = cls_gathered
+        # Reconnect the forwardrefs in types to the class so they can evaluate.
+        if sys.version_info >= (3, 14):
+            annos = annotations.get_ns_annotations(cls.__dict__, cls=cls)
+            for k, v in cls_fields.items():
+                if annotations.is_forwardref(v.type):
+                    cls_fields[k] = type(v).from_field(v, type=annos[k])
+    else:
+        cls_fields, modifications = gatherer(cls)
 
     for name, value in modifications.items():
         if value is NOTHING:
@@ -721,7 +731,6 @@ class Field(metaclass=SlotMakerMeta):
     :param repr: Include in the class __repr__.
     :param compare: Include in the class __eq__.
     :param kw_only: Make this a keyword only parameter in __init__.
-    :param forward_type: type as a ForwardRef for Python 3.14+
     """
 
     # Plain slots are required as part of bootstrapping
@@ -735,7 +744,6 @@ class Field(metaclass=SlotMakerMeta):
         "repr",
         "compare",
         "kw_only",
-        "forward_type"
     )
 
     # noinspection PyShadowingBuiltins
@@ -750,7 +758,6 @@ class Field(metaclass=SlotMakerMeta):
         repr=True,
         compare=True,
         kw_only=False,
-        forward_type=None,  # forward_type can be None as None is not a ForwardRef
     ):
         # The init function for 'Field' cannot be generated
         # as 'Field' needs to exist first.
@@ -766,7 +773,6 @@ class Field(metaclass=SlotMakerMeta):
         self.repr = repr
         self.compare = compare
         self.kw_only = kw_only
-        self.forward_type = forward_type
 
         self.validate_field()
 
@@ -806,6 +812,12 @@ class Field(metaclass=SlotMakerMeta):
 
         return cls(**argument_dict)
 
+    @property
+    def type_eval(self):
+        if sys.version_info >= (3, 14):
+            return annotations.evaluate_forwardref(self.type)
+        return self.type
+
 
 def _build_field():
     # Complete the construction of the Field class
@@ -822,7 +834,6 @@ def _build_field():
         "repr": "Include this attribute in the class __repr__",
         "compare": "Include this attribute in the class __eq__ method",
         "kw_only": "Make this a keyword only parameter in __init__",
-        "forward_type": "A ForwardRef version of the type for Python 3.14"
     }
 
     fields = {
@@ -834,7 +845,6 @@ def _build_field():
         "repr": Field(default=True, doc=field_docs["repr"]),
         "compare": Field(default=True, doc=field_docs["compare"]),
         "kw_only": Field(default=False, doc=field_docs["kw_only"]),
-        "forward_type": Field(default=None, doc=field_docs["forward_type"], repr=False),
     }
     modifications = {"__slots__": field_docs}
 
@@ -852,21 +862,6 @@ def _build_field():
 
 _build_field()
 del _build_field
-
-
-def pre_gathered_gatherer(cls_or_ns):
-    """
-    Retrieve fields previously gathered by SlotMakerMeta
-
-    :param cls_or_ns: Class to gather field information from (or class namespace)
-    :return: dict of field_name: Field(...) and modifications to be performed by the builder
-    """
-    if isinstance(cls_or_ns, (_MappingProxyType, dict)):
-        cls_dict = cls_or_ns
-    else:
-        cls_dict = cls_or_ns.__dict__
-
-    return cls_dict[GATHERED_DATA]
 
 
 def make_slot_gatherer(field_type=Field):
@@ -951,8 +946,10 @@ def make_annotation_gatherer(
     """
     def field_annotation_gatherer(cls_or_ns):
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
+            cls = None
             cls_dict = cls_or_ns
         else:
+            cls = cls_or_ns
             cls_dict = cls_or_ns.__dict__
 
         # This should really be dict[str, field_type] but static analysis
@@ -960,7 +957,7 @@ def make_annotation_gatherer(
         cls_fields: dict[str, Field] = {}
         modifications = {}
 
-        cls_annotations = get_ns_annotations(cls_dict)
+        cls_annotations = get_ns_annotations(cls_dict, cls=cls)
 
         kw_flag = False
 
@@ -969,7 +966,9 @@ def make_annotation_gatherer(
             if is_classvar(v):
                 continue
 
-            if v is KW_ONLY or (isinstance(v, str) and v == "KW_ONLY"):
+            v_eval = evaluate_forwardref(v)
+
+            if v_eval is KW_ONLY or (isinstance(v, str) and v == "KW_ONLY"):
                 if kw_flag:
                     raise SyntaxError("KW_ONLY sentinel may only appear once.")
                 kw_flag = True
@@ -1012,8 +1011,10 @@ def make_field_gatherer(
     def field_attribute_gatherer(cls_or_ns):
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
             cls_dict = cls_or_ns
+            cls = None
         else:
             cls_dict = cls_or_ns.__dict__
+            cls = cls_or_ns
 
         cls_attributes = {
             k: v
@@ -1022,7 +1023,7 @@ def make_field_gatherer(
         }
 
         if assign_types:
-            cls_annotations = get_ns_annotations(cls_dict)
+            cls_annotations = get_ns_annotations(cls_dict, cls=cls)
         else:
             cls_annotations = {}
 
@@ -1064,12 +1065,10 @@ def make_unified_gatherer(
     def field_unified_gatherer(cls_or_ns):
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
             cls_dict = cls_or_ns
+            cls = None
         else:
             cls_dict = cls_or_ns.__dict__
-
-        cls_gathered = cls_dict.get(GATHERED_DATA)
-        if cls_gathered:
-            return pre_gathered_gatherer(cls_dict)
+            cls = cls_or_ns
 
         cls_slots = cls_dict.get("__slots__")
 
@@ -1082,7 +1081,7 @@ def make_unified_gatherer(
             # To choose between annotation and attribute gatherers
             # compare sets of names.
             # Don't bother evaluating string annotations, as we only need names
-            cls_annotations = get_ns_annotations(cls_dict)
+            cls_annotations = get_ns_annotations(cls_dict, cls=cls)
             cls_attributes = {
                 k: v for k, v in cls_dict.items() if isinstance(v, field_type)
             }
@@ -1092,7 +1091,9 @@ def make_unified_gatherer(
 
             if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
                 # All `Field` values have annotations, so use annotation gatherer
-                return anno_g(cls_dict)
+                # Pass the original cls_or_ns object
+
+                return anno_g(cls_or_ns)
 
             return attrib_g(cls_dict)
 

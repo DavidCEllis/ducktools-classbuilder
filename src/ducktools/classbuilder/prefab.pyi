@@ -2,7 +2,6 @@ import typing
 from types import MappingProxyType
 from typing_extensions import dataclass_transform
 
-import inspect
 
 # Suppress weird pylance error
 from collections.abc import Callable  # type: ignore

@@ -1,13 +1,17 @@
 # This module commits intentional typing related crimes, ignore any errors
 # type: ignore
+import sys
+from typing import Annotated, ClassVar
 
 from ducktools.classbuilder.annotations import (
     get_ns_annotations,
     is_classvar,
 )
-from typing import Annotated, ClassVar
+
+import pytest
 
 
+@pytest.mark.skipif(sys.version_info >= (3, 14), reason="Result has changed in 3.14")
 def test_ns_annotations():
     CV = ClassVar
 

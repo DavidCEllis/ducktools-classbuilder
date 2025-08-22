@@ -1,13 +1,19 @@
+import sys
 import types
 import typing
 import typing_extensions
 
-import inspect
 
 from collections.abc import Callable
 from types import MappingProxyType
 
-_py_type = type | str  # Alias for type hint values
+if sys.version_info >= (3, 14):
+    import annotationlib
+
+    _py_type = annotationlib.ForwardRef | type | str
+else:
+    _py_type = type | str
+
 _CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
 
 __version__: str
@@ -264,9 +270,6 @@ class GatheredFields:
 
     fields: dict[str, Field]
     modifications: dict[str, typing.Any]
-
-    __classbuilder_internals__: dict
-    __signature__: inspect.Signature
 
     def __init__(
         self,
