@@ -51,14 +51,12 @@ class GeneratedCode:
     source_code: str
     globs: dict[str, typing.Any]
     annotations: dict[str, typing.Any]
-    extra_annotation_func: None | types.FunctionType
 
     def __init__(
         self,
         source_code: str,
         globs: dict[str, typing.Any],
         annotations: dict[str, typing.Any] | None = ...,
-        extra_annotation_func: None | types.FunctionType = ...,
     ) -> None: ...
     def __repr__(self) -> str: ...
 
@@ -175,16 +173,13 @@ class Field(metaclass=SlotMakerMeta):
     def validate_field(self) -> None: ...
     @classmethod
     def from_field(cls, fld: Field, /, **kwargs: typing.Any) -> Field: ...
-
+    @property
+    def type_eval(self) -> typing.Any: ...
 
 # type[Field] doesn't work due to metaclass
 # This is not really precise enough because isinstance is used
 _ReturnsField = Callable[..., Field]
 _FieldType = typing.TypeVar("_FieldType", bound=Field)
-
-def pre_gathered_gatherer(
-    cls_or_ns: type | _CopiableMappings
-) -> tuple[dict[str, Field | _FieldType], dict[str, typing.Any]]: ...
 
 @typing.overload
 def make_slot_gatherer(

@@ -36,6 +36,7 @@ def get_func_annotations(
 
 def get_ns_annotations(
     ns: _CopiableMappings,
+    cls: type | None = ...
 ) -> dict[str, typing.Any]: ...
 
 def is_classvar(

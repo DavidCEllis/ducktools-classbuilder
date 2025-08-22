@@ -42,11 +42,11 @@ else:
 
 __all__ = [
     "evaluate_forwardref",
-    "get_ns_forwardrefs",
     "is_forwardref",
     "make_annotate_func",
     "get_func_annotations",
     "get_ns_annotations",
+    "is_classvar",
 ]
 
 
