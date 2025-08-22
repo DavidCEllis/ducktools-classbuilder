@@ -721,6 +721,7 @@ class Field(metaclass=SlotMakerMeta):
     :param repr: Include in the class __repr__.
     :param compare: Include in the class __eq__.
     :param kw_only: Make this a keyword only parameter in __init__.
+    :param forward_type: type as a ForwardRef for Python 3.14+
     """
 
     # Plain slots are required as part of bootstrapping
@@ -734,6 +735,7 @@ class Field(metaclass=SlotMakerMeta):
         "repr",
         "compare",
         "kw_only",
+        "forward_type"
     )
 
     # noinspection PyShadowingBuiltins
@@ -748,6 +750,7 @@ class Field(metaclass=SlotMakerMeta):
         repr=True,
         compare=True,
         kw_only=False,
+        forward_type=None,  # forward_type can be None as None is not a ForwardRef
     ):
         # The init function for 'Field' cannot be generated
         # as 'Field' needs to exist first.
@@ -763,6 +766,7 @@ class Field(metaclass=SlotMakerMeta):
         self.repr = repr
         self.compare = compare
         self.kw_only = kw_only
+        self.forward_type = forward_type
 
         self.validate_field()
 
@@ -818,6 +822,7 @@ def _build_field():
         "repr": "Include this attribute in the class __repr__",
         "compare": "Include this attribute in the class __eq__ method",
         "kw_only": "Make this a keyword only parameter in __init__",
+        "forward_type": "A ForwardRef version of the type for Python 3.14"
     }
 
     fields = {
@@ -828,7 +833,8 @@ def _build_field():
         "init": Field(default=True, doc=field_docs["init"]),
         "repr": Field(default=True, doc=field_docs["repr"]),
         "compare": Field(default=True, doc=field_docs["compare"]),
-        "kw_only": Field(default=False, doc=field_docs["kw_only"])
+        "kw_only": Field(default=False, doc=field_docs["kw_only"]),
+        "forward_type": Field(default=None, doc=field_docs["forward_type"]),
     }
     modifications = {"__slots__": field_docs}
 
