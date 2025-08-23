@@ -561,7 +561,9 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     if cls_gathered:
         cls_fields, modifications = cls_gathered
         # Reconnect the forwardrefs in types to the class so they can evaluate.
-        if sys.version_info >= (3, 14):
+        # If there are forwardrefs then annotationlib should be in modules
+        # No need to do this if __future__ annotations are used
+        if sys.version_info >= (3, 14) and sys.modules.get("annotationlib"):
             annos = annotations.get_ns_annotations(cls.__dict__, cls=cls)
             for k, v in cls_fields.items():
                 if annotations.is_forwardref(v.type):
