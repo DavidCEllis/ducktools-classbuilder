@@ -1,6 +1,7 @@
 # This module commits intentional typing related crimes, ignore any errors
 # type: ignore
 import sys
+import typing
 from typing import Annotated, ClassVar
 
 from ducktools.classbuilder.annotations import (
@@ -10,8 +11,9 @@ from ducktools.classbuilder.annotations import (
 
 import pytest
 
+from _type_support import matches_type
 
-@pytest.mark.skipif(sys.version_info >= (3, 14), reason="Result has changed in 3.14")
+
 def test_ns_annotations():
     CV = ClassVar
 
@@ -20,7 +22,7 @@ def test_ns_annotations():
         b: "str"
         c: list[str]
         d: "list[str]"
-        e: ClassVar[str]
+        e: typing.ClassVar[str]
         f: "ClassVar[str]"
         g: "ClassVar[forwardref]"
         h: "Annotated[ClassVar[str], '']"
@@ -30,11 +32,11 @@ def test_ns_annotations():
     annos = get_ns_annotations(vars(AnnotatedClass))
 
     assert annos == {
-        'a': str,
+        'a': matches_type(str),
         'b': "str",
-        'c': list[str],
+        'c': matches_type(list[str]),
         'd': "list[str]",
-        'e': ClassVar[str],
+        'e': matches_type(typing.ClassVar[str]),
         'f': "ClassVar[str]",
         'g': "ClassVar[forwardref]",
         'h': "Annotated[ClassVar[str], '']",
