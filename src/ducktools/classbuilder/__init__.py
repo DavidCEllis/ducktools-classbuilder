@@ -551,6 +551,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
             gatherer=gatherer,
             methods=methods,
             flags=flags,
+            fix_signature=fix_signature,
         )
 
     internals = {}
