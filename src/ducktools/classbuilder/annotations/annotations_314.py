@@ -21,9 +21,9 @@
 # SOFTWARE.
 
 try:
-    from _types import FunctionType as _FunctionType # type: ignore
+    from _types import FunctionType as _FunctionType, CellType as _CellType # type: ignore
 except ImportError:
-    from types import FunctionType as _FunctionType
+    from types import FunctionType as _FunctionType, CellType as _CellType
 
 class _LazyAnnotationLib:
     def __getattr__(self, item):
@@ -34,6 +34,40 @@ class _LazyAnnotationLib:
 
 
 _lazy_annotationlib = _LazyAnnotationLib()
+
+
+def _build_closure(annotate, owner, is_class, stringifier_dict, *, allow_evaluation):
+    # Looks like Jelle might be changing the return type, copy this in here for now.
+    if not annotate.__closure__:
+        return None
+    freevars = annotate.__code__.co_freevars
+    new_closure = []
+    for i, cell in enumerate(annotate.__closure__):
+        if i < len(freevars):
+            name = freevars[i]
+        else:
+            name = "__cell__"
+        new_cell = None
+        if allow_evaluation:
+            try:
+                cell.cell_contents
+            except ValueError:
+                pass
+            else:
+                new_cell = cell
+        if new_cell is None:
+            fwdref = _lazy_annotationlib._Stringifier(
+                name,
+                cell=cell,
+                owner=owner,
+                globals=annotate.__globals__,
+                is_class=is_class,
+                stringifier_dict=stringifier_dict,
+            )
+            stringifier_dict.stringifiers.append(fwdref)
+            new_cell = _CellType(fwdref)
+        new_closure.append(new_cell)
+    return tuple(new_closure)
 
 
 def _call_annotate_forwardrefs(annotate, *, owner=None):
@@ -64,7 +98,7 @@ def _call_annotate_forwardrefs(annotate, *, owner=None):
         is_class=is_class,
         format=format,
     )
-    closure = _lazy_annotationlib._build_closure(
+    closure = _build_closure(
         annotate, owner, is_class, globals, allow_evaluation=False
     )
     func = _FunctionType(
