@@ -1,6 +1,8 @@
 # This syntax only exists in Python 3.12 or later.
 from ducktools.classbuilder.annotations import get_ns_annotations
 
+from _type_support import matches_type
+
 
 def test_312_generic():
     class X[T]:
@@ -10,6 +12,6 @@ def test_312_generic():
         y: "list[T]"
 
     assert get_ns_annotations(vars(X)) == {
-        "x": list[X.test_var],
+        "x": matches_type(list[X.test_var]),
         "y": "list[T]",
     }

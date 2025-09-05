@@ -25,6 +25,8 @@ A 'prebuilt' implementation of class generation.
 
 Includes pre and post init functions along with other methods.
 """
+import sys
+
 from . import (
     INTERNALS_DICT, NOTHING, FIELD_NOTHING,
     Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
@@ -34,7 +36,7 @@ from . import (
     get_repr_generator,
 )
 
-from .annotations import get_func_annotations
+from .annotations import get_func_annotations, make_annotate_func
 
 # These aren't used but are re-exported for ease of use
 # noinspection PyUnresolvedReferences
@@ -203,13 +205,11 @@ def init_generator(cls, funcname="__init__"):
 
     if annotations:
         annotations["return"] = None
-        extra_annotation_func = getattr(cls, POST_INIT_FUNC, None)
     else:
         # If there are no annotations, return an unannotated init function
         annotations = None
-        extra_annotation_func = None
 
-    return GeneratedCode(code, globs, annotations, extra_annotation_func)
+    return GeneratedCode(code, globs, annotations)
 
 
 def iter_generator(cls, funcname="__iter__"):
@@ -329,7 +329,7 @@ def attribute(
     :param private: Short for init, repr, compare, iter, serialize = False, must have default or factory
     :param doc: Parameter documentation for slotted classes
     :param metadata: Dictionary for additional non-construction metadata
-    :param type: Type of this attribute (for slotted classes)
+    :param type: Type of this attribute
 
     :return: Attribute generated with these parameters.
     """
@@ -704,7 +704,11 @@ def build_prefab(
     if slots:
         class_dict["__slots__"] = class_slots
 
-    class_dict["__annotations__"] = class_annotations
+    if sys.version_info >= (3, 14):
+        class_dict["__annotate__"] = make_annotate_func(class_annotations)
+    else:
+        class_dict["__annotations__"] = class_annotations
+
     cls = type(class_name, bases, class_dict)
 
     gathered_fields = GatheredFields(fields, {})

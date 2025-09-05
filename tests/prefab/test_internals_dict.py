@@ -1,6 +1,7 @@
 from ducktools.classbuilder.prefab import prefab, attribute
 from ducktools.classbuilder import INTERNALS_DICT
 
+from _type_support import matches_type
 
 def test_internals_dict():
     @prefab
@@ -12,9 +13,9 @@ def test_internals_dict():
     class Z(X):
         z: int = 3
 
-    x_attrib = attribute(type=int)
-    y_attrib = attribute(default=2, type=int)
-    z_attrib = attribute(default=3, type=int)
+    x_attrib = attribute(type=matches_type(int))
+    y_attrib = attribute(default=2, type=matches_type(int))
+    z_attrib = attribute(default=3, type=matches_type(int))
 
     assert hasattr(X, INTERNALS_DICT)
 
