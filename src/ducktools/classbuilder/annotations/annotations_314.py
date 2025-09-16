@@ -120,17 +120,18 @@ def make_annotate_func(annos):
     Format = _lazy_annotationlib.Format
 
     # Construct an annotation function from __annotations__
-    def __annotate__(format, /):
-        if format in {Format.VALUE, Format.FORWARDREF, Format.STRING}:
-            new_annos = {}
-            for k, v in annos.items():
-                v = evaluate_forwardref(v, format=format)
-                if not isinstance(v, str) and format == Format.STRING:
-                    v = type_repr(v)
-                new_annos[k] = v
-            return new_annos
-        else:
-            raise NotImplementedError(format)
+    def __annotate__(format, /, __Format=Format, __NotImplementedError=NotImplementedError):
+        match format:
+            case __Format.VALUE | __Format.FORWARDREF | __Format.STRING:
+                new_annos = {}
+                for k, v in annos.items():
+                    v = evaluate_forwardref(v, format=format)
+                    if not isinstance(v, str) and format == __Format.STRING:
+                        v = type_repr(v)
+                    new_annos[k] = v
+                return new_annos
+            case _:
+                raise __NotImplementedError(format)
 
     return __annotate__
 
