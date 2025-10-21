@@ -6,9 +6,9 @@ import sys
 import pytest
 
 from ducktools.classbuilder.prefab import (
-    Prefab, 
-    attribute, 
-    prefab, 
+    Prefab,
+    attribute,
+    prefab,
     replace as prefab_replace,
 )
 
@@ -63,3 +63,27 @@ def test_replace_fail(ex_class, replace):
 
     with pytest.raises(TypeError):
         replace(ex, d="Does Not Exist")
+
+
+# Test that replace=False removes the replace method.
+def test_replace_optional():
+    @prefab(replace=False)
+    class Example:
+        x: int
+
+    class ExampleBase(Prefab, replace=False):
+        x: int
+
+    assert not hasattr(Example, "__replace__")
+    assert not hasattr(ExampleBase, "__replace__")
+
+
+@pytest.mark.parametrize("replace", replace_funcs)
+def test_no_replace_func_failure(replace):
+    @prefab(replace=False)
+    class Example:
+        x: int
+
+    a = Example(42)
+    with pytest.raises(TypeError):
+        b = replace(a, x=33)

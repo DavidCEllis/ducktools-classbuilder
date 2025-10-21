@@ -140,6 +140,7 @@ def _make_prefab(
     match_args: bool = True,
     kw_only: bool = False,
     frozen: bool = False,
+    replace: bool = True,
     dict_method: bool = False,
     recursive_repr: bool = False,
     gathered_fields: Callable[[type], tuple[dict[str, Attribute], dict[str, typing.Any]]] | None = None,
@@ -161,6 +162,7 @@ class Prefab(metaclass=SlotMakerMeta):
         match_args: bool = True,
         kw_only: bool = False,
         frozen: bool = False,
+        replace: bool = True,
         dict_method: bool = False,
         recursive_repr: bool = False,
     ) -> None: ...
@@ -212,6 +214,7 @@ def prefab(
     match_args: bool = ...,
     kw_only: bool = ...,
     frozen: bool = ...,
+    replace: bool = ...,
     dict_method: bool = ...,
     recursive_repr: bool = ...,
 ) -> typing.Any: ...
@@ -229,6 +232,7 @@ def build_prefab(
     match_args: bool = True,
     kw_only: bool = False,
     frozen: bool = False,
+    replace: bool = True,
     dict_method: bool = False,
     recursive_repr: bool = False,
     slots: bool = False,
