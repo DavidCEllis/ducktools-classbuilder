@@ -24,26 +24,17 @@ import sys
 
 if sys.version_info >= (3, 14):
     from .annotations_314 import (
-        evaluate_forwardref,
-        is_forwardref,
-        make_annotate_func,
         get_func_annotations,
         get_ns_annotations,
     )
 else:
     from .annotations_pre_314 import (
-        evaluate_forwardref,
-        is_forwardref,
-        make_annotate_func,
         get_func_annotations,
         get_ns_annotations,
     )
 
 
 __all__ = [
-    "evaluate_forwardref",
-    "is_forwardref",
-    "make_annotate_func",
     "get_func_annotations",
     "get_ns_annotations",
     "is_classvar",
@@ -60,8 +51,6 @@ def is_classvar(hint):
         if _typing:
             _Annotated = _typing.Annotated
             _get_origin = _typing.get_origin
-
-            hint = evaluate_forwardref(hint)
 
             if _Annotated and _get_origin(hint) is _Annotated:
                 hint = getattr(hint, "__origin__", None)

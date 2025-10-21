@@ -28,7 +28,6 @@ from ducktools.classbuilder import (
 from ducktools.classbuilder.annotations import get_ns_annotations
 
 from utils import graalpy_fails  # type: ignore
-from _type_support import matches_type
 
 def test_get_fields_flags_methods():
     local_fields = {"Example": Field()}
@@ -217,7 +216,7 @@ def test_slot_gatherer_success():
 
     assert slots == fields
     assert modifications["__slots__"] == {"a": None, "b": None, "c": "a list", "d": None}
-    assert get_ns_annotations(SlotsExample.__dict__) == {"a": matches_type(int)}  # Original annotations dict unmodified
+    assert get_ns_annotations(SlotsExample.__dict__) == {"a": int}  # Original annotations dict unmodified
 
 
 def test_slot_gatherer_failure():

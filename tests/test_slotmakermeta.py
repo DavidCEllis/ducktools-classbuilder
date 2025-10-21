@@ -7,8 +7,6 @@ import pytest
 
 from utils import graalpy_fails  # type: ignore
 
-from _type_support import matches_type
-
 
 @graalpy_fails
 def test_slots_created():
@@ -30,9 +28,9 @@ def test_slots_created():
     assert slots == expected_slots
 
     expected_fields = {
-        "a": Field(default="a", type=matches_type(str)),
+        "a": Field(default="a", type=str),
         "b": Field(default="b", type="List[str]"),
-        "c": Field(default="c", type=matches_type(typing.Annotated[str, ""])),
+        "c": Field(default="c", type=typing.Annotated[str, ""]),
     }
 
     fields, modifications = getattr(ExampleAnnotated, GATHERED_DATA)

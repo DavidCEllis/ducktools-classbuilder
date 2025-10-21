@@ -7,7 +7,6 @@ import pytest
 
 
 from ducktools.classbuilder.prefab import Prefab, prefab
-from _test_support import EqualToForwardRef
 
 
 # Aliases for alias test

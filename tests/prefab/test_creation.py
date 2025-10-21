@@ -4,12 +4,10 @@ import typing
 from typing import Annotated, ClassVar
 
 from ducktools.classbuilder.prefab import prefab, attribute
-from ducktools.classbuilder.annotations import get_ns_annotations, evaluate_forwardref
+from ducktools.classbuilder.annotations import get_ns_annotations
 
 import pytest
 
-
-from _type_support import matches_type
 
 # These classes are defined at module level for easier
 # REPR testing
@@ -207,7 +205,7 @@ class TestSplitVarDef:
 
         for cls in [SplitVarDef, SplitVarDefReverseOrder, SplitVarRedef]:
 
-            assert evaluate_forwardref(get_ns_annotations(cls.__dict__)["x"]) == str
+            assert get_ns_annotations(cls.__dict__)["x"] == str
 
             inst = cls()
             assert inst.x == "test"
@@ -236,7 +234,8 @@ class TestSplitVarDef:
         assert repr(inst) == "HorribleMess(x='true_test', y='test_2')"
 
         assert get_ns_annotations(HorribleMess.__dict__, HorribleMess) == {
-            "x": matches_type(str), "y": matches_type(str)
+            "x": str,
+            "y": str,
         }
 
 

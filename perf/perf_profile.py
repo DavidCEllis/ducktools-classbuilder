@@ -240,14 +240,14 @@ def run_all_tests(reps, test_everything=False):
         run_test('dataclasses', reps)
 
         try:
-            import attrs
+            import attrs  # type: ignore
             write_perftemp(100, attr_template, 'from attrs import define\n')
             run_test(f'attrs {attrs.__version__}', reps)
         except ImportError:
             print("attrs not installed")
 
         try:
-            import pydantic
+            import pydantic  # type: ignore
             write_perftemp(100, pydantic_template, 'from pydantic import BaseModel\n')
             run_test(f'pydantic {pydantic.__version__}', reps)
         except ImportError:
@@ -292,6 +292,7 @@ def main():
     args = parser.parse_args()
 
     run_all_tests(args.reps, test_everything=args.test_all)
+
 
 if __name__ == "__main__":
     main()

@@ -25,8 +25,6 @@ A 'prebuilt' implementation of class generation.
 
 Includes pre and post init functions along with other methods.
 """
-import sys
-
 from . import (
     INTERNALS_DICT, NOTHING, FIELD_NOTHING,
     Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
@@ -36,11 +34,10 @@ from . import (
     get_repr_generator,
 )
 
-from .annotations import get_func_annotations, make_annotate_func
+from .annotations import get_func_annotations
 
 # These aren't used but are re-exported for ease of use
-# noinspection PyUnresolvedReferences
-from . import SlotFields, KW_ONLY  # noqa: F401
+from . import SlotFields as SlotFields, KW_ONLY as KW_ONLY
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
@@ -704,10 +701,7 @@ def build_prefab(
     if slots:
         class_dict["__slots__"] = class_slots
 
-    if sys.version_info >= (3, 14):
-        class_dict["__annotate__"] = make_annotate_func(class_annotations)
-    else:
-        class_dict["__annotations__"] = class_annotations
+    class_dict["__annotations__"] = class_annotations
 
     cls = type(class_name, bases, class_dict)
 

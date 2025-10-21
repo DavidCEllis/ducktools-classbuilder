@@ -45,7 +45,7 @@ except ImportError:
         MappingProxyType as _MappingProxyType,
     )
 
-from .annotations import get_ns_annotations, is_classvar, make_annotate_func, evaluate_forwardref
+from .annotations import get_ns_annotations, is_classvar
 from ._version import __version__, __version_tuple__  # noqa: F401
 
 # Change this name if you make heavy modifications
@@ -219,18 +219,7 @@ class MethodMaker:
 
         # Apply annotations
         if gen.annotations is not None:
-            if sys.version_info >= (3, 14):
-                # If __annotations__ exists on the class, either they
-                # are user defined or they are using __future__ annotations.
-                # In this case, just write __annotations__
-                if "__annotations__" in gen_cls.__dict__:
-                    method.__annotations__ = gen.annotations
-                else:
-                    anno_func = make_annotate_func(gen.annotations)
-                    anno_func.__qualname__ = f"{gen_cls.__qualname__}.{self.funcname}.__annotate__"
-                    method.__annotate__ = anno_func
-            else:
-                method.__annotations__ = gen.annotations
+            method.__annotations__ = gen.annotations
 
         # Replace this descriptor on the class with the generated function
         setattr(gen_cls, self.funcname, method)
@@ -561,14 +550,6 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
 
     if cls_gathered:
         cls_fields, modifications = cls_gathered
-        # Reconnect the forwardrefs in types to the class so they can evaluate.
-        # If there are forwardrefs then annotationlib should be in modules
-        # No need to do this if __future__ annotations are used
-        if sys.version_info >= (3, 14) and sys.modules.get("annotationlib"):
-            annos = annotations.get_ns_annotations(cls.__dict__, cls=cls)
-            for k, v in cls_fields.items():
-                if annotations.is_forwardref(v.type):
-                    cls_fields[k] = type(v).from_field(v, type=annos[k])
     else:
         cls_fields, modifications = gatherer(cls)
 
@@ -815,12 +796,6 @@ class Field(metaclass=SlotMakerMeta):
 
         return cls(**argument_dict)
 
-    @property
-    def type_eval(self):
-        if sys.version_info >= (3, 14):
-            return annotations.evaluate_forwardref(self.type)
-        return self.type
-
 
 def _build_field():
     # Complete the construction of the Field class
@@ -969,9 +944,7 @@ def make_annotation_gatherer(
             if is_classvar(v):
                 continue
 
-            v_eval = evaluate_forwardref(v)
-
-            if v_eval is KW_ONLY or (isinstance(v, str) and v == "KW_ONLY"):
+            if v is KW_ONLY or (isinstance(v, str) and "KW_ONLY" in v):
                 if kw_flag:
                     raise SyntaxError("KW_ONLY sentinel may only appear once.")
                 kw_flag = True
