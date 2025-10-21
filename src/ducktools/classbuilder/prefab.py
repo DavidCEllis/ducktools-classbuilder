@@ -375,6 +375,7 @@ def _make_prefab(
     match_args=True,
     kw_only=False,
     frozen=False,
+    replace=True,
     dict_method=False,
     recursive_repr=False,
     gathered_fields=None,
@@ -392,6 +393,7 @@ def _make_prefab(
     :param frozen: Prevent attribute values from being changed once defined
                    (This does not prevent the modification of mutable attributes
                    such as lists)
+    :param replace: Add a generated __replace__ method
     :param dict_method: Include an as_dict method for faster dictionary creation
     :param recursive_repr: Safely handle repr in case of recursion
     :param gathered_fields: Pre-gathered fields callable, to skip re-collecting attributes
@@ -437,7 +439,8 @@ def _make_prefab(
     if dict_method:
         methods.add(asdict_maker)
 
-    methods.add(replace_maker)
+    if replace and "__replace__" not in cls_dict:
+        methods.add(replace_maker)
 
     flags = {
         "kw_only": kw_only,
@@ -560,6 +563,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
         match_args=True,
         kw_only=False,
         frozen=False,
+        replace=True,
         dict_method=False,
         recursive_repr=False,
     ):
@@ -572,6 +576,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
             match_args=match_args,
             kw_only=kw_only,
             frozen=frozen,
+            replace=replace,
             dict_method=dict_method,
             recursive_repr=recursive_repr,
         )
@@ -588,6 +593,7 @@ def prefab(
     match_args=True,
     kw_only=False,
     frozen=False,
+    replace=True,
     dict_method=False,
     recursive_repr=False,
 ):
@@ -605,6 +611,7 @@ def prefab(
     :param kw_only: make all attributes keyword only
     :param frozen: Prevent attribute values from being changed once defined
                    (This does not prevent the modification of mutable attributes such as lists)
+    :param replace: generate a __replace__ method
     :param dict_method: Include an as_dict method for faster dictionary creation
     :param recursive_repr: Safely handle repr in case of recursion
 
@@ -621,6 +628,7 @@ def prefab(
             match_args=match_args,
             kw_only=kw_only,
             frozen=frozen,
+            replace=replace,
             dict_method=dict_method,
             recursive_repr=recursive_repr,
         )
@@ -634,6 +642,7 @@ def prefab(
             match_args=match_args,
             kw_only=kw_only,
             frozen=frozen,
+            replace=replace,
             dict_method=dict_method,
             recursive_repr=recursive_repr,
         )
@@ -653,6 +662,7 @@ def build_prefab(
     match_args=True,
     kw_only=False,
     frozen=False,
+    replace=True,
     dict_method=False,
     recursive_repr=False,
     slots=False,
@@ -674,6 +684,7 @@ def build_prefab(
     :param kw_only: make all attributes keyword only
     :param frozen: Prevent attribute values from being changed once defined
                    (This does not prevent the modification of mutable attributes such as lists)
+    :param replace: generate a __replace__ method
     :param dict_method: Include an as_dict method for faster dictionary creation
     :param recursive_repr: Safely handle repr in case of recursion
     :param slots: Make the resulting class slotted
@@ -716,6 +727,7 @@ def build_prefab(
         match_args=match_args,
         kw_only=kw_only,
         frozen=frozen,
+        replace=replace,
         dict_method=dict_method,
         recursive_repr=recursive_repr,
         gathered_fields=gathered_fields,
@@ -781,4 +793,9 @@ def as_dict(o):
 def replace(obj, /, **changes):
     if not is_prefab_instance(obj):
         raise TypeError("replace() should be called on prefab instances")
-    return obj.__replace__(**changes)
+    try:
+        replace_func = obj.__replace__
+    except AttributeError:
+        raise TypeError(f"{obj.__class__.__name__!r} does not support __replace__")
+
+    return replace_func(**changes)
