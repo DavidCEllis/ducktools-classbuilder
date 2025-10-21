@@ -1,3 +1,4 @@
+import typing
 from typing import Annotated, ClassVar, List
 
 from ducktools.classbuilder import Field, SlotFields, NOTHING, SlotMakerMeta, GATHERED_DATA
@@ -12,7 +13,7 @@ def test_slots_created():
     class ExampleAnnotated(metaclass=SlotMakerMeta):
         a: str = "a"
         b: "List[str]" = "b"  # Yes this is the wrong type, I know.
-        c: Annotated[str, ""] = "c"
+        c: typing.Annotated[str, ""] = "c"
 
         d: ClassVar[str] = "d"
         e: Annotated[ClassVar[str], ""] = "e"
@@ -27,9 +28,9 @@ def test_slots_created():
     assert slots == expected_slots
 
     expected_fields = {
-        "a": Field(default="a", type=str), 
-        "b": Field(default="b", type="List[str]"), 
-        "c": Field(default="c", type=Annotated[str, ""]),
+        "a": Field(default="a", type=str),
+        "b": Field(default="b", type="List[str]"),
+        "c": Field(default="c", type=typing.Annotated[str, ""]),
     }
 
     fields, modifications = getattr(ExampleAnnotated, GATHERED_DATA)

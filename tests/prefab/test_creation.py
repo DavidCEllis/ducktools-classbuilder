@@ -9,7 +9,7 @@ from ducktools.classbuilder.annotations import get_ns_annotations
 import pytest
 
 
-# These classes are defined at module level for easier 
+# These classes are defined at module level for easier
 # REPR testing
 @prefab
 class Empty:
@@ -233,7 +233,10 @@ class TestSplitVarDef:
         assert inst.x == "true_test"
         assert repr(inst) == "HorribleMess(x='true_test', y='test_2')"
 
-        assert get_ns_annotations(HorribleMess.__dict__) == {"x": str, "y": str}
+        assert get_ns_annotations(HorribleMess.__dict__, HorribleMess) == {
+            "x": str,
+            "y": str,
+        }
 
 
 def test_call_mistaken():

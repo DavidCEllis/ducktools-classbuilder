@@ -29,7 +29,6 @@ from ducktools.classbuilder.annotations import get_ns_annotations
 
 from utils import graalpy_fails  # type: ignore
 
-
 def test_get_fields_flags_methods():
     local_fields = {"Example": Field()}
     resolved_fields = {"ParentField": Field(), "Example": Field()}

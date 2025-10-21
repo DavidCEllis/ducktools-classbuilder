@@ -1,13 +1,19 @@
+import sys
 import types
 import typing
 import typing_extensions
 
-import inspect
 
 from collections.abc import Callable
 from types import MappingProxyType
 
-_py_type = type | str  # Alias for type hint values
+if sys.version_info >= (3, 14):
+    import annotationlib
+
+    _py_type = annotationlib.ForwardRef | type | str
+else:
+    _py_type = type | str
+
 _CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
 
 __version__: str
@@ -45,14 +51,12 @@ class GeneratedCode:
     source_code: str
     globs: dict[str, typing.Any]
     annotations: dict[str, typing.Any]
-    extra_annotation_func: None | types.FunctionType
 
     def __init__(
         self,
         source_code: str,
         globs: dict[str, typing.Any],
         annotations: dict[str, typing.Any] | None = ...,
-        extra_annotation_func: None | types.FunctionType = ...,
     ) -> None: ...
     def __repr__(self) -> str: ...
 
@@ -170,15 +174,10 @@ class Field(metaclass=SlotMakerMeta):
     @classmethod
     def from_field(cls, fld: Field, /, **kwargs: typing.Any) -> Field: ...
 
-
 # type[Field] doesn't work due to metaclass
 # This is not really precise enough because isinstance is used
 _ReturnsField = Callable[..., Field]
 _FieldType = typing.TypeVar("_FieldType", bound=Field)
-
-def pre_gathered_gatherer(
-    cls_or_ns: type | _CopiableMappings
-) -> tuple[dict[str, Field | _FieldType], dict[str, typing.Any]]: ...
 
 @typing.overload
 def make_slot_gatherer(
@@ -264,9 +263,6 @@ class GatheredFields:
 
     fields: dict[str, Field]
     modifications: dict[str, typing.Any]
-
-    __classbuilder_internals__: dict
-    __signature__: inspect.Signature
 
     def __init__(
         self,

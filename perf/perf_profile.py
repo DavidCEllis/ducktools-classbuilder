@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import platform
+import argparse
 
 from collections import namedtuple
 from typing import NamedTuple
@@ -35,7 +36,7 @@ class C{n}:
             return (self.a, self.b, self.c, self.d, self.e) == (other.a, other.b, other.c, other.d, other.e)
         else:
             return NotImplemented
-            
+
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
@@ -50,7 +51,7 @@ class C{n}(NamedTuple):
     c : int
     d : int
     e : int
-    
+
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
@@ -62,7 +63,7 @@ class C{n}:
     c: int
     d: int
     e: int
-    
+
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
@@ -74,7 +75,7 @@ class C{n}:
     c: int
     d: int
     e: int
-    
+
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
@@ -85,7 +86,7 @@ class C{n}(BaseModel):
     c: int
     d: int
     e: int
-    
+
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
@@ -129,7 +130,7 @@ class C{n}:
     c: int
     d: int
     e: int
-    
+
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
@@ -211,7 +212,7 @@ def write_perftemp(count, template, setup):
             f.write(template.format(n=n))
 
 
-def main(reps, test_everything=False):
+def run_all_tests(reps, test_everything=False):
     """
 
     :param reps: Number of repeat imports
@@ -239,14 +240,14 @@ def main(reps, test_everything=False):
         run_test('dataclasses', reps)
 
         try:
-            import attrs
+            import attrs  # type: ignore
             write_perftemp(100, attr_template, 'from attrs import define\n')
             run_test(f'attrs {attrs.__version__}', reps)
         except ImportError:
             print("attrs not installed")
 
         try:
-            import pydantic
+            import pydantic  # type: ignore
             write_perftemp(100, pydantic_template, 'from pydantic import BaseModel\n')
             run_test(f'pydantic {pydantic.__version__}', reps)
         except ImportError:
@@ -283,9 +284,15 @@ def main(reps, test_everything=False):
     run_test(f'prefab_eval {classbuilder.__version__}', reps)
 
 
-if __name__ == '__main__':
-    if len(sys.argv) == 2:
-        reps = int(sys.argv[1])
-    else:
-        reps = 100
-    main(reps, test_everything=True)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--reps", type=int, action="store", default=100)
+    parser.add_argument("--test-all", action="store_true")
+
+    args = parser.parse_args()
+
+    run_all_tests(args.reps, test_everything=args.test_all)
+
+
+if __name__ == "__main__":
+    main()

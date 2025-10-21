@@ -1,11 +1,12 @@
 # This module commits intentional typing related crimes, ignore any errors
 # type: ignore
+import typing
+from typing import Annotated, ClassVar
 
 from ducktools.classbuilder.annotations import (
     get_ns_annotations,
     is_classvar,
 )
-from typing import Annotated, ClassVar
 
 
 def test_ns_annotations():
@@ -16,7 +17,7 @@ def test_ns_annotations():
         b: "str"
         c: list[str]
         d: "list[str]"
-        e: ClassVar[str]
+        e: typing.ClassVar[str]
         f: "ClassVar[str]"
         g: "ClassVar[forwardref]"
         h: "Annotated[ClassVar[str], '']"
@@ -30,7 +31,7 @@ def test_ns_annotations():
         'b': "str",
         'c': list[str],
         'd': "list[str]",
-        'e': ClassVar[str],
+        'e': typing.ClassVar[str],
         'f': "ClassVar[str]",
         'g': "ClassVar[forwardref]",
         'h': "Annotated[ClassVar[str], '']",
