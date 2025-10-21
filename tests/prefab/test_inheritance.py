@@ -1,8 +1,7 @@
 """Tests that Prefabs handle inheritance as expected"""
-
 import pytest
 
-from ducktools.classbuilder.prefab import attribute, prefab
+from ducktools.classbuilder.prefab import attribute, prefab, Prefab
 
 
 # Class Definitions
@@ -121,3 +120,58 @@ def test_two_fields_one_default():
         @prefab
         class C(B):
             x: int = 2
+
+
+# These tests test for a difference between the subclass implementation and the
+# decorator implementation based on the properties being inherited or not.
+
+PARAMS = ["kwargs", "method_name", "in_vars", "in_subclass"]
+SUBCLASS_METHOD_CHECKS = [
+    # kwargs         | attribute | in vars  | in subclass
+    ({"init": False}, "__init__", False, False),
+    ({"repr": False}, "__repr__", False, False),
+    ({"eq": False}, "__eq__", False, False),
+    ({"iter": True}, "__iter__", True, True),
+    ({"match_args": False}, "__match_args__", False, False),
+    ({"replace": False}, "__replace__", False, False),
+    ({"dict_method": True}, "as_dict", True, True),
+]
+
+DECORATOR_METHOD_CHECKS = [
+    ({"init": False}, "__init__", False, True),
+    ({"repr": False}, "__repr__", False, True),
+    ({"eq": False}, "__eq__", False, True),
+    ({"iter": True}, "__iter__", True, False),
+    ({"match_args": False}, "__match_args__", False, True),
+    ({"replace": False}, "__replace__", False, True),
+    ({"dict_method": True}, "as_dict", True, False),
+]
+
+class TestArgumentInheritanceSubclass:
+    # Prefab subclasses **should** inherit flags
+    @pytest.mark.parametrize(PARAMS, SUBCLASS_METHOD_CHECKS)
+    def test_method_flags(self, kwargs, method_name, in_vars, in_subclass):
+        class Base(Prefab, **kwargs):
+            x: int
+
+        class Subclass(Base):
+            y: str
+
+        assert (method_name in vars(Base)) is in_vars
+        assert (method_name in vars(Subclass)) is in_subclass
+
+
+class TestArgumentInheritanceDecorator:
+    # @prefab decorated classes **should not** inherit flags
+    @pytest.mark.parametrize(PARAMS, DECORATOR_METHOD_CHECKS)
+    def test_method_flags(self, kwargs, method_name, in_vars, in_subclass):
+        @prefab(**kwargs)
+        class Base:
+            x: int
+
+        @prefab
+        class Subclass:
+            y: str
+
+        assert (method_name in vars(Base)) is in_vars
+        assert (method_name in vars(Subclass)) is in_subclass

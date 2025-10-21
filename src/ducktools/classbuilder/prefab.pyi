@@ -144,6 +144,7 @@ def _make_prefab(
     dict_method: bool = False,
     recursive_repr: bool = False,
     gathered_fields: Callable[[type], tuple[dict[str, Attribute], dict[str, typing.Any]]] | None = None,
+    ignore_annotations: bool | None = None,
 ) -> type: ...
 
 _T = typing.TypeVar("_T")
@@ -165,6 +166,7 @@ class Prefab(metaclass=SlotMakerMeta):
         replace: bool = True,
         dict_method: bool = False,
         recursive_repr: bool = False,
+        ignore_annotations: bool = False,
     ) -> None: ...
 
 # As far as I can tell these are the correct types
@@ -217,6 +219,7 @@ def prefab(
     replace: bool = ...,
     dict_method: bool = ...,
     recursive_repr: bool = ...,
+    ignore_annotations: bool = ...,
 ) -> typing.Any: ...
 
 def build_prefab(
