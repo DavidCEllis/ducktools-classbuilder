@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from utils import graalpy_fails
+
 DOC_CODE_FOLDER = Path(__file__).parents[1] / "docs" / "code_examples"
 
 
@@ -13,6 +15,7 @@ SCRIPT_FILES = sorted(DOC_CODE_FOLDER.glob("*.py"))
 def idfn(p: Path):
     return p.name
 
+@graalpy_fails
 class TestDocCodeRuns():
     @pytest.mark.parametrize("demo_script", SCRIPT_FILES, ids=idfn)
     def test_script_executes(self, demo_script):

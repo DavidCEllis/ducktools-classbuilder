@@ -850,6 +850,12 @@ def as_dict(o):
     }
 
 def replace(obj, /, **changes):
+    """
+    Create a copy of a prefab instance with values provided to 'changes' replaced
+
+    :param obj: prefab instance
+    :return: new prefab instance
+    """
     if not is_prefab_instance(obj):
         raise TypeError("replace() should be called on prefab instances")
     try:

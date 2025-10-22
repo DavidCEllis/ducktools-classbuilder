@@ -49,6 +49,7 @@
 
 ```{eval-rst}
 .. autoclass:: ducktools.classbuilder.prefab::Prefab
+   :members: __init_subclass__
 ```
 
 ```{eval-rst}
