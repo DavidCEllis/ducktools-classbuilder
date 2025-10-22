@@ -628,8 +628,6 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
                 f"Prefab.__init_subclass__ got unexpected keyword arguments {error_args}"
             )
 
-        print(flags)
-
         _make_prefab(
             cls,
             **flags
