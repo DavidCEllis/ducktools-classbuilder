@@ -1,0 +1,33 @@
+X(x='Value of x', a='Not In __init__ signature', c=[], e='Value of e') 
+
+{'x': Field(default=<NOTHING OBJECT>, default_factory=<NOTHING OBJECT>, type=<class 'str'>, doc=None, init=True, repr=True, compare=True, kw_only=False),
+ 'a': Field(default='Not In __init__ signature', default_factory=<NOTHING OBJECT>, type=<class 'int'>, doc=None, init=False, repr=True, compare=True, kw_only=False),
+ 'b': Field(default='Not In Repr', default_factory=<NOTHING OBJECT>, type=<class 'str'>, doc=None, init=True, repr=False, compare=True, kw_only=False),
+ 'c': Field(default=<NOTHING OBJECT>, default_factory=<class 'list'>, type=list[str], doc=None, init=True, repr=True, compare=False, kw_only=False),
+ 'd': Field(default='Not Anywhere', default_factory=<NOTHING OBJECT>, type=<class 'str'>, doc=None, init=False, repr=False, compare=False, kw_only=False),
+ 'e': Field(default=<NOTHING OBJECT>, default_factory=<NOTHING OBJECT>, type=<class 'str'>, doc=None, init=True, repr=True, compare=False, kw_only=True)}
+
+
+Y(x='Value of x', a='Not In __init__ signature', c=[], e='Value of e') 
+
+Slots: {'x': None, 'a': None, 'b': None, 'c': None, 'd': None, 'e': None}
+
+Source:
+def __eq__(self, other):
+    return (
+        self.x == other.x
+        and self.a == other.a
+        and self.b == other.b
+    ) if self.__class__ is other.__class__ else NotImplemented
+
+def __init__(self, x, b=_b_default, c=None, *, e):
+    self.x = x
+    self.a = _a_default
+    self.b = b
+    self.c = _c_factory() if c is None else c
+    self.d = _d_default
+    self.e = e
+
+def __repr__(self):
+    return f'{type(self).__qualname__}(x={self.x!r}, a={self.a!r}, c={self.c!r}, e={self.e!r})'
+

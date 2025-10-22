@@ -119,7 +119,7 @@ class TypeSignatureInit:
 
 
 @prefab
-class PartialTypeSignatureInit:
+class UnannotatedInit:
     x = attribute()
     y: str = attribute(default="Test")
 
@@ -266,8 +266,8 @@ def test_signature():
 def test_partial_signature():
     import inspect
 
-    init_sig = inspect.signature(PartialTypeSignatureInit.__init__)
-    assert str(init_sig) == "(self, x, y: str = 'Test') -> None"
+    init_sig = inspect.signature(UnannotatedInit.__init__)
+    assert str(init_sig) == "(self, x, y='Test')"
 
 
 def test_inherited_signature():

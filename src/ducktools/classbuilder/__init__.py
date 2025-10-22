@@ -31,7 +31,6 @@
 # Field itself sidesteps this by defining __slots__ to avoid that branch.
 
 import os
-import sys
 
 try:
     # Use the internal C module if it is available
@@ -91,6 +90,20 @@ def get_methods(cls):
     :return: dict of generated methods attached to the class by name
     """
     return getattr(cls, INTERNALS_DICT)["methods"]
+
+
+def build_completed(ns):
+    """
+    Utility function to determine if a class has completed the construction
+    process.
+
+    :param ns: class namespace
+    :return: True if built, False otherwise
+    """
+    try:
+        return ns[INTERNALS_DICT]["build_complete"]
+    except KeyError:
+        return False
 
 
 def _get_inst_fields(inst):
@@ -517,8 +530,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     The main builder for class generation
 
     If the GATHERED_DATA attribute exists on the class it will be used instead of
-    the provided gatherer and 3.14 annotations will be updated with links to
-    the class.
+    the provided gatherer.
 
     :param cls: Class to be analysed and have methods generated
     :param gatherer: Function to gather field information
@@ -543,8 +555,15 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
             fix_signature=fix_signature,
         )
 
-    internals = {}
+    # Get from the class dict to avoid getting an inherited internals dict
+    internals = cls.__dict__.get(INTERNALS_DICT, {})
     setattr(cls, INTERNALS_DICT, internals)
+
+    # Update or add flags to internals dict
+    flag_dict = internals.get("flags", {})
+    if flags is not None:
+        flag_dict.update(flags)
+    internals["flags"] = flag_dict
 
     cls_gathered = cls.__dict__.get(GATHERED_DATA)
 
@@ -569,11 +588,10 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
         for c in reversed(mro):
             try:
                 fields.update(get_fields(c, local=True))
-            except AttributeError:
+            except (AttributeError, KeyError):
                 pass
 
     internals["fields"] = fields
-    internals["flags"] = flags if flags is not None else {}
 
     # Assign all of the method generators
     internal_methods = {}
@@ -586,6 +604,9 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     # Fix for inspect.signature(cls)
     if fix_signature:
         setattr(cls, "__signature__", signature_maker)
+
+    # Add attribute indicating build completed
+    internals["build_complete"] = True
 
     return cls
 
@@ -615,7 +636,35 @@ class SlotMakerMeta(type):
 
     Will not convert `ClassVar` hinted values.
     """
-    def __new__(cls, name, bases, ns, slots=True, gatherer=None, **kwargs):
+    def __new__(
+        cls,
+        name,
+        bases,
+        ns,
+        slots=True,
+        gatherer=None,
+        ignore_annotations=None,
+        **kwargs
+    ):
+
+        # Slot makers should inherit flags
+        for base in bases:
+            try:
+                flags = getattr(base, INTERNALS_DICT)["flags"].copy()
+            except (AttributeError, KeyError):
+                pass
+            else:
+                break
+        else:
+            flags = {"ignore_annotations": False}
+
+        # Set up flags as these may be needed early
+        if ignore_annotations is not None:
+            flags["ignore_annotations"] = ignore_annotations
+
+        # Assign flags to internals
+        ns[INTERNALS_DICT] = {"flags": flags}
+
         # This should only run if slots=True is declared
         # and __slots__ have not already been defined
         if slots and "__slots__" not in ns:
@@ -643,16 +692,16 @@ class SlotMakerMeta(type):
                 else:
                     ns[k] = v
 
-            slots = {}
+            slot_values = {}
             fields = {}
 
             for k, v in cls_fields.items():
-                slots[k] = v.doc
+                slot_values[k] = v.doc
                 if k not in {"__weakref__", "__dict__"}:
                     fields[k] = v
 
             # Place slots *after* everything else to be safe
-            ns["__slots__"] = slots
+            ns["__slots__"] = slot_values
 
             # Place pre-gathered field data - modifications are already applied
             modifications = {}
@@ -982,7 +1031,6 @@ def make_annotation_gatherer(
 def make_field_gatherer(
     field_type=Field,
     leave_default_values=False,
-    assign_types=True,
 ):
     def field_attribute_gatherer(cls_or_ns):
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
@@ -998,11 +1046,6 @@ def make_field_gatherer(
             if isinstance(v, field_type)
         }
 
-        if assign_types:
-            cls_annotations = get_ns_annotations(cls_dict, cls=cls)
-        else:
-            cls_annotations = {}
-
         cls_modifications = {}
 
         for name in cls_attributes.keys():
@@ -1012,9 +1055,6 @@ def make_field_gatherer(
             else:
                 cls_modifications[name] = NOTHING
 
-            if assign_types and (anno := cls_annotations.get(name, NOTHING)) is not NOTHING:
-                cls_attributes[name] = field_type.from_field(attrib, type=anno)
-
         return cls_attributes, cls_modifications
     return field_attribute_gatherer
 
@@ -1022,7 +1062,6 @@ def make_field_gatherer(
 def make_unified_gatherer(
     field_type=Field,
     leave_default_values=False,
-    ignore_annotations=False,
 ):
     """
     Create a gatherer that will work via first slots, then
@@ -1031,7 +1070,6 @@ def make_unified_gatherer(
 
     :param field_type: The field class to use for gathering
     :param leave_default_values: leave default values in place
-    :param ignore_annotations: don't attempt to read annotations
     :return: gatherer function
     """
     slot_g = make_slot_gatherer(field_type)
@@ -1050,6 +1088,9 @@ def make_unified_gatherer(
 
         if isinstance(cls_slots, SlotFields):
             return slot_g(cls_dict)
+
+        # Get ignore_annotations flag
+        ignore_annotations = cls_dict.get(INTERNALS_DICT, {}).get("flags", {}).get("ignore_annotations", False)
 
         if ignore_annotations:
             return attrib_g(cls_dict)

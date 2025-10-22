@@ -1,0 +1,36 @@
+SlottedDC(the_answer=42, the_question='What do you get if you multiply six by nine?')
+Help on class SlottedDC in module __main__:
+
+class SlottedDC(builtins.object)
+ |  SlottedDC(
+ |      the_answer=42,
+ |      the_question='What do you get if you multiply six by nine?'
+ |  )
+ |
+ |  Methods defined here:
+ |
+ |  __eq__(self, other) from SlottedDC
+ |
+ |  __init__(
+ |      self,
+ |      the_answer=42,
+ |      the_question='What do you get if you multiply six by nine?'
+ |  ) from SlottedDC
+ |
+ |  __repr__(self) from SlottedDC
+ |
+ |  __signature__
+ |
+ |  ----------------------------------------------------------------------
+ |  Data descriptors defined here:
+ |
+ |  the_answer
+ |
+ |  the_question
+ |      Life, the Universe, and Everything
+ |
+ |  ----------------------------------------------------------------------
+ |  Data and other attributes defined here:
+ |
+ |  __classbuilder_internals__ = {'build_complete': True, 'fields': {'the_...
+

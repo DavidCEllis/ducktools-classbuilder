@@ -144,6 +144,7 @@ def _make_prefab(
     dict_method: bool = False,
     recursive_repr: bool = False,
     gathered_fields: Callable[[type], tuple[dict[str, Attribute], dict[str, typing.Any]]] | None = None,
+    ignore_annotations: bool = False,
 ) -> type: ...
 
 _T = typing.TypeVar("_T")
@@ -151,10 +152,12 @@ _T = typing.TypeVar("_T")
 # noinspection PyUnresolvedReferences
 @dataclass_transform(field_specifiers=(Attribute, attribute))
 class Prefab(metaclass=SlotMakerMeta):
+    __classbuilder_internals__: dict[str, typing.Any]
     _meta_gatherer: Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]] = ...
     __slots__: dict[str, typing.Any] = ...
     def __init_subclass__(
         cls,
+        *,
         init: bool = True,
         repr: bool = True,
         eq: bool = True,
@@ -217,6 +220,7 @@ def prefab(
     replace: bool = ...,
     dict_method: bool = ...,
     recursive_repr: bool = ...,
+    ignore_annotations: bool = ...,
 ) -> typing.Any: ...
 
 def build_prefab(

@@ -1,3 +1,8 @@
+# Don't use __future__ annotations with get_ns_annotations in this case
+# as it doesn't evaluate string annotations.
+
+# NOTE: In Python 3.14 this will currently only work if there are *no* forward references.
+
 import types
 from typing import Annotated, Any, ClassVar, get_origin
 
@@ -6,10 +11,8 @@ from ducktools.classbuilder import (
     default_methods,
     get_fields,
     get_methods,
-    pre_gathered_gatherer,
     Field,
     SlotMakerMeta,
-    GATHERED_DATA,
     NOTHING,
 )
 
@@ -112,14 +115,13 @@ def annotatedclass(cls=None, *, kw_only=False):
 
 # As a base class with slots
 class AnnotatedClass(metaclass=SlotMakerMeta, gatherer=annotated_gatherer):
-    
+
     def __init_subclass__(cls, kw_only=False, **kwargs):
-        pre_gathered = GATHERED_DATA in cls.__dict__
         slots = "__slots__" in cls.__dict__
 
         # if slots is True then fields will already be present in __slots__
         # Use the slot_gatherer for this case
-        gatherer = pre_gathered_gatherer if pre_gathered else annotated_gatherer
+        gatherer = annotated_gatherer
 
         builder(
             cls,
@@ -177,7 +179,7 @@ if __name__ == "__main__":
     methods = get_methods(X)
 
     # Call the code generators to display the source code
-    for method in methods.values():
+    for _, method in sorted(methods.items()):
         # Both classes generate identical source code
         genX = method.code_generator(X)
         genY = method.code_generator(Y)

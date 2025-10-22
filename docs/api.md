@@ -30,13 +30,53 @@
 ```
 
 ```{eval-rst}
+.. autofunction:: ducktools.classbuilder::get_methods
+```
+
+```{eval-rst}
 .. autoclass:: ducktools.classbuilder::MethodMaker
 ```
 
 ```{eval-rst}
-.. autofunction:: ducktools.classbuilder::make_slot_gatherer
+.. autofunction:: ducktools.classbuilder::make_unified_gatherer
+```
+
+## Prefab Class and Attributes ##
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.prefab::prefab
 ```
 
 ```{eval-rst}
-.. autofunction:: ducktools.classbuilder.annotations::make_annotation_gatherer
+.. autoclass:: ducktools.classbuilder.prefab::Prefab
+   :members: __init_subclass__
 ```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.prefab::attribute
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.prefab::get_attributes
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.prefab::build_prefab
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.prefab::is_prefab
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.prefab::is_prefab_instance
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.prefab::as_dict
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.prefab::replace
+```
+

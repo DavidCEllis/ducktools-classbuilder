@@ -32,6 +32,7 @@ from . import (
     make_unified_gatherer,
     eq_maker, frozen_setattr_maker, frozen_delattr_maker, replace_maker,
     get_repr_generator,
+    build_completed,
 )
 
 from .annotations import get_func_annotations
@@ -360,7 +361,10 @@ def attribute(
     )
 
 
-prefab_gatherer = make_unified_gatherer(Attribute, False)
+prefab_gatherer = make_unified_gatherer(
+    Attribute,
+    leave_default_values=False,
+)
 
 
 # Class Builders
@@ -379,6 +383,7 @@ def _make_prefab(
     dict_method=False,
     recursive_repr=False,
     gathered_fields=None,
+    ignore_annotations=False,
 ):
     """
     Generate boilerplate code for dunder methods in a class.
@@ -397,18 +402,18 @@ def _make_prefab(
     :param dict_method: Include an as_dict method for faster dictionary creation
     :param recursive_repr: Safely handle repr in case of recursion
     :param gathered_fields: Pre-gathered fields callable, to skip re-collecting attributes
+    :param ignore_annotations: Ignore annotated fields and only look at `attribute` fields
     :return: class with __ methods defined
     """
     cls_dict = cls.__dict__
 
-    if INTERNALS_DICT in cls_dict:
+    if build_completed(cls_dict):
         raise PrefabError(
             f"Decorated class {cls.__name__!r} "
             f"has already been processed as a Prefab."
         )
 
     slots = cls_dict.get("__slots__")
-
     slotted = False if slots is None else True
 
     if gathered_fields is None:
@@ -443,8 +448,18 @@ def _make_prefab(
         methods.add(replace_maker)
 
     flags = {
-        "kw_only": kw_only,
         "slotted": slotted,
+        "init": init,
+        "repr": repr,
+        "eq": eq,
+        "iter": iter,
+        "match_args": match_args,
+        "kw_only": kw_only,
+        "frozen": frozen,
+        "replace": replace,
+        "dict_method": dict_method,
+        "recursive_repr": recursive_repr,
+        "ignore_annotations": ignore_annotations,
     }
 
     cls = builder(
@@ -553,32 +568,71 @@ def _make_prefab(
 class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
     __slots__ = {}  # type: ignore
 
-    # noinspection PyShadowingBuiltins
     def __init_subclass__(
         cls,
-        init=True,
-        repr=True,
-        eq=True,
-        iter=False,
-        match_args=True,
-        kw_only=False,
-        frozen=False,
-        replace=True,
-        dict_method=False,
-        recursive_repr=False,
+        **kwargs
     ):
+        """
+        Generate boilerplate code for dunder methods in a class.
+
+        Use as a base class, slotted by default
+
+        :param init: generates __init__ if true or __prefab_init__ if false
+        :param repr: generate __repr__
+        :param eq: generate __eq__
+        :param iter: generate __iter__
+        :param match_args: generate __match_args__
+        :param kw_only: make all attributes keyword only
+        :param frozen: Prevent attribute values from being changed once defined
+                    (This does not prevent the modification of mutable attributes such as lists)
+        :param replace: generate a __replace__ method
+        :param dict_method: Include an as_dict method for faster dictionary creation
+        :param recursive_repr: Safely handle repr in case of recursion
+        :param ignore_annotations: Ignore type annotations when gathering fields, only look for
+                                slots or attribute(...) values
+        :param slots: automatically generate slots for this class's attributes
+        """
+        default_values = {
+            "init": True,
+            "repr": True,
+            "eq": True,
+            "iter": False,
+            "match_args": True,
+            "kw_only": False,
+            "frozen": False,
+            "replace": True,
+            "dict_method": False,
+            "recursive_repr": False,
+        }
+
+        try:
+            flags = get_flags(cls).copy()
+        except (AttributeError, KeyError):
+            flags = {}
+        else:
+            # Remove the value of slotted if it exists
+            flags.pop("slotted", None)
+
+        for k in default_values:
+            kwarg_value = kwargs.pop(k, None)
+            default = default_values[k]
+
+            if kwarg_value is not None:
+                flags[k] = kwarg_value
+            elif flags.get(k) is None:
+                flags[k] = default
+
+        if kwargs:
+            error_args = ", ".join(repr(k) for k in kwargs)
+            raise TypeError(
+                f"Prefab.__init_subclass__ got unexpected keyword arguments {error_args}"
+            )
+
+        print(flags)
+
         _make_prefab(
             cls,
-            init=init,
-            repr=repr,
-            eq=eq,
-            iter=iter,
-            match_args=match_args,
-            kw_only=kw_only,
-            frozen=frozen,
-            replace=replace,
-            dict_method=dict_method,
-            recursive_repr=recursive_repr,
+            **flags
         )
 
 
@@ -596,6 +650,7 @@ def prefab(
     replace=True,
     dict_method=False,
     recursive_repr=False,
+    ignore_annotations=False,
 ):
     """
     Generate boilerplate code for dunder methods in a class.
@@ -614,6 +669,8 @@ def prefab(
     :param replace: generate a __replace__ method
     :param dict_method: Include an as_dict method for faster dictionary creation
     :param recursive_repr: Safely handle repr in case of recursion
+    :param ignore_annotations: Ignore type annotations when gathering fields, only look for
+                               slots or attribute(...) values
 
     :return: class with __ methods defined
     """
@@ -631,6 +688,7 @@ def prefab(
             replace=replace,
             dict_method=dict_method,
             recursive_repr=recursive_repr,
+            ignore_annotations=ignore_annotations,
         )
     else:
         return _make_prefab(
@@ -645,6 +703,7 @@ def prefab(
             replace=replace,
             dict_method=dict_method,
             recursive_repr=recursive_repr,
+            ignore_annotations=ignore_annotations,
         )
 
 
@@ -791,6 +850,12 @@ def as_dict(o):
     }
 
 def replace(obj, /, **changes):
+    """
+    Create a copy of a prefab instance with values provided to 'changes' replaced
+
+    :param obj: prefab instance
+    :return: new prefab instance
+    """
     if not is_prefab_instance(obj):
         raise TypeError("replace() should be called on prefab instances")
     try:

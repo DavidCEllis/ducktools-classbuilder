@@ -19,24 +19,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-import sys
 
-
-# These exist so 3.13 and earlier work, but have no real function
-def is_forwardref(obj):
-    return False
-
-
-def evaluate_forwardref(ref, format=None):
-    return ref
-
-
-def make_annotate_func(cls, annos):
-    verno = ".".join(str(v) for v in sys.version_info[:3])
-    raise RuntimeError(f"make_annotate_function should never be used in Python {verno}")
-
-
-def get_func_annotations(func):
+def get_func_annotations(func, use_forwardref=False):
     """
     Given a function, return the annotations dictionary
 
@@ -48,7 +32,7 @@ def get_func_annotations(func):
 
 
 # This is simplified under 3.13 or earlier
-def get_ns_annotations(ns, cls=None):
+def get_ns_annotations(ns, cls=None, use_forwardref=False):
     annotations = ns.get("__annotations__")
     if annotations is not None:
         annotations = annotations.copy()

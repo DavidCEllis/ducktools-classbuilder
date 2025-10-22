@@ -1,17 +1,13 @@
 # Prefab - A prebuilt classbuilder implementation  #
 
-Writes the class boilerplate code so you don't have to.
-
-Unlike `slotclass` in classbuilder this is a more featureful implementation.
+This is a more full featured dataclass replacement with some different design decisions
+and features.
 
 Including:
 * Declaration by type hints, slots or `attribute(...)` assignment on the class
-* `attribute` arguments to include/exclude fields from specific methods or to make them keyword only
-* `prefab` arguments to modify class generation options
 * `__prefab_pre_init__` and `__prefab_post_init__` detection to allow for validation/conversion
-* Frozen classes
-* Optional `as_dict` method generation
-* Optional recursive `__repr__` handling
+* Optional `as_dict` method generation to convert to a dictionary
+* Optional recursive `__repr__` handling (off by default)
 
 ## Usage ##
 
@@ -27,7 +23,7 @@ class Settings:
     template_name = attribute(default='index')
 ```
 
-Or with type hinting:
+Or with type hints:
 
 ```python
 from ducktools.classbuilder.prefab import prefab
@@ -49,24 +45,16 @@ Settings(hostname='localhost', template_folder='base/path', template_name='index
 
 ## Slots ##
 
-Classes can also be created using `__slots__` in the same way as `@slotclass` from the builder,
-but with all of the additional features added by `prefab`
-
-Similarly to the type hinted form, plain values given to a SlotFields instance are treated as defaults
-while `attribute` calls are handled normally. `doc` values will be seen when calling `help(...)` on the class
-while the `__annotations__` dictionary will be updated with `type` values given. Annotations can also still
-be given normally (which will probably be necessary for static typing tools).
+Pre-slotted classes can be created by using the `Prefab` base class
 
 ```python
-from ducktools.classbuilder.prefab import prefab, attribute, SlotFields
+from ducktools.classbuilder.prefab import Prefab
 
-@prefab
-class Settings:
-    __slots__ = SlotFields(
-        hostname="localhost",
-        template_folder="base/path",
-        template_name=attribute(default="index", type=str, doc="Name of the template"),
-    )
+
+class Settings(Prefab):
+    hostname: str = "localhost"
+    template_folder: str = 'base/path'
+    template_name: str = 'index'
 ```
 
 ## Why not just use attrs or dataclasses? ##
@@ -76,26 +64,9 @@ They are thoroughly tested, well supported packages. This is a new
 project and has not had the rigorous real world testing of either
 of those.
 
-This module has been created for situations where startup time is important, 
+This module has been created for situations where startup time is important,
 such as for CLI tools and for handling conversion of inputs in a way that
 was more useful to me than attrs converters (`__prefab_post_init__`).
-
-## How does it work ##
-
-The `@prefab` decorator analyses the class it is decorating and prepares an internals dict, along
-with performing some other early checks.
-Once this is done it sets any direct values (`PREFAB_FIELDS` and `__match_args__` if required) 
-and places non-data descriptors for all of the magic methods to be generated.
-
-The non-data descriptors for each of the magic methods perform code generation when first called
-in order to generate the actual methods. Once the method has been generated, the descriptor is 
-replaced on the class with the resulting method so there is no overhead regenerating the method
-on each access. 
-
-By only generating methods the first time they are used the start time can be
-improved and methods that are never used don't have to be created at all (for example the 
-`__repr__` method is useful when debugging but may not be used in normal runtime). In contrast
-`dataclasses` generates all of its methods when the class is created.
 
 ## Pre and Post Init Methods ##
 
@@ -105,7 +76,7 @@ methods are defined.
 
 For both methods if they have additional arguments with names that match
 defined attributes, the matching arguments to `__init__` will be passed
-through to the method. 
+through to the method.
 
 **If an argument is passed to `__prefab_post_init__`it will not be initialized
 in `__init__`**. It is expected that initialization will occur in the method
@@ -129,7 +100,7 @@ from ducktools.classbuilder.prefab import prefab
 @prefab(repr=False, eq=False)
 class ExampleValidate:
     x: int
-    
+
     @staticmethod
     def __prefab_pre_init__(x):
         if x <= 0:
@@ -142,11 +113,11 @@ Equivalent code:
 class ExampleValidate:
     PREFAB_FIELDS = ['x']
     __match_args__ = ('x',)
-    
+
     def __init__(self, x: int):
         self.__prefab_pre_init__(x=x)
         self.x = x
-    
+
     @staticmethod
     def __prefab_pre_init__(x):
         if x <= 0:
@@ -176,12 +147,12 @@ from pathlib import Path
 class ExampleConvert:
     PREFAB_FIELDS = ['x']
     __match_args__ = ('x',)
-    
+
     x: Path
-    
+
     def __init__(self, x: Path | str = 'path/to/source'):
         self.__prefab_post_init__(x=x)
-    
+
     def __prefab_post_init__(self, x: Path | str):
         self.x = Path(x)
 ```
@@ -202,7 +173,7 @@ or will be added to this list.
 1. prefabs do not generate the comparison methods other than `__eq__`.
     * This isn't generally a feature I want or use, however with the tools it is easy
       to add if this is a needed feature.
-1. the `as_dict` method in `prefab_classes` does *not* behave the same as 
+1. the `as_dict` method in `prefab_classes` does *not* behave the same as
    dataclasses' `asdict`.
     * `as_dict` does *not* deepcopy the included fields, modification of mutable
       fields in the dictionary will modify them in the original object.
@@ -233,7 +204,7 @@ or will be added to this list.
    but renamed to `__prefab_init__`.
 1. Slots are supported but not from annotations using the decorator `@prefab`
     * The support for slots in `attrs` and `dataclasses` involves recreating the
-      class as it is not possible to effectively define `__slots__` after class 
+      class as it is not possible to effectively define `__slots__` after class
       creation. This can cause bugs where decorators or caches hold references
       to the original class.
     * `@prefab` can be used if the slots are provided with a `__slots__ = SlotFields(...)`
@@ -251,28 +222,3 @@ or will be added to this list.
       look like it would `eval`.
 1. default_factory functions will be called if `None` is passed as an argument
     * This makes it easier to wrap the function.
-
-
-## API Autodocs ##
-
-### Core Functions ###
-
-```{eval-rst}
-.. autofunction:: ducktools.classbuilder.prefab::prefab
-```
-
-```{eval-rst}
-.. autofunction:: ducktools.classbuilder.prefab::attribute
-```
-
-```{eval-rst}
-.. autofunction:: ducktools.classbuilder.prefab::build_prefab
-```
-
-### Helper functions ###
-
-```{eval-rst}
-.. autofunction:: ducktools.classbuilder.prefab::is_prefab
-.. autofunction:: ducktools.classbuilder.prefab::is_prefab_instance
-.. autofunction:: ducktools.classbuilder.prefab::as_dict
-```

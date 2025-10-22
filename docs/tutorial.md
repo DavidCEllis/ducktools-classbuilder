@@ -20,7 +20,7 @@ and base class.
 For the purpose of this tutorial we are going to make a special
 class generator which works by collecting fields from a `__fields__`
 attribute and will generate the usual `__init__`, `__repr__` and `__eq__`
-functions alongside a new `report` method that will give a longer set of 
+functions alongside a new `report` method that will give a longer set of
 details about a class instance.
 
 The input will look like this:
@@ -54,7 +54,7 @@ class CustomField(dtbuild.Field):
 ```
 
 That is it, this will now function as a field with the additional keyword only
-parameter `report` added. 
+parameter `report` added.
 
 ## Step 2: Creating a new `__fields__` gatherer ##
 
@@ -153,7 +153,7 @@ class CodegenDemo:
     __slots__ = dtbuild.SlotFields(
         field_1="Field one",
         field_2="Field two",
-        field_3="Field three",       
+        field_3="Field three",
     )
     field_1: str = "Field one"
     field_2: str = "Field two"
@@ -173,9 +173,9 @@ based builder that can create `__slots__`.
 def reportclass(cls):
     gatherer = fields_attribute_gatherer
     methods = {
-        dtbuild.eq_maker, 
-        dtbuild.repr_maker, 
-        dtbuild.init_maker, 
+        dtbuild.eq_maker,
+        dtbuild.repr_maker,
+        dtbuild.init_maker,
         report_maker
     }
 
@@ -193,11 +193,10 @@ slot_gatherer = dtbuild.make_slot_gatherer(CustomField)
 
 class ReportClass(metaclass=dtbuild.SlotMakerMeta, gatherer=fields_attribute_gatherer):
     __slots__ = {}
-    
+
     def __init_subclass__(cls):
         # Check if the metaclass has pre-gathered data
-        pre_gathered = dtbuild.GATHERED_DATA in vars(cls)
-        gatherer = dtbuild.pre_gathered_gatherer if pre_gathered else fields_attribute_gatherer
+        gatherer = fields_attribute_gatherer
         methods = {
             dtbuild.eq_maker,
             dtbuild.repr_maker,
