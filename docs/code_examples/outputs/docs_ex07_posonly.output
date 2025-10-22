@@ -1,0 +1,4 @@
+WorkingEx(42, x=6, y=9)
+WorkingEx(42, x=6, y=9)
+WorkingEx.__init__() got some positional-only arguments passed as keyword arguments: 'a'
+Positional only parameter 'x' follows keyword parameters on 'FailEx'

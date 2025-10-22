@@ -568,11 +568,30 @@ def _make_prefab(
 class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
     __slots__ = {}  # type: ignore
 
-    # noinspection PyShadowingBuiltins
     def __init_subclass__(
         cls,
         **kwargs
     ):
+        """
+        Generate boilerplate code for dunder methods in a class.
+
+        Use as a base class, slotted by default
+
+        :param init: generates __init__ if true or __prefab_init__ if false
+        :param repr: generate __repr__
+        :param eq: generate __eq__
+        :param iter: generate __iter__
+        :param match_args: generate __match_args__
+        :param kw_only: make all attributes keyword only
+        :param frozen: Prevent attribute values from being changed once defined
+                    (This does not prevent the modification of mutable attributes such as lists)
+        :param replace: generate a __replace__ method
+        :param dict_method: Include an as_dict method for faster dictionary creation
+        :param recursive_repr: Safely handle repr in case of recursion
+        :param ignore_annotations: Ignore type annotations when gathering fields, only look for
+                                slots or attribute(...) values
+        :param slots: automatically generate slots for this class's attributes
+        """
         default_values = {
             "init": True,
             "repr": True,

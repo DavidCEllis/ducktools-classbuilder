@@ -31,11 +31,6 @@ Hopefully in a future version of Python we will have complete, correct, performa
 so we can use a more standard format.
 """
 
-try:
-    from _types import FunctionType as _FunctionType, CellType as _CellType # type: ignore
-except ImportError:
-    from types import FunctionType as _FunctionType, CellType as _CellType
-
 class _LazyAnnotationLib:
     def __getattr__(self, item):
         global _lazy_annotationlib

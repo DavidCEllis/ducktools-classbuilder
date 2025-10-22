@@ -530,8 +530,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     The main builder for class generation
 
     If the GATHERED_DATA attribute exists on the class it will be used instead of
-    the provided gatherer and 3.14 annotations will be updated with links to
-    the class.
+    the provided gatherer.
 
     :param cls: Class to be analysed and have methods generated
     :param gatherer: Function to gather field information

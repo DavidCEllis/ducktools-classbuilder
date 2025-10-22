@@ -19,22 +19,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-import sys
-
-
-# These exist so 3.13 and earlier work, but have no real function
-def is_forwardref(obj):
-    return False
-
-
-def evaluate_forwardref(ref, format=None):
-    return ref
-
-
-def make_annotate_func(cls, annos):
-    verno = ".".join(str(v) for v in sys.version_info[:3])
-    raise RuntimeError(f"make_annotate_function should never be used in Python {verno}")
-
 
 def get_func_annotations(func):
     """

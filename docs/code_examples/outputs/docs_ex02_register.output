@@ -1,0 +1,4 @@
+DataCoords(x=0.0, y=0.0)
+SlotCoords(x=0.0, y=0.0)
+DataCoords is class_register[DataCoords.__name__] = False
+SlotCoords is class_register[SlotCoords.__name__] = True

@@ -1,0 +1,13 @@
+({'field_1': CustomField(default='First Field', default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None, init=True, repr=True, compare=True, kw_only=False, report=True),
+  'field_2': CustomField(default='Second Field', default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None, init=True, repr=True, compare=True, kw_only=False, report=True),
+  'field_3': CustomField(default='Third Field', default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None, init=True, repr=True, compare=True, kw_only=False, report=False)},
+ {'__fields__': None})
+@property
+def report(self):
+    return f"Class: CodegenDemo\nfield_1: {self.field_1!r}\nfield_2: {self.field_2!r}\nfield_3: {self.field_3!r}"
+Class: Example
+x: 42
+y: <HIDDEN>
+Class: ExampleSlots
+x: 42
+y: <HIDDEN>
