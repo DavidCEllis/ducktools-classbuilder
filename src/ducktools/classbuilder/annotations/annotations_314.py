@@ -42,7 +42,7 @@ class _LazyAnnotationLib:
 _lazy_annotationlib = _LazyAnnotationLib()
 
 
-def get_func_annotations(func):
+def get_func_annotations(func, use_forwardref=False):
     """
     Given a function, return the annotations dictionary
 
@@ -53,20 +53,26 @@ def get_func_annotations(func):
     try:
         raw_annotations = func.__annotations__
     except Exception:
-        annotations = _lazy_annotationlib.get_annotations(func, format=_lazy_annotationlib.Format.STRING)
+        fmt = (
+            _lazy_annotationlib.Format.FORWARDREF
+            if use_forwardref
+            else _lazy_annotationlib.Format.STRING
+        )
+        annotations = _lazy_annotationlib.get_annotations(func, format=fmt)
     else:
         annotations = raw_annotations.copy()
 
     return annotations
 
 
-def get_ns_annotations(ns, cls=None):
+def get_ns_annotations(ns, cls=None, use_forwardref=False):
     """
     Given a class namespace, attempt to retrieve the
     annotations dictionary.
 
     :param ns: Class namespace (eg cls.__dict__)
     :param cls: Class if available
+    :param use_forwardref: Use FORWARDREF instead of STRING if VALUE fails
     :return: dictionary of annotations
     """
 
@@ -80,9 +86,15 @@ def get_ns_annotations(ns, cls=None):
             try:
                 annotations = annotate(_lazy_annotationlib.Format.VALUE)
             except Exception:
+                fmt = (
+                    _lazy_annotationlib.Format.FORWARDREF
+                    if use_forwardref
+                    else _lazy_annotationlib.Format.STRING
+                )
+
                 annotations = _lazy_annotationlib.call_annotate_function(
                     annotate,
-                    format=_lazy_annotationlib.Format.STRING,
+                    format=fmt,
                     owner=cls
                 )
 

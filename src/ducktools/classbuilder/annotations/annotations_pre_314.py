@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-def get_func_annotations(func):
+def get_func_annotations(func, use_forwardref=False):
     """
     Given a function, return the annotations dictionary
 
@@ -32,7 +32,7 @@ def get_func_annotations(func):
 
 
 # This is simplified under 3.13 or earlier
-def get_ns_annotations(ns, cls=None):
+def get_ns_annotations(ns, cls=None, use_forwardref=False):
     annotations = ns.get("__annotations__")
     if annotations is not None:
         annotations = annotations.copy()
