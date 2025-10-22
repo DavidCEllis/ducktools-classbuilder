@@ -28,7 +28,7 @@ def get_flags(cls: type) -> dict[str, bool]: ...
 
 def get_methods(cls: type) -> types.MappingProxyType[str, MethodMaker]: ...
 
-def build_completed(cls: type) -> bool: ...
+def build_completed(ns: _CopiableMappings) -> bool: ...
 
 def _get_inst_fields(inst: typing.Any) -> dict[str, typing.Any]: ...
 
@@ -138,6 +138,7 @@ class SlotMakerMeta(type):
         ns: dict[str, typing.Any],
         slots: bool = ...,
         gatherer: Callable[[type], tuple[dict[str, Field], dict[str, typing.Any]]] | None = ...,
+        ignore_annotations: bool | None = ...,
         **kwargs: typing.Any,
     ) -> _T: ...
 
@@ -207,7 +208,6 @@ def make_annotation_gatherer(
 def make_field_gatherer(
     field_type: type[_FieldType],
     leave_default_values: bool = False,
-    assign_types: bool = True,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
 
 @typing.overload
@@ -220,14 +220,12 @@ def make_field_gatherer(
 def make_unified_gatherer(
     field_type: type[_FieldType],
     leave_default_values: bool = ...,
-    ignore_annotations: bool = ...,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, _FieldType], dict[str, typing.Any]]]: ...
 
 @typing.overload
 def make_unified_gatherer(
     field_type: _ReturnsField = ...,
     leave_default_values: bool = ...,
-    ignore_annotations: bool = ...,
 ) -> Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]: ...
 
 
