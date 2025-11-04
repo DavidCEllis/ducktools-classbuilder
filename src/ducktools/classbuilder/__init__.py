@@ -971,7 +971,10 @@ def make_annotation_gatherer(
                                  default values in place as class variables.
     :return: An annotation gatherer with these settings.
     """
-    def field_annotation_gatherer(cls_or_ns):
+    def field_annotation_gatherer(cls_or_ns, *, cls_annotations=None):
+        # cls_annotations are included as the unified gatherer may already have
+        # obtained the annotations, this prevents the method being called twice
+
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
             cls = None
             cls_dict = cls_or_ns
@@ -984,7 +987,8 @@ def make_annotation_gatherer(
         cls_fields: dict[str, Field] = {}
         modifications = {}
 
-        cls_annotations = get_ns_annotations(cls_dict, cls=cls)
+        if cls_annotations is None:
+            cls_annotations = get_ns_annotations(cls_dict, cls=cls)
 
         kw_flag = False
 
@@ -1106,9 +1110,9 @@ def make_unified_gatherer(
 
             if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
                 # All `Field` values have annotations, so use annotation gatherer
-                # Pass the original cls_or_ns object
+                # Pass the original cls_or_ns object along with the already gathered annotations
 
-                return anno_g(cls_or_ns)
+                return anno_g(cls_or_ns, cls_annotations=cls_annotations)
 
             return attrib_g(cls_dict)
 
