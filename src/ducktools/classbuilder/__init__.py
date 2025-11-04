@@ -1099,7 +1099,6 @@ def make_unified_gatherer(
         else:
             # To choose between annotation and attribute gatherers
             # compare sets of names.
-            # Don't bother evaluating string annotations, as we only need names
             cls_annotations = get_ns_annotations(cls_dict, cls=cls)
             cls_attributes = {
                 k: v for k, v in cls_dict.items() if isinstance(v, field_type)
