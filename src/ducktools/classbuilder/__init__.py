@@ -1035,10 +1035,8 @@ def make_field_gatherer(
     def field_attribute_gatherer(cls_or_ns):
         if isinstance(cls_or_ns, (_MappingProxyType, dict)):
             cls_dict = cls_or_ns
-            cls = None
         else:
             cls_dict = cls_or_ns.__dict__
-            cls = cls_or_ns
 
         cls_attributes = {
             k: v
