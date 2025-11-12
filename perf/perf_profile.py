@@ -178,6 +178,15 @@ class C{n}:
     e = attribute()
 '''
 
+prefab_metaclass_template = '''
+class C{n}(Prefab):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+'''
+
 prefab_eval_template = '''
 @prefab
 class C{n}:
@@ -269,7 +278,7 @@ def run_all_tests(reps, test_everything=False):
     write_perftemp(100, slotclass_template, slotclass_import)
     run_test(f"slotclass {classbuilder.__version__}", reps)
 
-    prefab_import = "from ducktools.classbuilder.prefab import prefab, attribute, SlotFields\n"
+    prefab_import = "from ducktools.classbuilder.prefab import Prefab, prefab, attribute, SlotFields\n"
 
     write_perftemp(100, prefab_slots_template, prefab_import)
     run_test(f'prefab_slots {classbuilder.__version__}', reps)
@@ -279,6 +288,9 @@ def run_all_tests(reps, test_everything=False):
 
     write_perftemp(100, prefab_attribute_template, prefab_import)
     run_test(f'prefab_attributes {classbuilder.__version__}', reps)
+
+    write_perftemp(100, prefab_metaclass_template, prefab_import)
+    run_test(f'prefab_metaclass {classbuilder.__version__}', reps)
 
     write_perftemp(100, prefab_eval_template, prefab_import)
     run_test(f'prefab_eval {classbuilder.__version__}', reps)
