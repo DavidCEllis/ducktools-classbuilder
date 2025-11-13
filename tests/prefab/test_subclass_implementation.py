@@ -255,3 +255,38 @@ def test_cached_property():
     ex = Example()
     assert ex.h2g2 == 42
     assert ex.__dict__ == {"h2g2": 42}
+
+
+def test_subclass_cached_property():
+    # Test we don't suffer from https://github.com/python-attrs/attrs/issues/1333
+    class Parent(Prefab):
+        @functools.cached_property
+        def name(self) -> str:
+            return "Alice"
+
+    class Child(Parent):
+        @functools.cached_property
+        def name(self) -> str:
+            return f"Bob (son of {super().name})"
+
+    child = Child()
+
+    assert child.name == "Bob (son of Alice)"
+
+
+def test_subclass_getattr():
+    # Based on - https://github.com/python-attrs/attrs/issues/1288
+    # Not quite the same as Subclass is forced into becoming a prefab
+    # unlike attrs with define.
+    class Base(Prefab):
+        @functools.cached_property
+        def h2g2(self):
+            return 42
+
+    class Subclass(Base):
+        def __getattr__(self, name):
+            raise AttributeError(name)
+
+    ex = Subclass()
+
+    assert ex.h2g2 == 42
