@@ -182,9 +182,7 @@ or will be added to this list.
       - dataclasses `asdict`'s recursion appears to be for handling json serialization
         prefab expects the json serializer to handle recursion.
 1. dataclasses provides a `fields` function to access the underlying fields.
-    * Prefab classes provide a `PREFAB_FIELDS` attribute with the field names
-      in order for quick access.
-    * There is also a `get_attributes` function that will return the attributes.
+    * `prefab` uses a `get_attributes` function to return the attributes as a dict.
 1. Plain `attribute(...)` declarations can be used without the use of type hints.
     * If a plain assignment is used, all assignments **must** use `attribute`.
 1. Post init processing uses `__prefab_post_init__` instead of `__post_init__`
@@ -203,22 +201,22 @@ or will be added to this list.
 1. If `init` is `False` in `@prefab(init=False)` the method is still generated
    but renamed to `__prefab_init__`.
 1. Slots are supported but not from annotations using the decorator `@prefab`
+    * use the `Prefab` base class if you wish your classes to be automatically slotted.
+    * `@prefab` can be used if the slots are provided with a `__slots__ = SlotFields(...)`
+      attribute set.
     * The support for slots in `attrs` and `dataclasses` involves recreating the
       class as it is not possible to effectively define `__slots__` after class
       creation. This can cause bugs where decorators or caches hold references
       to the original class.
-    * `@prefab` can be used if the slots are provided with a `__slots__ = SlotFields(...)`
-      attribute set.
-    * Alternately, classes created via the `Prefab` base class are automatically slotted
-      unless `slots=False` is used.
 1. InitVar annotations are not supported.
-    * Passing arguments to `__prefab_post_init__` is done by adding the argument
-      to the method signature.
-    * Assignment is automatically skipped for any such values, default factories
-      will be called and passed to the post init method.
+    * So far I haven't needed this yet so it hasn't been implemented.
 1. The `__repr__` method for prefabs will have a different output if it will not `eval` correctly.
     * This isn't a guarantee that the regular `__repr__` will eval, but if it is known
       that the output would not `eval` then an alternative repr is used which does not
       look like it would `eval`.
 1. default_factory functions will be called if `None` is passed as an argument
     * This makes it easier to wrap the function.
+1. The `Prefab` base class will automatically create the `__dict__` slot if
+   `cached_property` is used in the class.
+   * This means that cached properties will work as expected in slotted classes
+     but that you will also be able to set any attribute in non-frozen classes
