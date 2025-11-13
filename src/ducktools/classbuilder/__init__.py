@@ -31,6 +31,7 @@
 # Field itself sidesteps this by defining __slots__ to avoid that branch.
 
 import os
+import sys
 
 try:
     # Use the internal C module if it is available
@@ -646,7 +647,6 @@ class SlotMakerMeta(type):
         ignore_annotations=None,
         **kwargs
     ):
-
         # Slot makers should inherit flags
         for base in bases:
             try:
@@ -699,6 +699,17 @@ class SlotMakerMeta(type):
                 slot_values[k] = v.doc
                 if k not in {"__weakref__", "__dict__"}:
                     fields[k] = v
+
+            # Special case cached_property
+            # if a cached property is used add a slot for __dict__
+            if (
+                (functools := sys.modules.get("functools"))
+                and "__dict__" not in slot_values
+            ):
+                for v in ns.values():
+                    if isinstance(v, functools.cached_property):
+                        slot_values["__dict__"] = None
+                        break
 
             # Place slots *after* everything else to be safe
             ns["__slots__"] = slot_values

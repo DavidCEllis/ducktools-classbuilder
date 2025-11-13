@@ -1,3 +1,4 @@
+import functools
 import typing
 from typing import Annotated, ClassVar, List
 
@@ -81,3 +82,35 @@ def test_made_doc():
         x: str = Field(doc="Test")
 
     assert ExampleBase.__slots__ == {"x": "Test"}
+
+
+class TestCachedProperty:
+    # Test that a cached property causes __dict__ to be
+    # automatically added to __slots__
+
+    def test_no_cached_property(self):
+        class Example(metaclass=SlotMakerMeta):
+            x: str
+
+        assert Example.__slots__ == {'x': None}
+
+    def test_cached_property(self):
+        class Example(metaclass=SlotMakerMeta):
+            x: str
+
+            @functools.cached_property
+            def cache(self):
+                return 42
+
+        assert Example.__slots__ == {'x': None, "__dict__": None}
+
+    def test_dict_property_not_overwritten(self):
+        class Example(metaclass=SlotMakerMeta):
+            x: str
+            __dict__: dict = Field(doc="dict for cached property")
+
+            @functools.cached_property
+            def cache(self):
+                return 42
+
+        assert Example.__slots__ == {"x": None, "__dict__": "dict for cached property"}
