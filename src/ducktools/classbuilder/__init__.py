@@ -706,10 +706,15 @@ class SlotMakerMeta(type):
                 (functools := sys.modules.get("functools"))
                 and "__dict__" not in slot_values
             ):
-                for v in ns.values():
-                    if isinstance(v, functools.cached_property):
-                        slot_values["__dict__"] = None
+                # Check __dict__ isn't already in a parent class
+                for base in bases:
+                    if "__dict__" in base.__dict__:
                         break
+                else:
+                    for v in ns.values():
+                        if isinstance(v, functools.cached_property):
+                            slot_values["__dict__"] = None
+                            break
 
             # Place slots *after* everything else to be safe
             ns["__slots__"] = slot_values
