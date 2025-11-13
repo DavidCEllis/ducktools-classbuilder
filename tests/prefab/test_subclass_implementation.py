@@ -1,3 +1,4 @@
+import functools
 import inspect
 
 import pytest
@@ -209,6 +210,20 @@ def test_slots_weakref():
     assert ref == inst.__weakref__
 
 
+def test_no_dict():
+    # Test that __dict__ is not normally created
+    class NoDictClass(Prefab):
+        a: int = 1
+        b: int = 2
+
+    inst = NoDictClass()
+
+    with pytest.raises(AttributeError):
+        inst.c = 3
+
+    assert not hasattr(inst, "__dict__")
+
+
 def test_has_dict():
     class DictClass(Prefab):
         a: int = 1
@@ -229,3 +244,14 @@ def test_has_dict():
     inst = DictClass()
     inst.c = 42
     assert inst.__dict__ == {"c": 42}
+
+
+def test_cached_property():
+    class Example(Prefab):
+        @functools.cached_property
+        def h2g2(self):
+            return 42
+
+    ex = Example()
+    assert ex.h2g2 == 42
+    assert ex.__dict__ == {"h2g2": 42}
