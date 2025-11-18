@@ -413,6 +413,18 @@ def _make_prefab(
             f"has already been processed as a Prefab."
         )
 
+    if not frozen:
+        # If the class is not frozen, make sure it doesn't inherit
+        # from a frozen class
+        for base in cls.__mro__[:-1]:
+            try:
+                fields = get_flags(base)
+            except AttributeError:
+                continue
+            else:
+                if fields.get("frozen") is True:
+                    raise TypeError("Cannot inherit non-frozen prefab from a frozen one")
+
     slots = cls_dict.get("__slots__")
     slotted = False if slots is None else True
 

@@ -1,6 +1,6 @@
 import pytest
 
-from ducktools.classbuilder.prefab import prefab, attribute
+from ducktools.classbuilder.prefab import Prefab, prefab, attribute
 
 
 @prefab(frozen=True)
@@ -132,6 +132,26 @@ def test_hash_already_exists():
     sub = ImmutSub(42)
 
     assert hash(sub) == hash((42, "Example Data"))
+
+
+def test_inherit():
+    # Test mutable classes can't inherit from immutable classes
+    @prefab(frozen=True)
+    class Base:
+        a: int = 42
+
+    with pytest.raises(TypeError):
+        @prefab(frozen=False)
+        class Sub(Base):  # type: ignore
+            pass
+
+    # And with the base class
+    class BaseSlot(Prefab, frozen=True):
+        a: int = 42
+
+    with pytest.raises(TypeError):
+        class SubSlot(BaseSlot, frozen=False):  # type: ignore
+            pass
 
 
 def test_hashable():
