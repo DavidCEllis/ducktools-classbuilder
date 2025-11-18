@@ -33,4 +33,6 @@ class SlottedDC(builtins.object)
  |  Data and other attributes defined here:
  |
  |  __classbuilder_internals__ = {'build_complete': True, 'fields': {'the_...
+ |
+ |  __hash__ = None
 
