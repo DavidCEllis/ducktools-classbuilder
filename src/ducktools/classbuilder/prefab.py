@@ -438,9 +438,15 @@ def _make_prefab(
     if iter and "__iter__" not in cls_dict:
         methods.add(iter_maker)
     if frozen:
+        # Check __setattr__ and __delattr__ are not already defined on this class
+        if "__setattr__" in cls_dict:
+            raise TypeError("Cannot overwrite '__setattr__' method that already exists")
+        elif "__delattr__" in cls_dict:
+            raise TypeError("Cannot overwrite '__delattr__' method that already exists")
         methods.add(frozen_setattr_maker)
         methods.add(frozen_delattr_maker)
-        methods.add(hash_maker)
+        if "__hash__" not in cls_dict:  # it's ok if the user has defined __hash__ already
+            methods.add(hash_maker)
     if dict_method:
         methods.add(asdict_maker)
 

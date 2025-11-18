@@ -71,6 +71,59 @@ def test_delete_blocked():
     assert x.x == 0
 
 
+def test_hash_unfrozen():
+    @prefab(eq=False)
+    class Hashable:
+        x: int
+        y: str = "Example Data"
+
+    @prefab(frozen=False)
+    class Unhashable:
+        x: int
+        y: str = "Example Data"
+
+    hashable = Hashable(x=0)
+    unhashable = Unhashable(x=0)
+
+    hash(hashable)
+
+    with pytest.raises(TypeError):
+        hash(unhashable)
+
+
+def test_hash_already_exists():
+    @prefab
+    class HashableMutable:
+        x: int
+        y: str = "Example Data"
+
+        def __hash__(self):
+            return hash(self.x)
+
+    @prefab(frozen=True)
+    class HashableImmutable:
+        x: int
+        y: str = "Example Data"
+
+        def __hash__(self):
+            return hash(self.x)
+
+    mut = HashableMutable(42)
+    immut = HashableImmutable(42)
+
+    assert hash(mut) == hash(42)
+    assert hash(immut) == hash(42)
+
+    # Subclass should still get a new __hash__ method
+    @prefab(frozen=True)
+    class ImmutSub(HashableImmutable):
+        pass
+
+    sub = ImmutSub(42)
+
+    assert hash(sub) == hash((42, "Example Data"))
+
+
 def test_hashable():
     ex = FrozenContents(x=0)
     hash(ex)

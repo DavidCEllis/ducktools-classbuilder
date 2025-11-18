@@ -600,6 +600,13 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
         setattr(cls, method.funcname, method)
         internal_methods[method.funcname] = method
 
+    if "__eq__" in internal_methods and "__hash__" not in internal_methods:
+        # If an eq method has been defined and a hash method has not
+        # Then the class is not frozen unless the user has
+        # defined a hash method
+        if "__hash__" not in cls.__dict__:
+            setattr(cls, "__hash__", None)
+
     internals["methods"] = _MappingProxyType(internal_methods)
 
     # Fix for inspect.signature(cls)
