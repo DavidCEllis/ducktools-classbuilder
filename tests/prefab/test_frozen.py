@@ -1,6 +1,6 @@
 import pytest
 
-from ducktools.classbuilder.prefab import prefab, attribute
+from ducktools.classbuilder.prefab import Prefab, prefab, attribute
 
 
 @prefab(frozen=True)
@@ -69,6 +69,89 @@ def test_delete_blocked():
     )
 
     assert x.x == 0
+
+
+def test_hash_unfrozen():
+    @prefab(eq=False)
+    class Hashable:
+        x: int
+        y: str = "Example Data"
+
+    @prefab(frozen=False)
+    class Unhashable:
+        x: int
+        y: str = "Example Data"
+
+    hashable = Hashable(x=0)
+    unhashable = Unhashable(x=0)
+
+    hash(hashable)
+
+    with pytest.raises(TypeError):
+        hash(unhashable)
+
+
+def test_hash_already_exists():
+    @prefab
+    class HashableMutable:
+        x: int
+        y: str = "Example Data"
+
+        def __hash__(self):
+            return hash(self.x)
+
+    @prefab(frozen=True)
+    class HashableImmutable:
+        x: int
+        y: str = "Example Data"
+
+        def __hash__(self):
+            return hash(self.x)
+
+    mut = HashableMutable(42)
+    immut = HashableImmutable(42)
+
+    assert hash(mut) == hash(42)
+    assert hash(immut) == hash(42)
+
+    # Unfrozen subclass should have hash removed
+    @prefab
+    class MutableSub(HashableMutable):
+        pass
+
+    mut_sub = MutableSub(42)
+
+    with pytest.raises(TypeError):
+        hash(mut_sub)
+
+    # Frozen subclass should still get a new __hash__ method
+    @prefab(frozen=True)
+    class ImmutSub(HashableImmutable):
+        pass
+
+    sub = ImmutSub(42)
+
+    assert hash(sub) == hash((42, "Example Data"))
+
+
+def test_inherit():
+    # Test mutable classes can't inherit from immutable classes
+    @prefab(frozen=True)
+    class Base:
+        a: int = 42
+
+    with pytest.raises(TypeError):
+        @prefab(frozen=False)
+        class Sub(Base):  # type: ignore
+            pass
+
+    # And with the base class
+    class BaseSlot(Prefab, frozen=True):
+        a: int = 42
+
+    with pytest.raises(TypeError):
+        class SubSlot(BaseSlot, frozen=False):  # type: ignore
+            pass
 
 
 def test_hashable():
