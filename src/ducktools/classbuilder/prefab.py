@@ -416,7 +416,7 @@ def _make_prefab(
     if not frozen:
         # If the class is not frozen, make sure it doesn't inherit
         # from a frozen class
-        for base in cls.__mro__[:-1]:
+        for base in cls.__mro__[1:-1]:  # Exclude this class and object
             try:
                 fields = get_flags(base)
             except AttributeError:
