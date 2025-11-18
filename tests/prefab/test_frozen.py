@@ -114,7 +114,17 @@ def test_hash_already_exists():
     assert hash(mut) == hash(42)
     assert hash(immut) == hash(42)
 
-    # Subclass should still get a new __hash__ method
+    # Unfrozen subclass should have hash removed
+    @prefab
+    class MutableSub(HashableMutable):
+        pass
+
+    mut_sub = MutableSub(42)
+
+    with pytest.raises(TypeError):
+        hash(mut_sub)
+
+    # Frozen subclass should still get a new __hash__ method
     @prefab(frozen=True)
     class ImmutSub(HashableImmutable):
         pass
