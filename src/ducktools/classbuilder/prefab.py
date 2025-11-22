@@ -183,7 +183,8 @@ def init_generator(cls, funcname="__init__"):
         body += "\n".join(
             f"    self.{name} = {value}" for name, value in assignments
         )
-        body += "\n"
+        if assignments:
+            body += "\n"
         body += "\n".join(f"    {name} = {value}" for name, value in processes)
     else:
         body = "    pass"
@@ -196,9 +197,9 @@ def init_generator(cls, funcname="__init__"):
 
     code = (
         f"def {funcname}(self, {args}):\n"
-        f"{pre_init_call}\n"
+        f"{pre_init_call}"
         f"{body}\n"
-        f"{post_init_call}\n"
+        f"{post_init_call}"
     )
 
     if annotations:
