@@ -68,7 +68,10 @@ def get_fields(cls, *, local=False):
     :return: dictionary of keys and Field attribute info
     """
     key = "local_fields" if local else "fields"
-    return getattr(cls, INTERNALS_DICT)[key]
+    try:
+        return getattr(cls, INTERNALS_DICT)[key]
+    except AttributeError:
+        raise TypeError(f"{cls} is not a classbuilder generated class")
 
 
 def get_flags(cls):
@@ -79,7 +82,10 @@ def get_flags(cls):
     :param cls: generated class
     :return: dictionary of keys and flag values
     """
-    return getattr(cls, INTERNALS_DICT)["flags"]
+    try:
+        return getattr(cls, INTERNALS_DICT)["flags"]
+    except AttributeError:
+        raise TypeError(f"{cls} is not a classbuilder generated class")
 
 
 def get_methods(cls):
@@ -90,7 +96,61 @@ def get_methods(cls):
     :param cls: generated class
     :return: dict of generated methods attached to the class by name
     """
-    return getattr(cls, INTERNALS_DICT)["methods"]
+    try:
+        return getattr(cls, INTERNALS_DICT)["methods"]
+    except AttributeError:
+        raise TypeError(f"{cls} is not a classbuilder generated class")
+
+
+def get_generated_code(cls):
+    """
+    Retrieve the source code, globals and annotations of all generated methods
+    as they would be generated for a specific class.
+
+    :param cls: generated class
+    :return: dict of generated method names and the GeneratedCode objects for the class
+    """
+    methods = get_methods(cls)
+    source = {
+        name: method.code_generator(cls)
+        for name, method in methods.items()
+    }
+
+    return source
+
+
+def print_generated_code(cls):
+    """
+    Print out all of the generated source code that will be executed for this class
+
+    This function is useful when checking that your code generators are writing source
+    code as expected.
+
+    :param cls: generated class
+    """
+    import textwrap
+
+    source = get_generated_code(cls)
+
+    source_list = []
+    globs_list = []
+    annotation_list = []
+
+    for name, method in source.items():
+        source_list.append(method.source_code)
+        if method.globs:
+            globs_list.append(f"{name}: {method.globs}")
+        if method.annotations:
+            annotation_list.append(f"{name}: {method.annotations}")
+
+    print("Source:")
+    print(textwrap.indent("\n".join(source_list), "    "))
+    if globs_list:
+        print("\nGlobals:")
+        print(textwrap.indent("\n".join(globs_list), "    "))
+    if annotation_list:
+        print("\nAnnotations:")
+        print(textwrap.indent("\n".join(annotation_list), "    "))
 
 
 def build_completed(ns):
@@ -832,7 +892,7 @@ class Field(metaclass=SlotMakerMeta):
 
         self.validate_field()
 
-    def __init_subclass__(cls, frozen=False):
+    def __init_subclass__(cls, frozen=False, ignore_annotations=False):
         # Subclasses of Field can be created as if they are dataclasses
         field_methods = {_field_init_maker, repr_maker, eq_maker}
         if frozen or _UNDER_TESTING:
@@ -842,7 +902,12 @@ class Field(metaclass=SlotMakerMeta):
             cls,
             gatherer=unified_gatherer,
             methods=field_methods,
-            flags={"slotted": True, "kw_only": True}
+            flags={
+                "slotted": True,
+                "kw_only": True,
+                "frozen": frozen or _UNDER_TESTING,
+                "ignore_annotations": ignore_annotations,
+            }
         )
 
     def validate_field(self):
