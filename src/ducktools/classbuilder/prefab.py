@@ -273,7 +273,7 @@ hash_maker = MethodMaker("__hash__", hash_generator)
 
 
 # Updated field with additional attributes
-class Attribute(Field):
+class Attribute(Field, ignore_annotations=True):
     """
     Get an object to define a prefab attribute
 
@@ -290,8 +290,8 @@ class Attribute(Field):
     :param metadata: Additional non-construction related metadata
     :param type: Type of this attribute (for slotted classes)
     """
-    iter: bool = True
-    serialize: bool = True
+    iter: bool = Field(default=True)  # type: ignore
+    serialize: bool = Field(default=True)  # type: ignore
     metadata: dict = Field(default=FIELD_NOTHING, default_factory=dict)  # type: ignore
 
 
