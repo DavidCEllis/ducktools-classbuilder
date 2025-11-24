@@ -892,7 +892,7 @@ class Field(metaclass=SlotMakerMeta):
 
         self.validate_field()
 
-    def __init_subclass__(cls, frozen=False):
+    def __init_subclass__(cls, frozen=False, ignore_annotations=False):
         # Subclasses of Field can be created as if they are dataclasses
         field_methods = {_field_init_maker, repr_maker, eq_maker}
         if frozen or _UNDER_TESTING:
@@ -902,7 +902,12 @@ class Field(metaclass=SlotMakerMeta):
             cls,
             gatherer=unified_gatherer,
             methods=field_methods,
-            flags={"slotted": True, "kw_only": True}
+            flags={
+                "slotted": True,
+                "kw_only": True,
+                "frozen": frozen or _UNDER_TESTING,
+                "ignore_annotations": ignore_annotations,
+            }
         )
 
     def validate_field(self):
