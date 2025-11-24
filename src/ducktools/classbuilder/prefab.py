@@ -420,7 +420,7 @@ def _make_prefab(
         for base in cls.__mro__[1:-1]:  # Exclude this class and object
             try:
                 fields = get_flags(base)
-            except AttributeError:
+            except (TypeError, KeyError):
                 continue
             else:
                 if fields.get("frozen") is True:
@@ -626,7 +626,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
 
         try:
             flags = get_flags(cls).copy()
-        except (AttributeError, KeyError):
+        except (TypeError, KeyError):
             flags = {}
         else:
             # Remove the value of slotted if it exists
