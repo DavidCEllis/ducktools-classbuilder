@@ -866,6 +866,7 @@ def as_dict(o):
         if attrib.serialize
     }
 
+
 def replace(obj, /, **changes):
     """
     Create a copy of a prefab instance with values provided to 'changes' replaced
