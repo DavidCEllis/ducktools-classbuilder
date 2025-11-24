@@ -101,7 +101,7 @@ def init_generator(cls, funcname="__init__"):
             func_arglist.extend(arglist)
 
             if extra_funcname == POST_INIT_FUNC:
-                post_init_annotations.update(get_func_annotations(func))
+                post_init_annotations |= get_func_annotations(func)
 
     pos_arglist = []
     kw_only_arglist = []
