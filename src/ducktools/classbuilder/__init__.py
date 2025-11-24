@@ -510,7 +510,7 @@ def replace_generator(cls, funcname="__replace__"):
     code = (
         f"def {funcname}(self, /, **changes):\n"
         f"    new_kwargs = {init_dict}\n"
-        f"    new_kwargs.update(changes)\n"
+        f"    new_kwargs |= changes\n"
         f"    return self.__class__(**new_kwargs)\n"
     )
     globs = {}
