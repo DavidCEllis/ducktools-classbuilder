@@ -617,7 +617,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     # Update or add flags to internals dict
     flag_dict = internals.get("flags", {})
     if flags is not None:
-        flag_dict.update(flags)
+        flag_dict |= flags
     internals["flags"] = flag_dict
 
     cls_gathered = cls.__dict__.get(GATHERED_DATA)
@@ -642,8 +642,8 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
         fields = {}
         for c in reversed(mro):
             try:
-                fields.update(get_fields(c, local=True))
-            except (AttributeError, KeyError):
+                fields |= get_fields(c, local=True)
+            except (TypeError, KeyError):
                 pass
 
     internals["fields"] = fields
@@ -890,7 +890,7 @@ class Field(metaclass=SlotMakerMeta):
         # Subclasses of Field can be created as if they are dataclasses
         field_methods = {_field_init_maker, repr_maker, eq_maker}
         if frozen or _UNDER_TESTING:
-            field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+            field_methods |= {frozen_setattr_maker, frozen_delattr_maker}
 
         builder(
             cls,
@@ -959,7 +959,7 @@ def _build_field():
 
     field_methods = {repr_maker, eq_maker}
     if _UNDER_TESTING:
-        field_methods.update({frozen_setattr_maker, frozen_delattr_maker})
+        field_methods |= {frozen_setattr_maker, frozen_delattr_maker}
 
     builder(
         Field,
