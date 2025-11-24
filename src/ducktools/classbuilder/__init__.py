@@ -510,13 +510,7 @@ def replace_generator(cls, funcname="__replace__"):
     code = (
         f"def {funcname}(self, /, **changes):\n"
         f"    new_kwargs = {init_dict}\n"
-        f"    for name, value in changes.items():\n"
-        f"        if name not in new_kwargs:\n"
-        f"            raise TypeError(\n"
-        f"                f\"{{name!r}} is not a valid replacable \"\n"
-        f"                f\"field on {{self.__class__.__name__!r}}\"\n"
-        f"            )\n"
-        f"        new_kwargs[name] = value\n"
+        f"    new_kwargs.update(changes)\n"
         f"    return self.__class__(**new_kwargs)\n"
     )
     globs = {}
