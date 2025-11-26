@@ -60,11 +60,11 @@ def get_attributes(cls, *, local=False):
     """
     attributes = get_fields(cls, local=local)
 
-    # attributes may be Fields and not Attributes - convert upwards
-    if not is_prefab(cls):
-        attributes = {
-            k: Attribute.from_field(v) for k, v in attributes.items()
-        }
+    if any_attrib := next(iter(attributes.values()), None):
+        if type(any_attrib) is not Attribute:
+            attributes = {
+                k: Attribute.from_field(v) for k, v in attributes.items()
+            }
 
     return attributes
 
