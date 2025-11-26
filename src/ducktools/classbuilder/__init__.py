@@ -167,15 +167,6 @@ def build_completed(ns):
         return False
 
 
-def _get_inst_fields(inst):
-    # This is an internal helper for constructing new
-    # 'Field' instances from existing ones.
-    return {
-        k: getattr(inst, k)
-        for k in get_fields(type(inst))
-    }
-
-
 # As 'None' can be a meaningful value we need a sentinel value
 # to use to show no value has been provided.
 class _NothingType:
@@ -580,7 +571,7 @@ _field_init_maker = MethodMaker(
 )
 
 
-def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
+def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, field_getter=get_fields):
     """
     The main builder for class generation
 
@@ -598,6 +589,8 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
     :param fix_signature: Add a __signature__ attribute to work-around an issue with
                           inspect.signature incorrectly handling __init__ descriptors.
     :type fix_signature: bool
+    :param field_getter: function to use to retrieve fields from parent classes
+    :type field_getter: Callable[[type], dict[str, Field]]
     :return: The modified class (the class itself is modified, but this is expected).
     """
     # Handle `None` to make wrapping with a decorator easier.
@@ -642,7 +635,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True):
         fields = {}
         for c in reversed(mro):
             try:
-                fields |= get_fields(c, local=True)
+                fields |= field_getter(c, local=True)
             except (TypeError, KeyError):
                 pass
 
@@ -923,7 +916,11 @@ class Field(metaclass=SlotMakerMeta):
         :param kwargs: Additional keyword arguments for subclasses
         :return: new field subclass instance
         """
-        argument_dict = {**_get_inst_fields(fld), **kwargs}
+        inst_fields = {
+            k: getattr(fld, k)
+            for k in get_fields(type(fld))
+        }
+        argument_dict = {**inst_fields, **kwargs}
 
         return cls(**argument_dict)
 
