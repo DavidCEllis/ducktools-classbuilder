@@ -60,11 +60,10 @@ def get_attributes(cls, *, local=False):
     """
     attributes = get_fields(cls, local=local)
 
-    if any_attrib := next(iter(attributes.values()), None):
-        if type(any_attrib) is not Attribute:
-            attributes = {
-                k: Attribute.from_field(v) for k, v in attributes.items()
-            }
+    if any(type(obj) is not Attribute for obj in attributes.values()):
+        attributes = {
+            k: Attribute.from_field(v) for k, v in attributes.items()
+        }
 
     return attributes
 
