@@ -1,11 +1,11 @@
 """Tests for the behaviour of __init__"""
 
-import sys
 from pathlib import Path
 from typing import Union
 
 import pytest
 
+from ducktools.classbuilder import get_generated_code
 from ducktools.classbuilder.prefab import prefab, attribute
 
 
@@ -294,3 +294,22 @@ def test_inherited_signature():
 
     with pytest.raises(AttributeError):
         Inherited.__signature__
+
+
+def test_factory_globals():
+    container_code = get_generated_code(EmptyContainers)
+    globs = container_code["__init__"].globs
+
+    assert globs == {"_y_factory": set}
+
+    # subclass of list should not be literal
+    class SubList(list):
+        pass
+
+    @prefab
+    class EmptySubclass:
+        x: SubList = attribute(default_factory=SubList)
+
+    globs = get_generated_code(EmptySubclass)["__init__"].globs
+
+    assert globs == {"_x_factory": SubList}
