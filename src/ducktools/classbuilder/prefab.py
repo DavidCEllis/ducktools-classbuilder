@@ -475,7 +475,6 @@ def _prefab_preprocess(
 
 def _prefab_post_process(cls, /, *, fields, kw_only):
     # Processor to do post-construction checks
-
     # Error check: Check that the arguments to pre/post init are valid fields
     try:
         func = getattr(cls, PRE_INIT_FUNC)
@@ -613,12 +612,11 @@ def _make_prefab(
         field_getter=get_attributes,
     )
 
-    # Add additional attributes
-    cls_dict = cls.__dict__
+    # Add additional class attributes that could only be added after fields were resolved
     fields = get_attributes(cls)
 
     setattr(cls, PREFAB_FIELDS, list(fields.keys()))
-    if match_args and "__match_args__" not in cls_dict:
+    if match_args and "__match_args__" not in cls.__dict__:
         setattr(
             cls,
             "__match_args__",
