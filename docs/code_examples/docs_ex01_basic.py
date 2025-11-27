@@ -1,17 +1,13 @@
-from ducktools.classbuilder import slotclass, Field, SlotFields
+from ducktools.classbuilder.prefab import Prefab, attribute
 
-
-@slotclass
-class SlottedDC:
-    __slots__ = SlotFields(
-        the_answer=42,
-        the_question=Field(
-            default="What do you get if you multiply six by nine?",
-            doc="Life, the Universe, and Everything",
-        ),
+class Slotted(Prefab):
+    the_answer: int = 42
+    the_question: str = attribute(
+        default="What do you get if you multiply six by nine?",
+        doc="Life the universe and everything",
     )
 
-
-ex = SlottedDC()
+ex = Slotted()
 print(ex)
-help(SlottedDC)
+print(ex.__slots__)
+help(Slotted)
