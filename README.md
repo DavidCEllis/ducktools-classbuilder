@@ -40,7 +40,7 @@ The generated source code for the methods can be viewed using the `print_generat
 ```python
 from ducktools.classbuilder import print_generated_code
 
-print_generated_code(SlottedDC)
+print_generated_code(Slotted)
 ```
 
 ### Core ###
