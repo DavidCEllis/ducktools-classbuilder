@@ -17,29 +17,35 @@ Install from PyPI with:
 The classbuilder tools make up the core of this module and there is an implementation
 using these tools in the `prefab` submodule.
 
-There is also a minimal `@slotclass` example that can construct classes from a special
-mapping used in `__slots__`.
+The implementation provides both a base class `Prefab` that will also generate `__slots__`
+and a decorator `@prefab` which does not support `__slots__`.
 
 ```python
-from ducktools.classbuilder import Field, SlotFields, slotclass
+from ducktools.classbuilder.prefab import Prefab, attribute
 
-@slotclass
-class SlottedDC:
-    __slots__ = SlotFields(
-        the_answer=42,
-        the_question=Field(
-            default="What do you get if you multiply six by nine?",
-            doc="Life, the Universe, and Everything",
-        ),
+class Slotted(Prefab):
+    the_answer: int = 42
+    the_question: str = attribute(
+        default="What do you get if you multiply six by nine?",
+        doc="Life the universe and everything",
     )
 
-ex = SlottedDC()
+ex = Slotted()
 print(ex)
+print(ex.__slots__)
+```
+
+The generated source code for the methods can be viewed using the `print_generated_code` helper function.
+
+```python
+from ducktools.classbuilder import print_generated_code
+
+print_generated_code(SlottedDC)
 ```
 
 ### Core ###
 
-The core of the module provides tools for creating a customized version of the `dataclass` concept.
+The base `ducktools.classbuilder` module provides tools for creating a customized version of the `dataclass` concept.
 
 * `MethodMaker`
   * This tool takes a function that generates source code and converts it into a descriptor
@@ -75,12 +81,6 @@ This prebuilt implementation is available from the `ducktools.classbuilder.prefa
 This includes more customization including `__prefab_pre_init__` and `__prefab_post_init__`
 functions for subclass customization.
 
-A `@prefab` decorator and `Prefab` base class are provided.
-
-`Prefab` will generate `__slots__` by default.
-decorated classes with `@prefab` that do not declare fields using `__slots__`
-will **not** be slotted and there is no `slots` argument to apply this.
-
 Here is an example of applying a conversion in `__post_init__`:
 ```python
 from pathlib import Path
@@ -106,7 +106,7 @@ print(steam)
 #### Features ####
 
 `Prefab` and `@prefab` support many standard dataclass features along with
-a few extras.
+some extra features and some intentional differences in design.
 
 * All standard methods are generated on-demand
   * This makes the construction of classes much faster in general
@@ -132,20 +132,20 @@ a few extras.
   * `iter=True` will include the attribute in the iterable if `__iter__` is generated
   * `serialize=True` decides if the attribute is include in `as_dict`
   * `exclude_field` is short for `repr=False`, `compare=False`, `iter=False`, `serialize=False`
-  * `private` is short for `exclude_field=True` and `init=False` and requires a default/factory
+  * `private` is short for `exclude_field=True` and `init=False` and requires a default or factory
   * `doc` will add this string as the value in slotted classes, which appears in `help()`
 * `build_prefab` can be used to dynamically create classes and *does* support a slots argument
   * Unlike dataclasses, this does not create the class twice in order to provide slots
 
 There are also some intentionally missing features:
 
-* The `@prefab` decorator does not and will not support a `slots` argument
+* The `@prefab` decorator does not and will never support a `slots` argument
   * Use `Prefab` for slots.
 * `as_dict` and the generated `.as_dict` method **do not** recurse or deep copy
 * `unsafe_hash` is not provided
 * `weakref_slot` is not available as an argument
   * `__weakref__` can be added to slots by declaring it as if it were an attribute
-* There is no check for mutable defaults
+* There is no safety check for mutable defaults
   * You should still use `default_factory` as you would for dataclasses, not doing so
     is still incorrect
   * `dataclasses` uses hashability as a proxy for mutability, but technically this is
@@ -162,7 +162,7 @@ There are also some intentionally missing features:
 If you want to use `__slots__` in order to save memory you have to declare
 them when the class is originally created as you can't add them later.
 
-When you use `@dataclass(slots=True)`[^2] with `dataclasses`, the function
+When you use `@dataclass(slots=True)`[^1] with `dataclasses`, the function
 has to make a new class and attempt to copy over everything from the original.
 
 This is because decorators operate on classes *after they have been created*
@@ -305,8 +305,4 @@ with a specific feature, you can create or add it yourself.
 
 Heavily inspired by [David Beazley's Cluegen](https://github.com/dabeaz/cluegen)
 
-[^1]: `SlotFields` is actually just a subclassed `dict` with no changes. `__slots__`
-      works with dictionaries using the values of the keys, while fields are normally
-      used for documentation.
-
-[^2]: or `@attrs.define`.
+[^1]: or `@attrs.define`.

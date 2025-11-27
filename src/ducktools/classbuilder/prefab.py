@@ -30,7 +30,14 @@ from . import (
     Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
     builder, get_flags, get_fields,
     make_unified_gatherer,
-    eq_maker, frozen_setattr_maker, frozen_delattr_maker, replace_maker,
+    eq_maker,
+    lt_maker,
+    le_maker,
+    gt_maker,
+    ge_maker,
+    frozen_setattr_maker,
+    frozen_delattr_maker,
+    replace_maker,
     get_repr_generator,
     build_completed,
 )
@@ -110,6 +117,9 @@ def init_generator(cls, funcname="__init__"):
             if extra_funcname == POST_INIT_FUNC:
                 post_init_annotations |= get_func_annotations(func)
 
+    # These types can be represented literally
+    literal_types = {str, int, float, bool, type(None)}
+
     pos_arglist = []
     kw_only_arglist = []
     for name, attrib in attributes.items():
@@ -121,7 +131,7 @@ def init_generator(cls, funcname="__init__"):
                 annotations[name] = attrib.type
 
             if attrib.default is not NOTHING:
-                if isinstance(attrib.default, (str, int, float, bool)):
+                if type(attrib.default) in literal_types:
                     # Just use the literal in these cases
                     arg = f"{name}={attrib.default!r}"
                 else:
@@ -144,7 +154,8 @@ def init_generator(cls, funcname="__init__"):
         # Not in init, but need to set defaults
         else:
             if attrib.default is not NOTHING:
-                globs[f"_{name}_default"] = attrib.default
+                if type(attrib.default) not in literal_types:
+                    globs[f"_{name}_default"] = attrib.default
             elif attrib.default_factory is not NOTHING:
                 globs[f"_{name}_factory"] = attrib.default_factory
 
@@ -169,7 +180,10 @@ def init_generator(cls, funcname="__init__"):
             if attrib.default_factory is not NOTHING:
                 value = f"_{name}_factory()"
             elif attrib.default is not NOTHING:
-                value = f"_{name}_default"
+                if type(attrib.default) in literal_types:
+                    value = f"{attrib.default!r}"
+                else:
+                    value = f"_{name}_default"
             else:
                 value = None
 
@@ -189,9 +203,9 @@ def init_generator(cls, funcname="__init__"):
         body = "\n".join(
             f"    self.{name} = {value}" for name, value in assignments
         )
-        if assignments:
+        if processes:
             body += "\n"
-        body += "\n".join(f"    {name} = {value}" for name, value in processes)
+            body += "\n".join(f"    {name} = {value}" for name, value in processes)
         body += "\n"
     else:
         body = ""
@@ -381,6 +395,7 @@ def _prefab_preprocess(
     init,
     repr,
     eq,
+    order,
     iter,
     match_args,
     kw_only,
@@ -436,6 +451,13 @@ def _prefab_preprocess(
             methods.add(repr_maker)
     if eq and "__eq__" not in cls_dict:
         methods.add(eq_maker)
+    if order:
+        order_methods = {"__lt__", "__le__", "__gt__", "__ge__"}
+        if not order_methods.isdisjoint(cls_dict.keys()):
+            raise TypeError("Cannot overwrite existing order comparison methods")
+
+        methods |= {lt_maker, le_maker, gt_maker, ge_maker}
+
     if iter and "__iter__" not in cls_dict:
         methods.add(iter_maker)
     if frozen:
@@ -460,6 +482,7 @@ def _prefab_preprocess(
         "init": init,
         "repr": repr,
         "eq": eq,
+        "order": order,
         "iter": iter,
         "match_args": match_args,
         "kw_only": kw_only,
@@ -557,6 +580,7 @@ def _make_prefab(
     init=True,
     repr=True,
     eq=True,
+    order=False,
     iter=False,
     match_args=True,
     kw_only=False,
@@ -593,6 +617,7 @@ def _make_prefab(
         init=init,
         repr=repr,
         eq=eq,
+        order=order,
         iter=iter,
         match_args=match_args,
         kw_only=kw_only,
@@ -660,6 +685,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
             "init": True,
             "repr": True,
             "eq": True,
+            "order": False,
             "iter": False,
             "match_args": True,
             "kw_only": False,
@@ -705,6 +731,7 @@ def prefab(
     init=True,
     repr=True,
     eq=True,
+    order=False,
     iter=False,
     match_args=True,
     kw_only=False,
@@ -743,6 +770,7 @@ def prefab(
             init=init,
             repr=repr,
             eq=eq,
+            order=order,
             iter=iter,
             match_args=match_args,
             kw_only=kw_only,
@@ -758,6 +786,7 @@ def prefab(
             init=init,
             repr=repr,
             eq=eq,
+            order=order,
             iter=iter,
             match_args=match_args,
             kw_only=kw_only,
@@ -779,6 +808,7 @@ def build_prefab(
     init=True,
     repr=True,
     eq=True,
+    order=False,
     iter=False,
     match_args=True,
     kw_only=False,
@@ -844,6 +874,7 @@ def build_prefab(
         init=init,
         repr=repr,
         eq=eq,
+        order=order,
         iter=iter,
         match_args=match_args,
         kw_only=kw_only,

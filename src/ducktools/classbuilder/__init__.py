@@ -136,7 +136,7 @@ def print_generated_code(cls):
     globs_list = []
     annotation_list = []
 
-    for name, method in source.items():
+    for name, method in sorted(source.items()):
         source_list.append(method.source_code)
         if method.globs:
             globs_list.append(f"{name}: {method.globs}")
@@ -484,6 +484,38 @@ def eq_generator(cls, funcname="__eq__"):
     return GeneratedCode(code, globs)
 
 
+def get_order_generator(cls, funcname, *, operator):
+    field_names = [
+        name
+        for name, attrib in get_fields(cls).items()
+        if attrib.compare
+    ]
+
+    self_tuple = ", ".join(f"self.{name}" for name in field_names)
+    other_tuple = self_tuple.replace("self.", "other.")
+
+    code = (
+        f"def {funcname}(self, other):\n"
+        f"    if self.__class__ is other.__class__:\n"
+        f"        return ({self_tuple}) {operator} ({other_tuple})\n"
+        f"    return NotImplemented\n"
+    )
+    globs = {}
+    return GeneratedCode(code, globs)
+
+def lt_generator(cls, funcname="__lt__"):
+    return get_order_generator(cls, funcname, operator="<")
+
+def le_generator(cls, funcname="__le__"):
+    return get_order_generator(cls, funcname, operator="<=")
+
+def gt_generator(cls, funcname="__gt__"):
+    return get_order_generator(cls, funcname, operator=">")
+
+def ge_generator(cls, funcname="__ge__"):
+    return get_order_generator(cls, funcname, operator=">=")
+
+
 def replace_generator(cls, funcname="__replace__"):
     # Generate the replace method for built classes
     # unlike the dataclasses implementation this is generated
@@ -556,6 +588,10 @@ def frozen_delattr_generator(cls, funcname="__delattr__"):
 init_maker = MethodMaker("__init__", init_generator)
 repr_maker = MethodMaker("__repr__", repr_generator)
 eq_maker = MethodMaker("__eq__", eq_generator)
+lt_maker = MethodMaker("__lt__", lt_generator)
+le_maker = MethodMaker("__le__", le_generator)
+gt_maker = MethodMaker("__gt__", gt_generator)
+ge_maker = MethodMaker("__ge__", ge_generator)
 replace_maker = MethodMaker("__replace__", replace_generator)
 frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
