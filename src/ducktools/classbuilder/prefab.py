@@ -543,7 +543,6 @@ def _prefab_post_process(cls, /, *, kw_only, match_args):
                     f"{item} argument in {POST_INIT_FUNC} is not a valid attribute."
                 )
 
-    # Gather values for match_args and do some syntax checking
     default_defined = []
 
     # Error check: After inheritance,
