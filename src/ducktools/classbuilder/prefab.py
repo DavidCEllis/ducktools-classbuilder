@@ -473,18 +473,8 @@ def _prefab_preprocess(
     return gatherer, methods, flags
 
 
-def _prefab_post_process(cls, /, *, kw_only, match_args):
-    # Processor to add additional data that can only be done once the class has been built
-    cls_dict = cls.__dict__
-
-    # Get fields now the class has been built
-    fields = get_attributes(cls)
-    valid_args = list(fields.keys())
-
-    # Additional mutations
-    setattr(cls, PREFAB_FIELDS, valid_args)
-    if match_args and "__match_args__" not in cls_dict:
-        setattr(cls, "__match_args__", tuple(valid_args))
+def _prefab_post_process(cls, /, *, fields, kw_only):
+    # Processor to do post-construction checks
 
     # Error check: Check that the arguments to pre/post init are valid fields
     try:
@@ -598,6 +588,7 @@ def _make_prefab(
     :param ignore_annotations: Ignore annotated fields and only look at `attribute` fields
     :return: class with __ methods defined
     """
+    # Preprocess to obtain settings
     gatherer, methods, flags = _prefab_preprocess(
         cls,
         init=init,
@@ -622,7 +613,20 @@ def _make_prefab(
         field_getter=get_attributes,
     )
 
-    _prefab_post_process(cls, kw_only=kw_only, match_args=match_args)
+    # Add additional attributes
+    cls_dict = cls.__dict__
+    fields = get_attributes(cls)
+
+    setattr(cls, PREFAB_FIELDS, list(fields.keys()))
+    if match_args and "__match_args__" not in cls_dict:
+        setattr(
+            cls,
+            "__match_args__",
+            tuple(k for k, v in fields.items() if v.init)
+        )
+
+    # Post construction checks
+    _prefab_post_process(cls, kw_only=kw_only, fields=fields)
 
     return cls
 
