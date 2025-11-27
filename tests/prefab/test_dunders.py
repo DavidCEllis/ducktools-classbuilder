@@ -1,6 +1,8 @@
 """Test the non-init dunder methods"""
 
+import types
 import pytest
+from ducktools.classbuilder import MethodMaker
 from ducktools.classbuilder.prefab import attribute, prefab, SlotFields
 
 from utils import graalpy_fails  # type: ignore
@@ -106,6 +108,86 @@ def test_neq():
 
     assert (x.x, x.y, x.z, x.t) != (y.x, y.y, y.z, y.t)
     assert x != y
+
+
+class TestOrder:
+    def test_lt(self):
+        @prefab(order=True)
+        class Ordered4D:
+            x: int
+            y: int
+            z: int
+            t: int
+
+        assert isinstance (Ordered4D.__dict__["__lt__"], MethodMaker)
+
+        x = Ordered4D(1, 2, 3, 4)
+        y = Ordered4D(1, 2, 3, 5)
+        z = Ordered4D(1, 2, 3, 4)
+
+        assert x < y
+        assert not (x < z)
+
+        assert isinstance (Ordered4D.__dict__["__lt__"], types.FunctionType)
+
+    def test_le(self):
+        @prefab(order=True)
+        class Ordered4D:
+            x: int
+            y: int
+            z: int
+            t: int
+
+        assert isinstance (Ordered4D.__dict__["__le__"], MethodMaker)
+
+        x = Ordered4D(1, 2, 3, 4)
+        y = Ordered4D(1, 2, 3, 5)
+        z = Ordered4D(1, 2, 3, 4)
+
+        assert x <= y
+        assert x <= z
+        assert z <= x
+
+        assert isinstance (Ordered4D.__dict__["__le__"], types.FunctionType)
+
+    def test_gt(self):
+        @prefab(order=True)
+        class Ordered4D:
+            x: int
+            y: int
+            z: int
+            t: int
+
+        assert isinstance (Ordered4D.__dict__["__gt__"], MethodMaker)
+
+        x = Ordered4D(1, 2, 3, 4)
+        y = Ordered4D(1, 2, 3, 5)
+        z = Ordered4D(1, 2, 3, 4)
+
+        assert y > x
+        assert not (x > z)
+
+        assert isinstance (Ordered4D.__dict__["__gt__"], types.FunctionType)
+
+    def test_ge(self):
+        @prefab(order=True)
+        class Ordered4D:
+            x: int
+            y: int
+            z: int
+            t: int
+
+        assert isinstance (Ordered4D.__dict__["__ge__"], MethodMaker)
+
+        x = Ordered4D(1, 2, 3, 4)
+        y = Ordered4D(1, 2, 3, 5)
+        z = Ordered4D(1, 2, 3, 4)
+
+        assert y >= x
+        assert x >= z
+        assert z >= x
+
+        assert isinstance (Ordered4D.__dict__["__ge__"], types.FunctionType)
 
 
 def test_match_args():
