@@ -63,8 +63,6 @@ class C{n}:
     c: int
     d: int
     e: int
-
-C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
 attr_template = '''
@@ -75,8 +73,6 @@ class C{n}:
     c: int
     d: int
     e: int
-
-C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
 pydantic_template = '''
@@ -86,8 +82,15 @@ class C{n}(BaseModel):
     c: int
     d: int
     e: int
+'''
 
-C{n}.__init__, C{n}.__repr__, C{n}.__eq__
+msgspec_template = '''
+class C{n}(Struct):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
 '''
 
 cluegen_template = '''
@@ -261,6 +264,13 @@ def run_all_tests(reps, test_everything=False):
             run_test(f'pydantic {pydantic.__version__}', reps)
         except ImportError:
             print("pydantic not installed")
+
+        try:
+            import msgspec  # type: ignore
+            write_perftemp(100, msgspec_template, "from msgspec import Struct")
+            run_test(f"msgspec {msgspec.__version__}", reps)
+        except ImportError:
+            print("msgspec not installed")
 
         write_perftemp(100, cluegen_template, 'from cluegen import Datum\n')
         run_test('dabeaz/cluegen', reps)

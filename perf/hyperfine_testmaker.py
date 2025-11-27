@@ -192,6 +192,15 @@ class C{n}:
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
+msgspec_template = '''
+class C{n}(Struct):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+'''
+
 
 # Import Headings #
 
@@ -204,6 +213,7 @@ cluegen_header = "from cluegen import Datum"
 dataklass_header = "from dataklasses import dataklass"
 slotclass_header = "from ducktools.classbuilder import slotclass, SlotFields, Field"
 prefab_header = "from ducktools.classbuilder.prefab import prefab, attribute, Prefab, SlotFields"
+msgspec_header = "from msgspec import Struct"
 
 
 def write_perf_file(outpath, count, template, setup):
@@ -254,6 +264,7 @@ datasets = [
     TestData('attrs_noslots', attr_header, attr_noslots_template),
     TestData('attrs_slots', attr_header, attr_slots_template),
     TestData('pydantic', pydantic_header, pydantic_template),
+    TestData('msgspec', msgspec_header, msgspec_template),
 ]
 
 
@@ -306,6 +317,7 @@ def write_tests(*, runs=100, warmup=20, includes_pass=True):
         '''"python -c \\"from dataclasses import dataclass\\"" '''
         '''"python -c \\"from attrs import define\\"" '''
         '''"python -c \\"from pydantic import BaseModel\\"" '''
+        '''"python -c \\"from msgspec import Struct\\"" '''
     )
 
     import_script = (
