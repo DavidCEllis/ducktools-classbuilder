@@ -25,6 +25,11 @@ A 'prebuilt' implementation of class generation.
 
 Includes pre and post init functions along with other methods.
 """
+try:
+    from _types import NoneType  # type: ignore
+except ImportError:
+    from types import NoneType
+
 from . import (
     NOTHING, FIELD_NOTHING,
     Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
@@ -117,8 +122,13 @@ def init_generator(cls, funcname="__init__"):
             if extra_funcname == POST_INIT_FUNC:
                 post_init_annotations |= get_func_annotations(func)
 
-    # These types can be represented literally
-    literal_types = {str, int, float, bool, type(None)}
+    # These types can be represented literally without their names
+    # Types that can contain things other than themselves are *not* included
+    literal_types = {str, bytes, int, float, complex, bool, NoneType}
+
+    # Mutable empty containers that can be represented as literals
+    #
+    literal_containers = {list, dict}
 
     pos_arglist = []
     kw_only_arglist = []
@@ -144,7 +154,8 @@ def init_generator(cls, funcname="__init__"):
                 # Use NONE here and call the factory later
                 # This matches the behaviour of compiled
                 arg = f"{name}=None"
-                globs[f"_{name}_factory"] = attrib.default_factory
+                if attrib.default_factory not in literal_containers:
+                    globs[f"_{name}_factory"] = attrib.default_factory
             else:
                 arg = name
             if attrib.kw_only or kw_only:
@@ -157,7 +168,8 @@ def init_generator(cls, funcname="__init__"):
                 if type(attrib.default) not in literal_types:
                     globs[f"_{name}_default"] = attrib.default
             elif attrib.default_factory is not NOTHING:
-                globs[f"_{name}_factory"] = attrib.default_factory
+                if attrib.default_factory not in literal_containers:
+                    globs[f"_{name}_factory"] = attrib.default_factory
 
     pos_args = ", ".join(pos_arglist)
     kw_args = ", ".join(kw_only_arglist)
@@ -173,12 +185,18 @@ def init_generator(cls, funcname="__init__"):
     for name, attrib in attributes.items():
         if attrib.init:
             if attrib.default_factory is not NOTHING:
-                value = f"{name} if {name} is not None else _{name}_factory()"
+                if attrib.default_factory in literal_containers:
+                    value = f"{name} if {name} is not None else {attrib.default_factory()!r}"
+                else:
+                    value = f"{name} if {name} is not None else _{name}_factory()"
             else:
                 value = name
         else:
             if attrib.default_factory is not NOTHING:
-                value = f"_{name}_factory()"
+                if attrib.default_factory in literal_containers:
+                    value = f"{attrib.default_factory()!r}"
+                else:
+                    value = f"_{name}_factory()"
             elif attrib.default is not NOTHING:
                 if type(attrib.default) in literal_types:
                     value = f"{attrib.default!r}"
