@@ -81,7 +81,7 @@ This prebuilt implementation is available from the `ducktools.classbuilder.prefa
 This includes more customization including `__prefab_pre_init__` and `__prefab_post_init__`
 functions for subclass customization.
 
-Here is an example of applying a conversion in `__post_init__`:
+Here is an example of applying a conversion in `__prefab_post_init__`:
 ```python
 from pathlib import Path
 from ducktools.classbuilder.prefab import Prefab
