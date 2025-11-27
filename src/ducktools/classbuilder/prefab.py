@@ -117,6 +117,9 @@ def init_generator(cls, funcname="__init__"):
             if extra_funcname == POST_INIT_FUNC:
                 post_init_annotations |= get_func_annotations(func)
 
+    # These types can be represented literally
+    literal_types = {str, int, float, bool, type(None)}
+
     pos_arglist = []
     kw_only_arglist = []
     for name, attrib in attributes.items():
@@ -128,7 +131,7 @@ def init_generator(cls, funcname="__init__"):
                 annotations[name] = attrib.type
 
             if attrib.default is not NOTHING:
-                if type(attrib.default) in {str, int, float, bool, type(None)}:
+                if type(attrib.default) in literal_types:
                     # Just use the literal in these cases
                     arg = f"{name}={attrib.default!r}"
                 else:
@@ -151,7 +154,8 @@ def init_generator(cls, funcname="__init__"):
         # Not in init, but need to set defaults
         else:
             if attrib.default is not NOTHING:
-                globs[f"_{name}_default"] = attrib.default
+                if type(attrib.default) not in literal_types:
+                    globs[f"_{name}_default"] = attrib.default
             elif attrib.default_factory is not NOTHING:
                 globs[f"_{name}_factory"] = attrib.default_factory
 
@@ -176,7 +180,10 @@ def init_generator(cls, funcname="__init__"):
             if attrib.default_factory is not NOTHING:
                 value = f"_{name}_factory()"
             elif attrib.default is not NOTHING:
-                value = f"_{name}_default"
+                if type(attrib.default) in literal_types:
+                    value = f"{attrib.default!r}"
+                else:
+                    value = f"_{name}_default"
             else:
                 value = None
 
