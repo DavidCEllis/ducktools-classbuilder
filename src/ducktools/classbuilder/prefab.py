@@ -128,7 +128,7 @@ def init_generator(cls, funcname="__init__"):
                 annotations[name] = attrib.type
 
             if attrib.default is not NOTHING:
-                if isinstance(attrib.default, (str, int, float, bool)):
+                if type(attrib.default) in {str, int, float, bool, type(None)}:
                     # Just use the literal in these cases
                     arg = f"{name}={attrib.default!r}"
                 else:
