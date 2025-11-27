@@ -26,7 +26,7 @@ A 'prebuilt' implementation of class generation.
 Includes pre and post init functions along with other methods.
 """
 from . import (
-    INTERNALS_DICT, NOTHING, FIELD_NOTHING,
+    NOTHING, FIELD_NOTHING,
     Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
     builder, get_flags, get_fields,
     make_unified_gatherer,
@@ -50,7 +50,7 @@ class PrefabError(Exception):
     pass
 
 
-def get_attributes(cls):
+def get_attributes(cls, *, local=False):
     """
     Copy of get_fields, typed to return Attribute instead of Field.
     This is used in the prefab methods.
@@ -58,7 +58,14 @@ def get_attributes(cls):
     :param cls: class built with _make_prefab
     :return: dict[str, Attribute] of all gathered attributes
     """
-    return getattr(cls, INTERNALS_DICT)["fields"]
+    attributes = get_fields(cls, local=local)
+
+    if any(type(obj) is not Attribute for obj in attributes.values()):
+        attributes = {
+            k: Attribute.from_field(v) for k, v in attributes.items()
+        }
+
+    return attributes
 
 
 # Method Generators
@@ -179,15 +186,15 @@ def init_generator(cls, funcname="__init__"):
         pre_init_call = ""
 
     if assignments or processes:
-        body = ""
-        body += "\n".join(
+        body = "\n".join(
             f"    self.{name} = {value}" for name, value in assignments
         )
         if assignments:
             body += "\n"
         body += "\n".join(f"    {name} = {value}" for name, value in processes)
+        body += "\n"
     else:
-        body = "    pass"
+        body = ""
 
     if hasattr(cls, POST_INIT_FUNC):
         post_init_arg_call = ", ".join(f"{name}={name}" for name in post_init_args)
@@ -195,12 +202,10 @@ def init_generator(cls, funcname="__init__"):
     else:
         post_init_call = ""
 
-    code = (
-        f"def {funcname}(self, {args}):\n"
-        f"{pre_init_call}"
-        f"{body}\n"
-        f"{post_init_call}"
-    )
+    if not (body or post_init_call or pre_init_call):
+        body = "    pass\n"
+
+    code = f"def {funcname}(self, {args}):\n{pre_init_call}{body}{post_init_call}"
 
     if annotations:
         annotations["return"] = None
@@ -369,7 +374,183 @@ prefab_gatherer = make_unified_gatherer(
 
 
 # Class Builders
-# noinspection PyShadowingBuiltins
+def _prefab_preprocess(
+    cls,
+    /,
+    *,
+    init,
+    repr,
+    eq,
+    iter,
+    match_args,
+    kw_only,
+    frozen,
+    replace,
+    dict_method,
+    recursive_repr,
+    gathered_fields,
+    ignore_annotations,
+):
+    # This is the preprocessor which decides what arguments to pass to the builder
+    # No mutations should be applied in the preprocess stage
+
+    cls_dict = cls.__dict__
+
+    if build_completed(cls_dict):
+        raise PrefabError(
+            f"Decorated class {cls.__name__!r} "
+            f"has already been processed as a Prefab."
+        )
+
+    # Error check: Non-frozen class can't inherit from frozen
+    if not frozen:
+        for base in cls.__mro__[1:-1]:  # Exclude this class and object
+            try:
+                fields = get_flags(base)
+            except (TypeError, KeyError):
+                continue
+            else:
+                if fields.get("frozen") is True:
+                    raise TypeError("Cannot inherit non-frozen prefab from a frozen one")
+
+    slots = cls_dict.get("__slots__")
+    slotted = False if slots is None else True
+
+    if gathered_fields is None:
+        gatherer = prefab_gatherer
+    else:
+        gatherer = gathered_fields
+
+    # Decide which methods need to be added to the class based on presence
+    methods = set()
+
+    if init and "__init__" not in cls_dict:
+        methods.add(init_maker)
+    else:
+        methods.add(prefab_init_maker)
+
+    if repr and "__repr__" not in cls_dict:
+        if recursive_repr:
+            methods.add(recursive_repr_maker)
+        else:
+            methods.add(repr_maker)
+    if eq and "__eq__" not in cls_dict:
+        methods.add(eq_maker)
+    if iter and "__iter__" not in cls_dict:
+        methods.add(iter_maker)
+    if frozen:
+        # Check __setattr__ and __delattr__ are not already defined on this class
+        if "__setattr__" in cls_dict:
+            raise TypeError("Cannot overwrite '__setattr__' method that already exists")
+        elif "__delattr__" in cls_dict:
+            raise TypeError("Cannot overwrite '__delattr__' method that already exists")
+        methods.add(frozen_setattr_maker)
+        methods.add(frozen_delattr_maker)
+        if "__hash__" not in cls_dict:  # it's ok if the user has defined __hash__ already
+            methods.add(hash_maker)
+    if dict_method:
+        methods.add(asdict_maker)
+
+    if replace and "__replace__" not in cls_dict:
+        methods.add(replace_maker)
+
+    # Flags to add to the class
+    flags = {
+        "slotted": slotted,
+        "init": init,
+        "repr": repr,
+        "eq": eq,
+        "iter": iter,
+        "match_args": match_args,
+        "kw_only": kw_only,
+        "frozen": frozen,
+        "replace": replace,
+        "dict_method": dict_method,
+        "recursive_repr": recursive_repr,
+        "ignore_annotations": ignore_annotations,
+    }
+
+    return gatherer, methods, flags
+
+
+def _prefab_post_process(cls, /, *, fields, kw_only):
+    # Processor to do post-construction checks
+    # Error check: Check that the arguments to pre/post init are valid fields
+    try:
+        func = getattr(cls, PRE_INIT_FUNC)
+        func_code = func.__code__
+    except AttributeError:
+        pass
+    else:
+        if func_code.co_posonlyargcount > 0:
+            raise PrefabError(
+                "Positional only arguments are not supported in pre or post init functions."
+            )
+
+        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+
+        # Include the first argument if the method is static
+        is_static = type(cls.__dict__.get(PRE_INIT_FUNC)) is staticmethod
+
+        arglist = (
+            func_code.co_varnames[:argcount]
+            if is_static
+            else func_code.co_varnames[1:argcount]
+        )
+
+        for item in arglist:
+            if item not in fields.keys():
+                raise PrefabError(
+                    f"{item} argument in {PRE_INIT_FUNC} is not a valid attribute."
+                )
+
+    try:
+        func = getattr(cls, POST_INIT_FUNC)
+        func_code = func.__code__
+    except AttributeError:
+        pass
+    else:
+        if func_code.co_posonlyargcount > 0:
+            raise PrefabError(
+                "Positional only arguments are not supported in pre or post init functions."
+            )
+
+        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+
+        # Include the first argument if the method is static
+        is_static = type(cls.__dict__.get(POST_INIT_FUNC)) is staticmethod
+
+        arglist = (
+            func_code.co_varnames[:argcount]
+            if is_static
+            else func_code.co_varnames[1:argcount]
+        )
+
+        for item in arglist:
+            if item not in fields.keys():
+                raise PrefabError(
+                    f"{item} argument in {POST_INIT_FUNC} is not a valid attribute."
+                )
+
+    default_defined = []
+
+    # Error check: After inheritance,
+    for name, attrib in fields.items():
+        if not kw_only:
+            # Syntax check arguments for __init__ don't have non-default after default
+            if attrib.init and not attrib.kw_only:
+                if attrib.default is not NOTHING or attrib.default_factory is not NOTHING:
+                    default_defined.append(name)
+                else:
+                    if default_defined:
+                        names = ", ".join(default_defined)
+                        raise SyntaxError(
+                            "non-default argument follows default argument",
+                            f"defaults: {names}",
+                            f"non_default after default: {name}",
+                        )
+
+
 def _make_prefab(
     cls,
     *,
@@ -406,180 +587,44 @@ def _make_prefab(
     :param ignore_annotations: Ignore annotated fields and only look at `attribute` fields
     :return: class with __ methods defined
     """
-    cls_dict = cls.__dict__
-
-    if build_completed(cls_dict):
-        raise PrefabError(
-            f"Decorated class {cls.__name__!r} "
-            f"has already been processed as a Prefab."
-        )
-
-    if not frozen:
-        # If the class is not frozen, make sure it doesn't inherit
-        # from a frozen class
-        for base in cls.__mro__[1:-1]:  # Exclude this class and object
-            try:
-                fields = get_flags(base)
-            except (TypeError, KeyError):
-                continue
-            else:
-                if fields.get("frozen") is True:
-                    raise TypeError("Cannot inherit non-frozen prefab from a frozen one")
-
-    slots = cls_dict.get("__slots__")
-    slotted = False if slots is None else True
-
-    if gathered_fields is None:
-        gatherer = prefab_gatherer
-    else:
-        gatherer = gathered_fields
-
-    methods = set()
-
-    if init and "__init__" not in cls_dict:
-        methods.add(init_maker)
-    else:
-        methods.add(prefab_init_maker)
-
-    if repr and "__repr__" not in cls_dict:
-        if recursive_repr:
-            methods.add(recursive_repr_maker)
-        else:
-            methods.add(repr_maker)
-    if eq and "__eq__" not in cls_dict:
-        methods.add(eq_maker)
-    if iter and "__iter__" not in cls_dict:
-        methods.add(iter_maker)
-    if frozen:
-        # Check __setattr__ and __delattr__ are not already defined on this class
-        if "__setattr__" in cls_dict:
-            raise TypeError("Cannot overwrite '__setattr__' method that already exists")
-        elif "__delattr__" in cls_dict:
-            raise TypeError("Cannot overwrite '__delattr__' method that already exists")
-        methods.add(frozen_setattr_maker)
-        methods.add(frozen_delattr_maker)
-        if "__hash__" not in cls_dict:  # it's ok if the user has defined __hash__ already
-            methods.add(hash_maker)
-    if dict_method:
-        methods.add(asdict_maker)
-
-    if replace and "__replace__" not in cls_dict:
-        methods.add(replace_maker)
-
-    flags = {
-        "slotted": slotted,
-        "init": init,
-        "repr": repr,
-        "eq": eq,
-        "iter": iter,
-        "match_args": match_args,
-        "kw_only": kw_only,
-        "frozen": frozen,
-        "replace": replace,
-        "dict_method": dict_method,
-        "recursive_repr": recursive_repr,
-        "ignore_annotations": ignore_annotations,
-    }
+    # Preprocess to obtain settings
+    gatherer, methods, flags = _prefab_preprocess(
+        cls,
+        init=init,
+        repr=repr,
+        eq=eq,
+        iter=iter,
+        match_args=match_args,
+        kw_only=kw_only,
+        frozen=frozen,
+        replace=replace,
+        dict_method=dict_method,
+        recursive_repr=recursive_repr,
+        gathered_fields=gathered_fields,
+        ignore_annotations=ignore_annotations,
+    )
 
     cls = builder(
         cls,
         gatherer=gatherer,
         methods=methods,
         flags=flags,
+        field_getter=get_attributes,
     )
 
-    # Get fields now the class has been built
-    fields = get_fields(cls)
+    # Add additional class attributes that could only be added after fields were resolved
+    fields = get_attributes(cls)
 
-    # Check pre_init and post_init functions if they exist
-    try:
-        func = getattr(cls, PRE_INIT_FUNC)
-        func_code = func.__code__
-    except AttributeError:
-        pass
-    else:
-        if func_code.co_posonlyargcount > 0:
-            raise PrefabError(
-                "Positional only arguments are not supported in pre or post init functions."
-            )
-
-        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
-
-        # Include the first argument if the method is static
-        is_static = type(cls.__dict__.get(PRE_INIT_FUNC)) is staticmethod
-
-        arglist = (
-            func_code.co_varnames[:argcount]
-            if is_static
-            else func_code.co_varnames[1:argcount]
+    setattr(cls, PREFAB_FIELDS, list(fields.keys()))
+    if match_args and "__match_args__" not in cls.__dict__:
+        setattr(
+            cls,
+            "__match_args__",
+            tuple(k for k, v in fields.items() if v.init)
         )
 
-        for item in arglist:
-            if item not in fields.keys():
-                raise PrefabError(
-                    f"{item} argument in {PRE_INIT_FUNC} is not a valid attribute."
-                )
-
-    post_init_args = []
-    try:
-        func = getattr(cls, POST_INIT_FUNC)
-        func_code = func.__code__
-    except AttributeError:
-        pass
-    else:
-        if func_code.co_posonlyargcount > 0:
-            raise PrefabError(
-                "Positional only arguments are not supported in pre or post init functions."
-            )
-
-        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
-
-        # Include the first argument if the method is static
-        is_static = type(cls.__dict__.get(POST_INIT_FUNC)) is staticmethod
-
-        arglist = (
-            func_code.co_varnames[:argcount]
-            if is_static
-            else func_code.co_varnames[1:argcount]
-        )
-
-        for item in arglist:
-            if item not in fields.keys():
-                raise PrefabError(
-                    f"{item} argument in {POST_INIT_FUNC} is not a valid attribute."
-                )
-
-        post_init_args.extend(arglist)
-
-    # Gather values for match_args and do some syntax checking
-    default_defined = []
-    valid_args = list(fields.keys())
-
-    for name, attrib in fields.items():
-        # slot_gather and parent classes may use Fields
-        # prefabs require Attributes, so convert.
-        if not isinstance(attrib, Attribute):
-            attrib = Attribute.from_field(attrib)
-            fields[name] = attrib
-
-        if not kw_only:
-            # Syntax check arguments for __init__ don't have non-default after default
-            if attrib.init and not attrib.kw_only:
-                if attrib.default is not NOTHING or attrib.default_factory is not NOTHING:
-                    default_defined.append(name)
-                else:
-                    if default_defined:
-                        names = ", ".join(default_defined)
-                        raise SyntaxError(
-                            "non-default argument follows default argument",
-                            f"defaults: {names}",
-                            f"non_default after default: {name}",
-                        )
-
-    setattr(cls, PREFAB_FIELDS, valid_args)
-
-    if match_args and "__match_args__" not in cls_dict:
-        setattr(cls, "__match_args__", tuple(valid_args))
+    # Post construction checks
+    _prefab_post_process(cls, kw_only=kw_only, fields=fields)
 
     return cls
 

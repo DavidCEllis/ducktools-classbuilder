@@ -43,6 +43,7 @@ dev = [
 performance = [
     "attrs>=25.0",
     "pydantic>=2.11",
+    "msgspec>=0.20",
 ]
 
 [tool.setuptools.packages.find]

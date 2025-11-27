@@ -122,6 +122,15 @@ def test_match_args_disabled():
         _ = NoMatchArgs.__match_args__
 
 
+def test_init_false_not_in_match_args():
+    @prefab
+    class NonInitFields:
+        x: float
+        y: float = attribute(init=False)
+
+    assert NonInitFields.__match_args__ == ("x",)
+
+
 class TestKeepDefined:
     def test_keep_init(self):
         @prefab

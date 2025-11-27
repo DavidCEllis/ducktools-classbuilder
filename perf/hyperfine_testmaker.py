@@ -149,6 +149,15 @@ class C{n}:
     e: int
 '''
 
+prefab_baseclass_template = '''
+class C{n}(Prefab):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+'''
+
 prefab_attribute_template = '''
 @prefab
 class C{n}:
@@ -183,6 +192,15 @@ class C{n}:
 C{n}.__init__, C{n}.__repr__, C{n}.__eq__
 '''
 
+msgspec_template = '''
+class C{n}(Struct):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+'''
+
 
 # Import Headings #
 
@@ -194,7 +212,8 @@ pydantic_header = "from pydantic import BaseModel"
 cluegen_header = "from cluegen import Datum"
 dataklass_header = "from dataklasses import dataklass"
 slotclass_header = "from ducktools.classbuilder import slotclass, SlotFields, Field"
-prefab_header = "from ducktools.classbuilder.prefab import prefab, attribute, SlotFields"
+prefab_header = "from ducktools.classbuilder.prefab import prefab, attribute, Prefab, SlotFields"
+msgspec_header = "from msgspec import Struct"
 
 
 def write_perf_file(outpath, count, template, setup):
@@ -235,6 +254,8 @@ datasets = [
     TestData('native_classes', '', standard_template),
     TestData('slotclasses', slotclass_header, slotclass_template),
     TestData('prefab', prefab_header, prefab_template),
+    TestData('prefab_baseclass', prefab_header, prefab_baseclass_template),
+    TestData('prefab_attributes', prefab_header, prefab_attribute_template),
     TestData('prefab_slots', prefab_header, prefab_slots_template),
     TestData('prefab_eval', prefab_header, prefab_eval_template),
     TestData('namedtuples', namedtuple_header, namedtuple_template),
@@ -243,8 +264,7 @@ datasets = [
     TestData('attrs_noslots', attr_header, attr_noslots_template),
     TestData('attrs_slots', attr_header, attr_slots_template),
     TestData('pydantic', pydantic_header, pydantic_template),
-    # TestData('cluegen', cluegen_header, cluegen_template),
-    # TestData('cluegen_eval', cluegen_header, cluegen_eval_template),
+    TestData('msgspec', msgspec_header, msgspec_template),
 ]
 
 
@@ -297,6 +317,7 @@ def write_tests(*, runs=100, warmup=20, includes_pass=True):
         '''"python -c \\"from dataclasses import dataclass\\"" '''
         '''"python -c \\"from attrs import define\\"" '''
         '''"python -c \\"from pydantic import BaseModel\\"" '''
+        '''"python -c \\"from msgspec import Struct\\"" '''
     )
 
     import_script = (

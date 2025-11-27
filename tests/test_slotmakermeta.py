@@ -88,12 +88,14 @@ class TestCachedProperty:
     # Test that a cached property causes __dict__ to be
     # automatically added to __slots__
 
+    @graalpy_fails
     def test_no_cached_property(self):
         class Example(metaclass=SlotMakerMeta):
             x: str
 
         assert Example.__slots__ == {'x': None}
 
+    @graalpy_fails
     def test_cached_property(self):
         class Example(metaclass=SlotMakerMeta):
             x: str
@@ -104,6 +106,7 @@ class TestCachedProperty:
 
         assert Example.__slots__ == {'x': None, "__dict__": None}
 
+    @graalpy_fails
     def test_dict_property_not_overwritten(self):
         class Example(metaclass=SlotMakerMeta):
             x: str

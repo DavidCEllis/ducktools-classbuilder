@@ -1,7 +1,10 @@
 """Tests that Prefabs handle inheritance as expected"""
 import pytest
 
-from ducktools.classbuilder.prefab import attribute, prefab, Prefab
+from utils import graalpy_fails  # type: ignore
+
+from ducktools.classbuilder import slotclass, SlotFields, get_fields, Field
+from ducktools.classbuilder.prefab import attribute, Attribute, prefab, Prefab
 
 
 # Class Definitions
@@ -175,3 +178,31 @@ class TestArgumentInheritanceDecorator:
 
         assert (method_name in vars(Base)) is in_vars
         assert (method_name in vars(Subclass)) is in_subclass
+
+
+@graalpy_fails
+class TestInheritFromSlotclass:
+    def _get_base_child(self):
+        @slotclass
+        class Base:
+            __slots__ = SlotFields(answer=42)
+
+        @prefab
+        class Child(Base):
+            __slots__ = SlotFields(question="What is the ultimate answer")
+
+        return Base, Child
+
+    def test_inherit_resolves(self):
+        Base, Child = self._get_base_child()
+
+        # Don't use get_attributes for child
+        # Should already be converted
+        base_fields = get_fields(Base)
+        child_fields = get_fields(Child)
+
+        assert base_fields == {"answer": Field(default=42)}
+        assert child_fields == {
+            "answer": Attribute(default=42),
+            "question": Attribute(default="What is the ultimate answer")
+        }
