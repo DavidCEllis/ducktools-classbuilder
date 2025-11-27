@@ -479,6 +479,12 @@ def _prefab_post_process(cls, /, *, kw_only, match_args):
 
     # Get fields now the class has been built
     fields = get_attributes(cls)
+    valid_args = list(fields.keys())
+
+    # Additional mutations
+    setattr(cls, PREFAB_FIELDS, valid_args)
+    if match_args and "__match_args__" not in cls_dict:
+        setattr(cls, "__match_args__", tuple(valid_args))
 
     # Error check: Check that the arguments to pre/post init are valid fields
     try:
@@ -539,7 +545,6 @@ def _prefab_post_process(cls, /, *, kw_only, match_args):
 
     # Gather values for match_args and do some syntax checking
     default_defined = []
-    valid_args = list(fields.keys())
 
     # Error check: After inheritance,
     for name, attrib in fields.items():
@@ -557,12 +562,7 @@ def _prefab_post_process(cls, /, *, kw_only, match_args):
                             f"non_default after default: {name}",
                         )
 
-    setattr(cls, PREFAB_FIELDS, valid_args)
 
-    if match_args and "__match_args__" not in cls_dict:
-        setattr(cls, "__match_args__", tuple(valid_args))
-
-# noinspection PyShadowingBuiltins
 def _make_prefab(
     cls,
     *,
