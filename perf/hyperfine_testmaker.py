@@ -149,6 +149,15 @@ class C{n}:
     e: int
 '''
 
+prefab_baseclass_template = '''
+class C{n}(Prefab):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+'''
+
 prefab_attribute_template = '''
 @prefab
 class C{n}:
@@ -194,7 +203,7 @@ pydantic_header = "from pydantic import BaseModel"
 cluegen_header = "from cluegen import Datum"
 dataklass_header = "from dataklasses import dataklass"
 slotclass_header = "from ducktools.classbuilder import slotclass, SlotFields, Field"
-prefab_header = "from ducktools.classbuilder.prefab import prefab, attribute, SlotFields"
+prefab_header = "from ducktools.classbuilder.prefab import prefab, attribute, Prefab, SlotFields"
 
 
 def write_perf_file(outpath, count, template, setup):
@@ -235,6 +244,8 @@ datasets = [
     TestData('native_classes', '', standard_template),
     TestData('slotclasses', slotclass_header, slotclass_template),
     TestData('prefab', prefab_header, prefab_template),
+    TestData('prefab_baseclass', prefab_header, prefab_baseclass_template),
+    TestData('prefab_attributes', prefab_header, prefab_attribute_template),
     TestData('prefab_slots', prefab_header, prefab_slots_template),
     TestData('prefab_eval', prefab_header, prefab_eval_template),
     TestData('namedtuples', namedtuple_header, namedtuple_template),
@@ -243,8 +254,6 @@ datasets = [
     TestData('attrs_noslots', attr_header, attr_noslots_template),
     TestData('attrs_slots', attr_header, attr_slots_template),
     TestData('pydantic', pydantic_header, pydantic_template),
-    # TestData('cluegen', cluegen_header, cluegen_template),
-    # TestData('cluegen_eval', cluegen_header, cluegen_eval_template),
 ]
 
 
