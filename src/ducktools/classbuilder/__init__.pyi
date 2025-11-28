@@ -123,8 +123,8 @@ def ge_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 def replace_generator(cls: type, funcname: str = "__replace__") -> GeneratedCode: ...
 
 def frozen_setattr_generator(cls: type, funcname: str = "__setattr__") -> GeneratedCode: ...
-
 def frozen_delattr_generator(cls: type, funcname: str = "__delattr__") -> GeneratedCode: ...
+def hash_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 
 init_maker: MethodMaker
 repr_maker: MethodMaker
@@ -136,6 +136,7 @@ ge_maker: MethodMaker
 replace_maker: MethodMaker
 frozen_setattr_maker: MethodMaker
 frozen_delattr_maker: MethodMaker
+hash_maker: MethodMaker
 default_methods: frozenset[MethodMaker]
 
 _TypeT = typing.TypeVar("_TypeT", bound=type)
