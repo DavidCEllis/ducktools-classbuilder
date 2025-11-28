@@ -1,31 +1,84 @@
 # Ducktools: Class Builder #
 
-`ducktools-classbuilder` is *the* Python package that will bring you the **joy**
-of writing... functions... that will bring back the **joy** of writing classes.
+`ducktools-classbuilder` is both an alternate implementation of the dataclasses concept
+along with a toolkit for creating your own customised implementation.
 
-Maybe.
+Create classes using type annotations:
 
-While `attrs` and `dataclasses` are class boilerplate generators,
-`ducktools.classbuilder` is intended to provide the tools to help make a customized
-version of the same concept.
+```python
+from ducktools.classbuilder.prefab import prefab
 
-Install from PyPI with:
-`python -m pip install ducktools-classbuilder`
+@prefab
+class Book:
+    title: str = "The Hitchhikers Guide to the Galaxy"
+    author: str = "Douglas Adams"
+    year: int = 1979
+```
 
-## Included Implementations ##
+Using `attribute()` calls (this may look familiar to `attrs` users before Python added
+type annotations)
 
-The classbuilder tools make up the core of this module and there is an implementation
-using these tools in the `prefab` submodule.
+```python
+from ducktools.classbuilder.prefab import attribute, prefab
 
-The implementation provides both a base class `Prefab` that will also generate `__slots__`
-and a decorator `@prefab` which does not support `__slots__`.
+@prefab
+class Book:
+    title = attribute(default="The Hitchhikers Guide to the Galaxy")
+    author = attribute(default="Douglas Adams")
+    year = attribute(default=1979)
+```
+
+Or using a special mapping for slots:
+
+```python
+from ducktools.classbuilder.prefab import SlotFields, prefab
+
+@prefab
+class Book:
+    __slots__ = SlotFields(
+        title="The Hitchhikers Guide to the Galaxy",
+        author="Douglas Adams",
+        year=1979,
+    )
+```
+
+As with `dataclasses` or `attrs`, `ducktools-classbuilder` will handle writing the
+boilerplate `__init__`, `__eq__` and `__repr__ functions` for you.
+
+Unlike `dataclasses` or `attrs`, `ducktools-classbuilder` generates and executes its
+templated functions lazily, so they are only executed if and when the methods are first
+used. This significantly reduces the time taken to create the classes as unused methods
+are never generated. Before generation occurs, the descriptors can be seen in the class
+`__dict__`, after first use these are replaced.
+
+```python
+>>> Book.__dict__["__init__"]
+<MethodMaker for '__init__' method>
+>>> Book()
+Book(title='The Hitchhikers Guide to the Galaxy', author='Douglas Adams', year=1979)
+>>> Book.__dict__["__init__"]
+<function Book.__init__ at ...>
+```
+
+The gathering of field and class information is also separated from the build step
+so it is possible to change how this information is gathered without needing to rewrite
+the code generation tools.
+
+## The base class `Prefab` implementation ##
+
+Alongside the `@prefab` decorator there is also a `Prefab` base class that can be used.
+
+The main differences in behaviour are that `Prefab` will generate `__slots__` by default
+using a metaclass, and any options given to `Prefab` will automatically be set on subclasses.
+
+Unlike attrs' `@define` or dataclasses' `@dataclass`, `@prefab` does not and will not support
+`__slots__` (this is explained in a section below).
 
 ```python
 from pathlib import Path
 from ducktools.classbuilder.prefab import Prefab, attribute
 
-# Use all of the options that are off by default to generate all possible methods
-class Slotted(Prefab, order=True, iter=True, frozen=True, dict_method=True, recursive_repr=True):
+class Slotted(Prefab):
     the_answer: int = 42
     the_question: str = attribute(
         default="What do you get if you multiply six by nine?",
@@ -35,14 +88,13 @@ class Slotted(Prefab, order=True, iter=True, frozen=True, dict_method=True, recu
 
 ex = Slotted()
 print(ex)
-print(ex.__slots__)
 ```
 
-The generated source code for the methods can be viewed using the `print_generated_code` helper function.
+The generated code for the methods can be viewed using the `print_generated_code` helper function.
 
 <details>
 
-<summary>Output from print_generated_code(Slotted)</summary>
+<summary>Generated source code for the same example, but with all optional methods enabled</summary>
 
 ```python
 Source:
@@ -104,7 +156,8 @@ Source:
     def __setattr__(self, name, value):
         if hasattr(self, name) or name not in __field_names:
             raise TypeError(
-                f"{type(self).__name__!r} object does not support "            f"attribute assignment"
+                f"{type(self).__name__!r} object does not support "
+                f"attribute assignment"
             )
         else:
             __setattr_func(self, name, value)
@@ -127,24 +180,31 @@ Annotations:
 
 ### Core ###
 
-The base `ducktools.classbuilder` module provides tools for creating a customized version of the `dataclass` concept.
+The main `ducktools.classbuilder` module provides tools for creating a customized version of the `dataclass` concept.
 
 * `MethodMaker`
   * This tool takes a function that generates source code and converts it into a descriptor
     that will execute the source code and attach the gemerated method to a class on demand.
+  * This is what you use if you need to write a customized `__init__` method or add some other
+    generated method.
 * `Field`
   * This defines a basic dataclass-like field with some basic arguments
   * This class itself is a dataclass-like of sorts
+    (unfortunately it does not play well with `@dataclass_transform` and hence, typing)
   * Additional arguments can be added by subclassing and using annotations
     * See `ducktools.classbuilder.prefab.Attribute` for an example of this
 * Gatherers
   * These collect field information and return both the gathered fields and any modifications
     that will need to be made to the class when built to support them.
+  * This is what you would use if, for instance you wanted to use `Annotated[...]` to define
+    how fields should act instead of arguments. The full documentation includes an example
+    implementing this for a simple dataclass-like.
 * `builder`
   * This is the main tool used for constructing decorators and base classes to provide
     generated methods.
   * Other than the required changes to a class for `__slots__` that are done by `SlotMakerMeta`
     this is where all class mutations should be applied.
+  * Once you have a gatherer and a set of `MethodMaker`s run this to add the methods to the class
 * `SlotMakerMeta`
   * When given a gatherer, this metaclass will create `__slots__` automatically.
 
@@ -158,12 +218,18 @@ The base `ducktools.classbuilder` module provides tools for creating a customize
 
 ### Prefab ###
 
-This prebuilt implementation is available from the `ducktools.classbuilder.prefab` submodule.
+The prebuilt 'prefab' implementation includes additional customization including
+`__prefab_pre_init__` and `__prefab_post_init__` methods.
 
-This includes more customization including `__prefab_pre_init__` and `__prefab_post_init__`
-functions for subclass customization.
+Both of these methods will take any field names as arguments. Those passed to `__prefab_pre_init__` will still be set
+inside the main `__init__` body, while those passed to `__prefab_post_init__` will not.
 
-Here is an example of applying a conversion in `__prefab_post_init__`:
+`__prefab_pre_init__` is intended as a place to perform validation checks before values are set in the main body.
+`__prefab_post_init__` can be seen as a partial `__init__` function, where you only need to write
+the `__init__` function for arguments that need more than basic assignment.
+
+Here is an example using `__prefab_post_init__` that converts a string or Path object into a path object:
+
 ```python
 from pathlib import Path
 from ducktools.classbuilder.prefab import Prefab
@@ -185,14 +251,29 @@ steam = AppDetails(
 print(steam)
 ```
 
-#### Features ####
+<details>
+
+<summary>The generated code for the init method</summary>
+
+```python
+def __init__(self, app_name, app_path):
+    self.app_name = app_name
+    self.__prefab_post_init__(app_path=app_path)
+```
+
+Note: annotations are attached as `__annotations__` and so do not appear in generated
+source code.
+
+</details>
+
+#### Features and Differences ####
 
 `Prefab` and `@prefab` support many standard dataclass features along with
 some extra features and some intentional differences in design.
 
 * All standard methods are generated on-demand
   * This makes the construction of classes much faster in general
-  * Generation is done and then cached on first access
+  * Generation is done and then cached on first access using non-data descriptors
 * Standard `__init__`, `__eq__` and `__repr__` methods are generated by default
   - The `__repr__` implementation does not automatically protect against recursion,
     but there is a `recursive_repr` argument that will do so if needed
@@ -237,7 +318,9 @@ There are also some intentionally missing features:
   * `VALUE` annotations are used as they are faster in most cases
   * As the `__init__` method gets `__annotations__` these need to be either values or strings
     to match the behaviour of previous Python versions
-
+* There is currently no equivalent to `InitVar`
+  * I'm not sure *how* I would want to implement this other than I don't _really_ want to use
+    annotations to decide behaviour (this is messy enough with `ClassVar` and `KW_ONLY`).
 
 ## What is the issue with generating `__slots__` with a decorator ##
 
