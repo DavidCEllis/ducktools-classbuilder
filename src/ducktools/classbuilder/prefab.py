@@ -262,7 +262,7 @@ def iter_generator(cls, funcname="__iter__"):
     if not values:
         values = "    yield from ()"
 
-    code = f"def {funcname}(self):\n{values}"
+    code = f"def {funcname}(self):\n{values}\n"
     globs = {}
     return GeneratedCode(code, globs)
 
@@ -276,7 +276,7 @@ def as_dict_generator(cls, funcname="as_dict"):
         if attrib.serialize
     )
     out_dict = f"{{{vals}}}"
-    code = f"def {funcname}(self): return {out_dict}\n"
+    code = f"def {funcname}(self):\n    return {out_dict}\n"
 
     globs = {}
     return GeneratedCode(code, globs)
@@ -289,7 +289,9 @@ def hash_generator(cls, funcname="__hash__"):
         for name, attrib in fields.items()
         if attrib.compare
     )
-    code = f"def {funcname}(self): return hash(({vals}))\n"
+    if len(fields) == 1:
+        vals += ","
+    code = f"def {funcname}(self):\n    return hash(({vals}))\n"
     globs = {}
     return GeneratedCode(code, globs)
 
