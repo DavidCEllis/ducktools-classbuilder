@@ -37,7 +37,7 @@ docs = [
 dev = [
     "pytest>=8.4",
     "pytest-cov>=6.1",
-    "mypy>=1.16",
+    "mypy>=1.16; platform_python_implementation == 'CPython'",
     "typing-extensions>=4.14",
 ]
 performance = [

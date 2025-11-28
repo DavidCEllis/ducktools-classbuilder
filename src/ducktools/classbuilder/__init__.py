@@ -560,7 +560,7 @@ def frozen_setattr_generator(cls, funcname="__setattr__"):
     body = (
         f"    if {hasattr_check} or name not in __field_names:\n"
         f'        raise TypeError(\n'
-        f'            f"{{type(self).__name__!r}} object does not support "'
+        f'            f"{{type(self).__name__!r}} object does not support "\n'
         f'            f"attribute assignment"\n'
         f'        )\n'
         f"    else:\n"
@@ -583,6 +583,20 @@ def frozen_delattr_generator(cls, funcname="__delattr__"):
     return GeneratedCode(code, globs)
 
 
+def hash_generator(cls, funcname="__hash__"):
+    fields = get_fields(cls)
+    vals = ", ".join(
+        f"self.{name}"
+        for name, attrib in fields.items()
+        if attrib.compare
+    )
+    if len(fields) == 1:
+        vals += ","
+    code = f"def {funcname}(self):\n    return hash(({vals}))\n"
+    globs = {}
+    return GeneratedCode(code, globs)
+
+
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
 init_maker = MethodMaker("__init__", init_generator)
@@ -595,6 +609,7 @@ ge_maker = MethodMaker("__ge__", ge_generator)
 replace_maker = MethodMaker("__replace__", replace_generator)
 frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
+hash_maker = MethodMaker("__hash__", hash_generator)
 default_methods = frozenset({init_maker, repr_maker, eq_maker})
 
 # Special `__init__` maker for 'Field' subclasses - needs its own NOTHING option

@@ -42,6 +42,7 @@ from . import (
     ge_maker,
     frozen_setattr_maker,
     frozen_delattr_maker,
+    hash_maker,
     replace_maker,
     get_repr_generator,
     build_completed,
@@ -262,7 +263,7 @@ def iter_generator(cls, funcname="__iter__"):
     if not values:
         values = "    yield from ()"
 
-    code = f"def {funcname}(self):\n{values}"
+    code = f"def {funcname}(self):\n{values}\n"
     globs = {}
     return GeneratedCode(code, globs)
 
@@ -276,20 +277,8 @@ def as_dict_generator(cls, funcname="as_dict"):
         if attrib.serialize
     )
     out_dict = f"{{{vals}}}"
-    code = f"def {funcname}(self): return {out_dict}\n"
+    code = f"def {funcname}(self):\n    return {out_dict}\n"
 
-    globs = {}
-    return GeneratedCode(code, globs)
-
-
-def hash_generator(cls, funcname="__hash__"):
-    fields = get_attributes(cls)
-    vals = ", ".join(
-        f"self.{name}"
-        for name, attrib in fields.items()
-        if attrib.compare
-    )
-    code = f"def {funcname}(self): return hash(({vals}))\n"
     globs = {}
     return GeneratedCode(code, globs)
 
@@ -306,7 +295,6 @@ recursive_repr_maker = MethodMaker(
 )
 iter_maker = MethodMaker("__iter__", iter_generator)
 asdict_maker = MethodMaker("as_dict", as_dict_generator)
-hash_maker = MethodMaker("__hash__", hash_generator)
 
 
 # Updated field with additional attributes
