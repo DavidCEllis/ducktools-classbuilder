@@ -560,7 +560,7 @@ def frozen_setattr_generator(cls, funcname="__setattr__"):
     body = (
         f"    if {hasattr_check} or name not in __field_names:\n"
         f'        raise TypeError(\n'
-        f'            f"{{type(self).__name__!r}} object does not support "'
+        f'            f"{{type(self).__name__!r}} object does not support "\n'
         f'            f"attribute assignment"\n'
         f'        )\n'
         f"    else:\n"
