@@ -3,6 +3,17 @@
 `ducktools-classbuilder` is both an alternate implementation of the dataclasses concept
 along with a toolkit for creating your own customised implementation.
 
+Available from PyPI as [ducktools-classbuilder](https://pypi.org/project/ducktools-classbuilder/).
+
+Installation[^1]:
+  * With [uv](https://docs.astral.sh/uv/)
+    * `uv add ducktools-classbuilder` to add to an existing project
+    * `uv add ducktools-classbuilder --script scriptname.py` to add to
+      [script dependencies](https://packaging.python.org/en/latest/specifications/inline-script-metadata/#inline-script-metadata)
+    * `uv run --with ducktools-classbuilder python` to try in the Python repl
+  * With [poetry](https://python-poetry.org)
+    * `poetry add ducktools-classbuilder` to add to an existing project
+
 Create classes using type annotations:
 
 ```python
@@ -327,7 +338,7 @@ There are also some intentionally missing features:
 If you want to use `__slots__` in order to save memory you have to declare
 them when the class is originally created as you can't add them later.
 
-When you use `@dataclass(slots=True)`[^1] with `dataclasses`, the function
+When you use `@dataclass(slots=True)`[^2] with `dataclasses`, the function
 has to make a new class and attempt to copy over everything from the original.
 
 This is because decorators operate on classes *after they have been created*
@@ -470,4 +481,7 @@ with a specific feature, you can create or add it yourself.
 
 Heavily inspired by [David Beazley's Cluegen](https://github.com/dabeaz/cluegen)
 
-[^1]: or `@attrs.define`.
+[^1]: I'd like to discourage people from directly using `pip install ducktools-classbuilder`.
+      I feel like it encourages the bad practice of installing packages into the main runtime folder instead of a virtualenv.
+
+[^2]: or `@attrs.define`.
