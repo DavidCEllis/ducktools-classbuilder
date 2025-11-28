@@ -43,7 +43,7 @@ class Book:
 ```
 
 As with `dataclasses` or `attrs`, `ducktools-classbuilder` will handle writing the
-boilerplate `__init__`, `__eq__` and `__repr__ functions` for you.
+boilerplate `__init__`, `__eq__` and `__repr__` functions for you.
 
 Unlike `dataclasses` or `attrs`, `ducktools-classbuilder` generates and executes its
 templated functions lazily, so they are only executed if and when the methods are first
