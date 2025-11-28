@@ -21,14 +21,17 @@ The implementation provides both a base class `Prefab` that will also generate `
 and a decorator `@prefab` which does not support `__slots__`.
 
 ```python
+from pathlib import Path
 from ducktools.classbuilder.prefab import Prefab, attribute
 
-class Slotted(Prefab):
+# Use all of the options that are off by default to generate all possible methods
+class Slotted(Prefab, order=True, iter=True, frozen=True, dict_method=True, recursive_repr=True):
     the_answer: int = 42
     the_question: str = attribute(
         default="What do you get if you multiply six by nine?",
         doc="Life the universe and everything",
     )
+    python_path: Path("/usr/bin/python4")
 
 ex = Slotted()
 print(ex)
@@ -37,11 +40,90 @@ print(ex.__slots__)
 
 The generated source code for the methods can be viewed using the `print_generated_code` helper function.
 
-```python
-from ducktools.classbuilder import print_generated_code
+<details>
 
-print_generated_code(Slotted)
+<summary>Output from print_generated_code(Slotted)</summary>
+
+```python
+Source:
+    def __delattr__(self, name):
+        raise TypeError(
+            f"{type(self).__name__!r} object "
+            f"does not support attribute deletion"
+        )
+
+    def __eq__(self, other):
+        return (
+            self.the_answer == other.the_answer
+            and self.the_question == other.the_question
+            and self.python_path == other.python_path
+        ) if self.__class__ is other.__class__ else NotImplemented
+
+    def __ge__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.the_answer, self.the_question, self.python_path) >= (other.the_answer, other.the_question, other.python_path)
+        return NotImplemented
+
+    def __gt__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.the_answer, self.the_question, self.python_path) > (other.the_answer, other.the_question, other.python_path)
+        return NotImplemented
+
+    def __hash__(self):
+        return hash((self.the_answer, self.the_question, self.python_path))
+
+    def __init__(self, the_answer=42, the_question='What do you get if you multiply six by nine?', python_path=_python_path_default):
+        self.the_answer = the_answer
+        self.the_question = the_question
+        self.python_path = python_path
+
+    def __iter__(self):
+        yield self.the_answer
+        yield self.the_question
+        yield self.python_path
+
+    def __le__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.the_answer, self.the_question, self.python_path) <= (other.the_answer, other.the_question, other.python_path)
+        return NotImplemented
+
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return (self.the_answer, self.the_question, self.python_path) < (other.the_answer, other.the_question, other.python_path)
+        return NotImplemented
+
+    def __replace__(self, /, **changes):
+        new_kwargs = {'the_answer': self.the_answer, 'the_question': self.the_question, 'python_path': self.python_path}
+        new_kwargs |= changes
+        return self.__class__(**new_kwargs)
+
+    @_recursive_repr
+    def __repr__(self):
+        return f'{type(self).__qualname__}(the_answer={self.the_answer!r}, the_question={self.the_question!r}, python_path={self.python_path!r})'
+
+    def __setattr__(self, name, value):
+        if hasattr(self, name) or name not in __field_names:
+            raise TypeError(
+                f"{type(self).__name__!r} object does not support "            f"attribute assignment"
+            )
+        else:
+            __setattr_func(self, name, value)
+
+    def as_dict(self):
+        return {'the_answer': self.the_answer, 'the_question': self.the_question, 'python_path': self.python_path}
+
+
+Globals:
+    __init__: {'_python_path_default': PosixPath('/usr/bin/python')}
+    __repr__: {'_recursive_repr': <function recursive_repr.<locals>.decorating_function at 0x7367f9cddf30>}
+    __setattr__: {'__field_names': {'the_question', 'the_answer', 'python_path'}, '__setattr_func': <slot wrapper '__setattr__' of 'object' objects>}
+
+Annotations:
+    __init__: {'the_answer': <class 'int'>, 'the_question': <class 'str'>, 'python_path': <class 'pathlib.Path'>, 'return': None}
+
 ```
+
+</details>
 
 ### Core ###
 
