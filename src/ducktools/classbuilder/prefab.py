@@ -428,7 +428,7 @@ def _prefab_preprocess(
         for base in cls.__mro__[1:-1]:  # Exclude this class and object
             try:
                 fields = get_flags(base)
-            except (TypeError, KeyError):
+            except TypeError:
                 continue
             else:
                 if fields.get("frozen") is True:
@@ -703,7 +703,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
 
         try:
             flags = get_flags(cls).copy()
-        except (TypeError, KeyError):
+        except TypeError:
             flags = {}
         else:
             # Remove the value of slotted if it exists
