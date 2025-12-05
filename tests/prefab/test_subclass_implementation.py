@@ -270,8 +270,42 @@ def test_subclass_cached_property():
             return f"Bob (son of {super().name})"
 
     child = Child()
+    parent = Parent()
 
     assert child.name == "Bob (son of Alice)"
+    assert parent.name == "Alice"
+
+    # The underlying slot should be the same
+    assert Child.name.slot is Parent.name.slot
+
+
+def test_subclass_cached_property_over_field_raises():
+    class Parent(Prefab):
+        name: str = "Alice"
+
+    with pytest.raises(TypeError):
+        class Child(Parent):
+            @functools.cached_property  # type: ignore
+            def name(self):
+                return "Bill"
+
+
+def test_subclass_cached_over_regular():
+    class Parent(Prefab):
+        @property
+        def name(self):
+            return "Alice"
+
+    class Child(Parent):
+        @functools.cached_property
+        def name(self) -> str:
+            return f"Bob (son of {super().name})"
+
+    child = Child()
+    parent = Parent()
+
+    assert child.name == "Bob (son of Alice)"
+    assert parent.name == "Alice"
 
 
 def test_subclass_getattr():
