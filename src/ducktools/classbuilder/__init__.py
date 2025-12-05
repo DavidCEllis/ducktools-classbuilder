@@ -849,10 +849,9 @@ class SlotMakerMeta(type):
             # that will store the resulting value in the slot instead of in a dict.
             cached_properties = {}
 
-            base_attribs = None
-            base_field_names = None
             # Don't import functools
             if functools := sys.modules.get("functools"):
+                base_attribs = None
                 # Iterate over a copy as we will mutate the original
                 for k, v in ns.copy().items():
                     if isinstance(v, functools.cached_property):
@@ -892,20 +891,13 @@ class SlotMakerMeta(type):
 
             # Now reconstruct cached properties
             if cached_properties:
-                # This must have been set earlier if there are cached properties
-                assert base_field_names is not None
-
                 # Now the class and slots have been created, create any new cached properties
                 for name, prop in cached_properties.items():
-                    if name in base_field_names:
-                        raise TypeError(f"cached_property {name!r} cannot override classbuilder field")
-
                     slot = getattr(new_cls, name)  # This may be inherited, which is fine
 
                     # May be a replaced cached property already, if so extract the actual slot
                     if isinstance(slot, _SlottedCachedProperty):
                         slot = slot.slot
-
                     slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func)
                     setattr(new_cls, name, slotted_property)
 

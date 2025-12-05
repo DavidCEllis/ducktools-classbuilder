@@ -279,15 +279,27 @@ def test_subclass_cached_property():
     assert Child.name.slot is Parent.name.slot
 
 
-def test_subclass_cached_property_over_field_raises():
+def test_subclass_cached_property_over_field_bad_behaviour():
     class Parent(Prefab):
         name: str = "Alice"
 
-    with pytest.raises(TypeError):
-        class Child(Parent):
-            @functools.cached_property  # type: ignore
-            def name(self):
-                return "Bill"
+    # Both dataclasses and Prefab will allow you to do this
+    # Even though it is unintuitive and breakable
+    # This test exists to document the weirdness
+    # Thankfully mypy flags this as an error
+    class Child(Parent):
+        @functools.cached_property
+        def name(self):
+            return "Bill"
+
+    parent = Parent()
+    child = Child()
+
+    assert parent.name == child.name == "Alice"
+
+    # On deletion the cached property works
+    del child.name
+    assert child.name == "Bill"
 
 
 def test_subclass_cached_over_regular():
