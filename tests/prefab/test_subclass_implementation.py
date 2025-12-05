@@ -320,6 +320,23 @@ def test_subclass_cached_over_regular():
     assert parent.name == "Alice"
 
 
+def test_subclass_regular_over_cached():
+    class Parent(Prefab):
+        @functools.cached_property
+        def name(self):
+            return "Alice"
+
+    class Child(Parent):
+        @property
+        def name(self) -> str:
+            return f"Bob (son of {super().name})"
+
+    child = Child()
+    parent = Parent()
+
+    assert child.name == "Bob (son of Alice)"
+    assert parent.name == "Alice"
+
 def test_subclass_getattr():
     # Based on - https://github.com/python-attrs/attrs/issues/1288
     # Not quite the same as Subclass is forced into becoming a prefab
