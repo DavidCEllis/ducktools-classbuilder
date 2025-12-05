@@ -742,7 +742,6 @@ class _SlottedCachedProperty:
     # and after constructing the class, replace those slots with these
     # special slotted cached property attributes
 
-    __slots__ = ("slot", "func")
     def __init__(self, slot, func):
         self.slot = slot
         self.func = func
@@ -891,6 +890,8 @@ class SlotMakerMeta(type):
 
             # Now reconstruct cached properties
             if cached_properties:
+                assert functools is not None  # if cached properties it not empty, then we have functools
+
                 # Now the class and slots have been created, create any new cached properties
                 for name, prop in cached_properties.items():
                     slot = getattr(new_cls, name)  # This may be inherited, which is fine
@@ -899,6 +900,9 @@ class SlotMakerMeta(type):
                     if isinstance(slot, _SlottedCachedProperty):
                         slot = slot.slot
                     slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func)
+
+                    functools.update_wrapper(slotted_property, prop.func)
+
                     setattr(new_cls, name, slotted_property)
 
         else:
