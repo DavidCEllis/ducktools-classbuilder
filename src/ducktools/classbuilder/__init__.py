@@ -735,6 +735,43 @@ class SlotFields(dict):
         return f"SlotFields({super().__repr__()})"
 
 
+class _SlottedCachedProperty:
+    # This is a class that is used to wrap both a slot and a cached property
+    # externally, users should just use `functools.cached_property` but
+    # `SlotMakerMeta` will remove those, add the names to `__slots__`
+    # and after constructing the class, replace those slots with these
+    # special slotted cached property attributes
+
+    __slots__ = ("slot", "func")
+    def __init__(self, slot, func):
+        self.slot = slot
+        self.func = func
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self
+
+        try:
+            return self.slot.__get__(instance, owner)
+        except AttributeError:
+            pass
+
+        result = self.func(instance)
+
+        self.slot.__set__(instance, result)
+
+        return result
+
+    def __repr__(self):
+        return f"<slotted cached_property wrapper for {self.func!r}>"
+
+    def __set__(self, obj, value):
+        self.slot.__set__(obj, value)
+
+    def __delete__(self, obj):
+        self.slot.__delete__(obj)
+
+
 # Tool to convert annotations to slots as a metaclass
 class SlotMakerMeta(type):
     """
@@ -806,20 +843,20 @@ class SlotMakerMeta(type):
                     fields[k] = v
 
             # Special case cached_property
-            # if a cached property is used add a slot for __dict__
-            if (
-                (functools := sys.modules.get("functools"))
-                and "__dict__" not in slot_values
-            ):
-                # Check __dict__ isn't already in a parent class
-                for base in bases:
-                    if "__dict__" in base.__dict__:
-                        break
-                else:
-                    for v in ns.values():
-                        if isinstance(v, functools.cached_property):
-                            slot_values["__dict__"] = None
-                            break
+            # if a cached property is used we need to remove it so that
+            # its attribute can be replaced by a slot, after the class
+            # is constructed wrap the slot with a new special _SlottedCachedProperty
+            # that will store the resulting value in the slot instead of in a dict.
+            cached_properties = {}
+
+            # Don't import functools
+            if functools := sys.modules.get("functools"):
+                # Iterate over a copy as we will mutate the original
+                for k, v in ns.copy().items():
+                    if isinstance(v, functools.cached_property):
+                        cached_properties[k] = v
+                        slot_values[k] = None
+                        del ns[k]
 
             # Place slots *after* everything else to be safe
             ns["__slots__"] = slot_values
@@ -828,11 +865,19 @@ class SlotMakerMeta(type):
             modifications = {}
             ns[GATHERED_DATA] = fields, modifications
 
+            new_cls = super().__new__(cls, name, bases, ns, **kwargs)
+
+            # Now the class and slots have been created, create any new cached properties
+            for name, prop in cached_properties.items():
+                slot = getattr(new_cls, name)
+                slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func)
+                setattr(new_cls, name, slotted_property)
+
         else:
             if gatherer is not None:
                 ns[META_GATHERER_NAME] = gatherer
 
-        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
+            new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
         return new_cls
 

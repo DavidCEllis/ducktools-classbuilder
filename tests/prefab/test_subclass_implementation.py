@@ -253,8 +253,8 @@ def test_cached_property():
             return 42
 
     ex = Example()
+    assert not hasattr(ex, "__dict__")
     assert ex.h2g2 == 42
-    assert ex.__dict__ == {"h2g2": 42}
 
 
 def test_subclass_cached_property():

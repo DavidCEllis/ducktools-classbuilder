@@ -104,7 +104,7 @@ class TestCachedProperty:
             def cache(self):
                 return 42
 
-        assert Example.__slots__ == {'x': None, "__dict__": None}
+        assert Example.__slots__ == {'x': None, "cache": None}
 
     @graalpy_fails
     def test_dict_property_not_overwritten(self):
@@ -116,4 +116,4 @@ class TestCachedProperty:
             def cache(self):
                 return 42
 
-        assert Example.__slots__ == {"x": None, "__dict__": "dict for cached property"}
+        assert Example.__slots__ == {"x": None, "cache": None, "__dict__": "dict for cached property"}
