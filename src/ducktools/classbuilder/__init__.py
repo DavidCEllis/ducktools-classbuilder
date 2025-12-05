@@ -70,7 +70,7 @@ def get_fields(cls, *, local=False):
     key = "local_fields" if local else "fields"
     try:
         return getattr(cls, INTERNALS_DICT)[key]
-    except AttributeError:
+    except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
 
@@ -84,7 +84,7 @@ def get_flags(cls):
     """
     try:
         return getattr(cls, INTERNALS_DICT)["flags"]
-    except AttributeError:
+    except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
 
@@ -98,7 +98,7 @@ def get_methods(cls):
     """
     try:
         return getattr(cls, INTERNALS_DICT)["methods"]
-    except AttributeError:
+    except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
 
@@ -687,7 +687,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, f
         for c in reversed(mro):
             try:
                 fields |= field_getter(c, local=True)
-            except (TypeError, KeyError):
+            except TypeError:
                 pass
 
     internals["fields"] = fields
@@ -792,8 +792,8 @@ class SlotMakerMeta(type):
         # Slot makers should inherit flags
         for base in bases:
             try:
-                flags = getattr(base, INTERNALS_DICT)["flags"].copy()
-            except (AttributeError, KeyError):
+                flags = get_flags(base).copy()
+            except TypeError:
                 pass
             else:
                 break
@@ -849,14 +849,37 @@ class SlotMakerMeta(type):
             # that will store the resulting value in the slot instead of in a dict.
             cached_properties = {}
 
+            base_attribs = None
+            base_field_names = None
             # Don't import functools
             if functools := sys.modules.get("functools"):
                 # Iterate over a copy as we will mutate the original
                 for k, v in ns.copy().items():
                     if isinstance(v, functools.cached_property):
                         cached_properties[k] = v
-                        slot_values[k] = None
                         del ns[k]
+
+                        # Gather field and attribute info
+                        if base_attribs is None:
+                            base_attribs = {}
+                            base_field_names = set()
+                            for base in reversed(bases):
+                                base_attribs |= base.__dict__
+                                try:
+                                    base_field_names |= get_fields(base, local=True).keys()
+                                except TypeError:
+                                    pass
+
+                        # Add to slots only if it is not already a slot
+                        try:
+                            slot_attrib = base_attribs[k]
+                        except KeyError:
+                            # Does not exist on base, make slot
+                            slot_values[k] = None
+                        else:
+                            # Exists but is not a slot, make slot (ex: a regular property on parent)
+                            if type(slot_attrib) not in {_MemberDescriptorType, _SlottedCachedProperty}:
+                                slot_values[k] = None
 
             # Place slots *after* everything else to be safe
             ns["__slots__"] = slot_values
@@ -867,11 +890,24 @@ class SlotMakerMeta(type):
 
             new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
-            # Now the class and slots have been created, create any new cached properties
-            for name, prop in cached_properties.items():
-                slot = getattr(new_cls, name)
-                slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func)
-                setattr(new_cls, name, slotted_property)
+            # Now reconstruct cached properties
+            if cached_properties:
+                # This must have been set earlier if there are cached properties
+                assert base_field_names is not None
+
+                # Now the class and slots have been created, create any new cached properties
+                for name, prop in cached_properties.items():
+                    if name in base_field_names:
+                        raise TypeError(f"cached_property {name!r} cannot override classbuilder field")
+
+                    slot = getattr(new_cls, name)  # This may be inherited, which is fine
+
+                    # May be a replaced cached property already, if so extract the actual slot
+                    if isinstance(slot, _SlottedCachedProperty):
+                        slot = slot.slot
+
+                    slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func)
+                    setattr(new_cls, name, slotted_property)
 
         else:
             if gatherer is not None:
