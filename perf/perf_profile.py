@@ -190,6 +190,15 @@ class C{n}(Prefab):
     e: int
 '''
 
+prefab_metaclass_noslots_template = '''
+class C{n}(Prefab, slots=False):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+'''
+
 prefab_eval_template = '''
 @prefab
 class C{n}:
@@ -301,6 +310,9 @@ def run_all_tests(reps, test_everything=False):
 
     write_perftemp(100, prefab_metaclass_template, prefab_import)
     run_test(f'prefab_metaclass {classbuilder.__version__}', reps)
+
+    write_perftemp(100, prefab_metaclass_noslots_template, prefab_import)
+    run_test(f'prefab_metaclass no slots {classbuilder.__version__}', reps)
 
     write_perftemp(100, prefab_eval_template, prefab_import)
     run_test(f'prefab_eval {classbuilder.__version__}', reps)
