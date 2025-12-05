@@ -761,6 +761,16 @@ class _SlottedCachedProperty:
 
         return result
 
+    if sys.version_info >= (3, 14):
+        @property
+        def __annotations__(self):
+            return self.func.__annotations__
+
+    def __call__(self):
+        # Trick inspect.get_annotations into working on instances
+        # by pretending to be callable
+        raise TypeError(f"{self.__class__.__name__!r} object is not callable")
+
     def __repr__(self):
         return f"<slotted cached_property wrapper for {self.func!r}>"
 
