@@ -3,6 +3,7 @@ import inspect
 
 import pytest
 
+from ducktools.classbuilder import get_flags
 from ducktools.classbuilder.prefab import Prefab, Attribute, SlotFields, get_attributes
 
 
@@ -300,6 +301,21 @@ def test_subclass_cached_property_over_field_bad_behaviour():
     # On deletion the cached property works
     del child.name
     assert child.name == "Bill"
+
+
+def test_subclass_field_over_cached_property():
+    class Parent(Prefab):
+        @functools.cached_property
+        def name(self):
+            return "Alice"
+
+    class Child(Parent):
+        name: str = "Bill"
+
+    child = Child()
+    assert child.name == "Bill"
+    del child.name
+    assert child.name == "Alice"
 
 
 def test_subclass_cached_over_regular():
