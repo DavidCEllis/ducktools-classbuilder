@@ -70,7 +70,7 @@ def get_fields(cls, *, local=False):
     key = "local_fields" if local else "fields"
     try:
         return getattr(cls, INTERNALS_DICT)[key]
-    except AttributeError:
+    except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
 
@@ -84,7 +84,7 @@ def get_flags(cls):
     """
     try:
         return getattr(cls, INTERNALS_DICT)["flags"]
-    except AttributeError:
+    except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
 
@@ -98,7 +98,7 @@ def get_methods(cls):
     """
     try:
         return getattr(cls, INTERNALS_DICT)["methods"]
-    except AttributeError:
+    except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
 
@@ -687,7 +687,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, f
         for c in reversed(mro):
             try:
                 fields |= field_getter(c, local=True)
-            except (TypeError, KeyError):
+            except TypeError:
                 pass
 
     internals["fields"] = fields
@@ -735,6 +735,44 @@ class SlotFields(dict):
         return f"SlotFields({super().__repr__()})"
 
 
+class _SlottedCachedProperty:
+    # This is a class that is used to wrap both a slot and a cached property
+    # externally, users should just use `functools.cached_property` but
+    # `SlotMakerMeta` will remove those, add the names to `__slots__`
+    # and after constructing the class, replace those slots with these
+    # special slotted cached property attributes
+
+    def __init__(self, slot, func):
+        self.slot = slot
+        self.func = func
+        self.__doc__ = self.func.__doc__
+        self.__module__ = self.func.__module__
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self
+
+        try:
+            return self.slot.__get__(instance, owner)
+        except AttributeError:
+            pass
+
+        result = self.func(instance)
+
+        self.slot.__set__(instance, result)
+
+        return result
+
+    def __repr__(self):
+        return f"<slotted cached_property wrapper for {self.func!r}>"
+
+    def __set__(self, obj, value):
+        self.slot.__set__(obj, value)
+
+    def __delete__(self, obj):
+        self.slot.__delete__(obj)
+
+
 # Tool to convert annotations to slots as a metaclass
 class SlotMakerMeta(type):
     """
@@ -755,8 +793,8 @@ class SlotMakerMeta(type):
         # Slot makers should inherit flags
         for base in bases:
             try:
-                flags = getattr(base, INTERNALS_DICT)["flags"].copy()
-            except (AttributeError, KeyError):
+                flags = get_flags(base).copy()
+            except TypeError:
                 pass
             else:
                 break
@@ -806,20 +844,42 @@ class SlotMakerMeta(type):
                     fields[k] = v
 
             # Special case cached_property
-            # if a cached property is used add a slot for __dict__
-            if (
-                (functools := sys.modules.get("functools"))
-                and "__dict__" not in slot_values
-            ):
-                # Check __dict__ isn't already in a parent class
-                for base in bases:
-                    if "__dict__" in base.__dict__:
-                        break
-                else:
-                    for v in ns.values():
-                        if isinstance(v, functools.cached_property):
-                            slot_values["__dict__"] = None
-                            break
+            # if a cached property is used we need to remove it so that
+            # its attribute can be replaced by a slot, after the class
+            # is constructed wrap the slot with a new special _SlottedCachedProperty
+            # that will store the resulting value in the slot instead of in a dict.
+            cached_properties = {}
+
+            # Don't import functools
+            if functools := sys.modules.get("functools"):
+                base_attribs = None
+                # Iterate over a copy as we will mutate the original
+                for k, v in ns.copy().items():
+                    if isinstance(v, functools.cached_property):
+                        cached_properties[k] = v
+                        del ns[k]
+
+                        # Gather field and attribute info
+                        if base_attribs is None:
+                            base_attribs = {}
+                            base_field_names = set()
+                            for base in reversed(bases):
+                                base_attribs |= base.__dict__
+                                try:
+                                    base_field_names |= get_fields(base, local=True).keys()
+                                except TypeError:
+                                    pass
+
+                        # Add to slots only if it is not already a slot
+                        try:
+                            slot_attrib = base_attribs[k]
+                        except KeyError:
+                            # Does not exist on base, make slot
+                            slot_values[k] = None
+                        else:
+                            # Exists but is not a slot, make slot (ex: a regular property on parent)
+                            if type(slot_attrib) not in {_MemberDescriptorType, _SlottedCachedProperty}:
+                                slot_values[k] = None
 
             # Place slots *after* everything else to be safe
             ns["__slots__"] = slot_values
@@ -828,11 +888,26 @@ class SlotMakerMeta(type):
             modifications = {}
             ns[GATHERED_DATA] = fields, modifications
 
+            new_cls = super().__new__(cls, name, bases, ns, **kwargs)
+
+            # Now reconstruct cached properties
+            if cached_properties:
+                # Now the class and slots have been created, create any new cached properties
+                for name, prop in cached_properties.items():
+                    slot = getattr(new_cls, name)  # This may be inherited, which is fine
+
+                    # May be a replaced cached property already, if so extract the actual slot
+                    if isinstance(slot, _SlottedCachedProperty):
+                        slot = slot.slot
+                    slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func)
+
+                    setattr(new_cls, name, slotted_property)
+
         else:
             if gatherer is not None:
                 ns[META_GATHERER_NAME] = gatherer
 
-        new_cls = super().__new__(cls, name, bases, ns, **kwargs)
+            new_cls = super().__new__(cls, name, bases, ns, **kwargs)
 
         return new_cls
 

@@ -253,8 +253,8 @@ def test_cached_property():
             return 42
 
     ex = Example()
+    assert not hasattr(ex, "__dict__")
     assert ex.h2g2 == 42
-    assert ex.__dict__ == {"h2g2": 42}
 
 
 def test_subclass_cached_property():
@@ -270,8 +270,72 @@ def test_subclass_cached_property():
             return f"Bob (son of {super().name})"
 
     child = Child()
+    parent = Parent()
 
     assert child.name == "Bob (son of Alice)"
+    assert parent.name == "Alice"
+
+    # The underlying slot should be the same
+    assert Child.name.slot is Parent.name.slot
+
+
+def test_subclass_cached_property_over_field_bad_behaviour():
+    class Parent(Prefab):
+        name: str = "Alice"
+
+    # Both dataclasses and Prefab will allow you to do this
+    # Even though it is unintuitive and breakable
+    # This test exists to document the weirdness
+    # Thankfully mypy flags this as an error
+    class Child(Parent):
+        @functools.cached_property
+        def name(self):
+            return "Bill"
+
+    parent = Parent()
+    child = Child()
+
+    assert parent.name == child.name == "Alice"
+
+    # On deletion the cached property works
+    del child.name
+    assert child.name == "Bill"
+
+
+def test_subclass_cached_over_regular():
+    class Parent(Prefab):
+        @property
+        def name(self):
+            return "Alice"
+
+    class Child(Parent):
+        @functools.cached_property
+        def name(self) -> str:
+            return f"Bob (son of {super().name})"
+
+    child = Child()
+    parent = Parent()
+
+    assert child.name == "Bob (son of Alice)"
+    assert parent.name == "Alice"
+
+
+def test_subclass_regular_over_cached():
+    class Parent(Prefab):
+        @functools.cached_property
+        def name(self):
+            return "Alice"
+
+    class Child(Parent):
+        @property
+        def name(self) -> str:
+            return f"Bob (son of {super().name})"
+
+    child = Child()
+    parent = Parent()
+
+    assert child.name == "Bob (son of Alice)"
+    assert parent.name == "Alice"
 
 
 def test_subclass_getattr():
