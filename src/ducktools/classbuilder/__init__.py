@@ -378,10 +378,13 @@ def get_init_generator(null=NOTHING, extra_code=None):
             args = pos_args
 
         assigns = "\n    ".join(assignments) if assignments else "pass\n"
+        # fmt: off
         code = (
             f"def {funcname}(self, {args}):\n"
             f"    {assigns}\n"
         )
+        # fmt: on
+
         # Handle additional function calls
         # Used for validate_field on fieldclasses
         if extra_code:
@@ -431,6 +434,7 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
         else:
             recursion_func = ""
 
+        # fmt: off
         if eval_safe and will_eval is False:
             if content:
                 code = (
@@ -450,6 +454,7 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
                 f"def {funcname}(self):\n"
                 f"    return f'{{type(self).__qualname__}}({content})'\n"
             )
+        # fmt: on
 
         return GeneratedCode(code, globs)
     return cls_repr_generator
@@ -473,12 +478,14 @@ def eq_generator(cls, funcname="__eq__"):
     else:
         instance_comparison = "True"
 
+    # fmt: off
     code = (
         f"def {funcname}(self, other):\n"
         f"    return (\n"
         f"        {instance_comparison}\n"
         f"    ) if {class_comparison} else NotImplemented\n"
     )
+    # fmt: on
     globs = {}
 
     return GeneratedCode(code, globs)
@@ -494,12 +501,14 @@ def get_order_generator(cls, funcname, *, operator):
     self_tuple = ", ".join(f"self.{name}" for name in field_names)
     other_tuple = self_tuple.replace("self.", "other.")
 
+    # fmt: off
     code = (
         f"def {funcname}(self, other):\n"
         f"    if self.__class__ is other.__class__:\n"
         f"        return ({self_tuple}) {operator} ({other_tuple})\n"
         f"    return NotImplemented\n"
     )
+    # fmt: on
     globs = {}
     return GeneratedCode(code, globs)
 
@@ -530,12 +539,14 @@ def replace_generator(cls, funcname="__replace__"):
     )
     init_dict = f"{{{vals}}}"
 
+    # fmt: off
     code = (
         f"def {funcname}(self, /, **changes):\n"
         f"    new_kwargs = {init_dict}\n"
         f"    new_kwargs |= changes\n"
         f"    return self.__class__(**new_kwargs)\n"
     )
+    # fmt: on
     globs = {}
     return GeneratedCode(code, globs)
 
@@ -557,6 +568,7 @@ def frozen_setattr_generator(cls, funcname="__setattr__"):
         setattr_method = "self.__dict__[name] = value"
         hasattr_check = "name in self.__dict__"
 
+    # fmt: off
     body = (
         f"    if {hasattr_check} or name not in __field_names:\n"
         f'        raise TypeError(\n'
@@ -566,6 +578,7 @@ def frozen_setattr_generator(cls, funcname="__setattr__"):
         f"    else:\n"
         f"        {setattr_method}\n"
     )
+    # fmt: on
     code = f"def {funcname}(self, name, value):\n{body}"
 
     return GeneratedCode(code, globs)
@@ -811,6 +824,11 @@ class SlotMakerMeta(type):
         # This should only run if slots=True is declared
         # and __slots__ have not already been defined
         if slots and "__slots__" not in ns:
+            # Get existing attributes
+            base_attribs = {}
+            for base in reversed(bases):
+                base_attribs |= base.__dict__
+
             # Check if a different gatherer has been set in any base classes
             # Default to unified gatherer
             if gatherer is None:
@@ -837,9 +855,15 @@ class SlotMakerMeta(type):
 
             slot_values = {}
             fields = {}
-
+            existing_slot_types = {_MemberDescriptorType, _SlottedCachedProperty}
             for k, v in cls_fields.items():
-                slot_values[k] = v.doc
+                # Don't repeat the slots for already slotted values
+                inherited_attrib = base_attribs.get(k, NOTHING)
+                if (
+                    inherited_attrib is NOTHING
+                    or type(inherited_attrib) not in existing_slot_types
+                ):
+                    slot_values[k] = v.doc
                 if k not in {"__weakref__", "__dict__"}:
                     fields[k] = v
 
@@ -852,34 +876,18 @@ class SlotMakerMeta(type):
 
             # Don't import functools
             if functools := sys.modules.get("functools"):
-                base_attribs = None
                 # Iterate over a copy as we will mutate the original
                 for k, v in ns.copy().items():
                     if isinstance(v, functools.cached_property):
                         cached_properties[k] = v
                         del ns[k]
-
-                        # Gather field and attribute info
-                        if base_attribs is None:
-                            base_attribs = {}
-                            base_field_names = set()
-                            for base in reversed(bases):
-                                base_attribs |= base.__dict__
-                                try:
-                                    base_field_names |= get_fields(base, local=True).keys()
-                                except TypeError:
-                                    pass
-
                         # Add to slots only if it is not already a slot
-                        try:
-                            slot_attrib = base_attribs[k]
-                        except KeyError:
-                            # Does not exist on base, make slot
+                        slot_attrib = base_attribs.get(k, NOTHING)
+                        if (
+                            slot_attrib is NOTHING
+                            or type(slot_attrib) not in existing_slot_types
+                        ):
                             slot_values[k] = None
-                        else:
-                            # Exists but is not a slot, make slot (ex: a regular property on parent)
-                            if type(slot_attrib) not in {_MemberDescriptorType, _SlottedCachedProperty}:
-                                slot_values[k] = None
 
             # Place slots *after* everything else to be safe
             ns["__slots__"] = slot_values
