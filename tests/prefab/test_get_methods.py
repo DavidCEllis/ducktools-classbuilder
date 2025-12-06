@@ -2,13 +2,52 @@ from io import StringIO
 from textwrap import indent
 from unittest.mock import patch
 
-from ducktools.classbuilder import get_methods, get_generated_code, print_generated_code, INTERNALS_DICT
-from ducktools.classbuilder.prefab import Prefab
+from ducktools.classbuilder import (
+    get_methods,
+    get_generated_code,
+    print_generated_code,
+    slotclass,
+    SlotFields,
+    INTERNALS_DICT,
+)
+from ducktools.classbuilder.prefab import attribute, get_attributes, Attribute, Prefab
 
 
 class Example(Prefab):
     a: int = 42
     b: str = "Life the Universe and Everything"
+
+
+def test_get_attributes():
+    expected = {
+        "a": attribute(default=42, type=int),
+        "b": attribute(default="Life the Universe and Everything", type=str),
+    }
+    assert get_attributes(Example) == expected
+
+def test_get_attributes_converts_upward():
+    expected = {
+        "a": attribute(default=42),
+    }
+    @slotclass
+    class HasFields:
+        __slots__ = SlotFields(a=42)
+
+    assert get_attributes(HasFields) == expected
+
+
+def test_get_attributes_not_converting_downward():
+    class NewAttribute(Attribute):
+        new_arg: int = 42
+
+    class HasNewAttribute(Prefab):
+        a: str = NewAttribute(default="Oh dear not again")
+
+    expected = {
+        "a": NewAttribute(default="Oh dear not again", type=str)
+    }
+
+    assert get_attributes(HasNewAttribute) == expected
 
 
 def test_get_generated_code_keys():

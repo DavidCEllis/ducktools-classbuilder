@@ -1139,13 +1139,16 @@ def make_annotation_gatherer(
                 if isinstance(attrib, field_type):
                     kw_only = attrib.kw_only or kw_flag
 
-                    attrib = field_type.from_field(attrib, type=v, kw_only=kw_only)
+                    # Don't try to down convert subclass instances
+                    attrib_type = type(attrib)
+                    attrib = attrib_type.from_field(attrib, type=v, kw_only=kw_only)
 
                     if attrib.default is not NOTHING and leave_default_values:
                         modifications[k] = attrib.default
                     else:
                         # NOTHING sentinel indicates a value should be removed
                         modifications[k] = NOTHING
+
                 elif not isinstance(attrib, _MemberDescriptorType):
                     attrib = field_type(default=attrib, type=v, kw_only=kw_flag)
                     if not leave_default_values:
