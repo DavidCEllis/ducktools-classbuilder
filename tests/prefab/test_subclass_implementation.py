@@ -247,126 +247,130 @@ def test_has_dict():
     assert inst.__dict__ == {"c": 42}
 
 
-def test_cached_property():
-    class Example(Prefab):
-        @functools.cached_property
-        def h2g2(self):
-            return 42
+class TestCachedProperty:
+    def test_cached_property(self):
+        class Example(Prefab):
+            @functools.cached_property
+            def h2g2(self):
+                return 42
 
-    ex = Example()
-    assert not hasattr(ex, "__dict__")
-    assert ex.h2g2 == 42
-
-
-def test_subclass_cached_property():
-    # Test we don't suffer from https://github.com/python-attrs/attrs/issues/1333
-    class Parent(Prefab):
-        @functools.cached_property
-        def name(self) -> str:
-            return "Alice"
-
-    class Child(Parent):
-        @functools.cached_property
-        def name(self) -> str:
-            return f"Bob (son of {super().name})"
-
-    child = Child()
-    parent = Parent()
-
-    assert child.name == "Bob (son of Alice)"
-    assert parent.name == "Alice"
-
-    # The underlying slot should be the same
-    assert Child.name.slot is Parent.name.slot
+        ex = Example()
+        assert not hasattr(ex, "__dict__")
+        assert ex.h2g2 == 42
 
 
-def test_subclass_cached_property_over_field_bad_behaviour():
-    class Parent(Prefab):
-        name: str = "Alice"
+    def test_subclass_cached_property(self):
+        # Test we don't suffer from https://github.com/python-attrs/attrs/issues/1333
+        class Parent(Prefab):
+            @functools.cached_property
+            def name(self) -> str:
+                return "Alice"
 
-    # Both dataclasses and Prefab will allow you to do this
-    # Even though it is unintuitive and breakable
-    # This test exists to document the weirdness
-    # Thankfully mypy flags this as an error
-    class Child(Parent):
-        @functools.cached_property
-        def name(self):
-            return "Bill"
+        class Child(Parent):
+            @functools.cached_property
+            def name(self) -> str:
+                return f"Bob (son of {super().name})"
 
-    parent = Parent()
-    child = Child()
+        # Check the name has been assigned correctly
+        assert Parent.name.attrname == "name"
 
-    assert parent.name == child.name == "Alice"
+        child = Child()
+        parent = Parent()
 
-    # On deletion the cached property works
-    del child.name
-    assert child.name == "Bill"
+        assert child.name == "Bob (son of Alice)"
+        assert parent.name == "Alice"
 
-
-def test_subclass_field_over_cached_property():
-    class Parent(Prefab):
-        @functools.cached_property
-        def name(self):
-            return "Alice"
-
-    class Child(Parent):
-        name: str = "Bill"
-
-    child = Child()
-    assert child.name == "Bill"
-    del child.name
-    assert child.name == "Alice"
+        # The underlying slot should be the same
+        assert Child.name.slot is Parent.name.slot
 
 
-def test_subclass_cached_over_regular():
-    class Parent(Prefab):
-        @property
-        def name(self):
-            return "Alice"
+    def test_subclass_cached_property_over_field_bad_behaviour(self):
+        class Parent(Prefab):
+            name: str = "Alice"
 
-    class Child(Parent):
-        @functools.cached_property
-        def name(self) -> str:
-            return f"Bob (son of {super().name})"
+        # Both dataclasses and Prefab will allow you to do this
+        # Even though it is unintuitive and breakable
+        # This test exists to document the weirdness
+        # Thankfully mypy flags this as an error
+        class Child(Parent):
+            @functools.cached_property
+            def name(self):
+                return "Bill"
 
-    child = Child()
-    parent = Parent()
+        parent = Parent()
+        child = Child()
 
-    assert child.name == "Bob (son of Alice)"
-    assert parent.name == "Alice"
+        assert parent.name == child.name == "Alice"
 
-
-def test_subclass_regular_over_cached():
-    class Parent(Prefab):
-        @functools.cached_property
-        def name(self):
-            return "Alice"
-
-    class Child(Parent):
-        @property
-        def name(self) -> str:
-            return f"Bob (son of {super().name})"
-
-    child = Child()
-    parent = Parent()
-
-    assert child.name == "Bob (son of Alice)"
-    assert parent.name == "Alice"
+        # On deletion the cached property works
+        del child.name
+        assert child.name == "Bill"
 
 
-def test_subclass_getattr():
-    # Based on - https://github.com/python-attrs/attrs/issues/1288
-    # Not quite the same as Subclass is forced into becoming a prefab
-    # unlike attrs with define.
-    class Base(Prefab):
-        @functools.cached_property
-        def h2g2(self):
-            return 42
+    def test_subclass_field_over_cached_property(self):
+        class Parent(Prefab):
+            @functools.cached_property
+            def name(self):
+                return "Alice"
 
-    class Subclass(Base):
-        def __getattr__(self, name):
-            raise AttributeError(name)
+        class Child(Parent):
+            name: str = "Bill"
 
-    ex = Subclass()
+        child = Child()
+        assert child.name == "Bill"
+        del child.name
+        assert child.name == "Alice"
 
-    assert ex.h2g2 == 42
+
+    def test_subclass_cached_over_regular(self):
+        class Parent(Prefab):
+            @property
+            def name(self):
+                return "Alice"
+
+        class Child(Parent):
+            @functools.cached_property
+            def name(self) -> str:
+                return f"Bob (son of {super().name})"
+
+        child = Child()
+        parent = Parent()
+
+        assert child.name == "Bob (son of Alice)"
+        assert parent.name == "Alice"
+
+
+    def test_subclass_regular_over_cached(self):
+        class Parent(Prefab):
+            @functools.cached_property
+            def name(self):
+                return "Alice"
+
+        class Child(Parent):
+            @property
+            def name(self) -> str:
+                return f"Bob (son of {super().name})"
+
+        child = Child()
+        parent = Parent()
+
+        assert child.name == "Bob (son of Alice)"
+        assert parent.name == "Alice"
+
+
+    def test_subclass_getattr(self):
+        # Based on - https://github.com/python-attrs/attrs/issues/1288
+        # Not quite the same as Subclass is forced into becoming a prefab
+        # unlike attrs with define.
+        class Base(Prefab):
+            @functools.cached_property
+            def h2g2(self):
+                return 42
+
+        class Subclass(Base):
+            def __getattr__(self, name):
+                raise AttributeError(name)
+
+        ex = Subclass()
+
+        assert ex.h2g2 == 42

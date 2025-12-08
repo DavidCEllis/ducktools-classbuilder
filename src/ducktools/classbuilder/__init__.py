@@ -755,12 +755,19 @@ class _SlottedCachedProperty:
     # and after constructing the class, replace those slots with these
     # special slotted cached property attributes
 
-    def __init__(self, slot, func):
+    # Unlike regular cached_property this is always attached to a class
+    # after it has been constructed, so `attrname` is set in `__init__`
+    # and not in `__set_name__`.
+
+    def __init__(self, slot, func, attrname):
         self.slot = slot
+
         self.func = func
+        self.attrname = attrname
         self.__doc__ = self.func.__doc__
         self.__module__ = self.func.__module__
 
+        # Cached methods for faster access
         self._slotget = slot.__get__
         self._slotset = slot.__set__
         self._slotdelete = slot.__delete__
@@ -780,7 +787,7 @@ class _SlottedCachedProperty:
         return result
 
     def __repr__(self):
-        return f"<slotted cached_property wrapper for {self.func!r}>"
+        return f"<slotted cached_property wrapper for {self.attrname!r}>"
 
     def __set__(self, obj, value):
         self._slotset(obj, value)
@@ -910,7 +917,7 @@ class SlotMakerMeta(type):
                     # May be a replaced cached property already, if so extract the actual slot
                     if isinstance(slot, _SlottedCachedProperty):
                         slot = slot.slot
-                    slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func)
+                    slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func, attrname=name)
 
                     setattr(new_cls, name, slotted_property)
 
