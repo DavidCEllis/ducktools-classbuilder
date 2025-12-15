@@ -877,27 +877,29 @@ class SlotMakerMeta(type):
                 if k not in {"__weakref__", "__dict__"}:
                     fields[k] = v
 
-            # Special case cached_property
-            # if a cached property is used we need to remove it so that
-            # its attribute can be replaced by a slot, after the class
-            # is constructed wrap the slot with a new special _SlottedCachedProperty
-            # that will store the resulting value in the slot instead of in a dict.
+            # Special case cached_property if there is no `__dict__` attribute
+            # In the case where there is a __dict__ it is not necessary to replace
+            # the cached_property attribute as the dict can be used, otherwise
+            # it needs to be replaced in order to store the value in the slot
+            # created.
+            # Dict access is faster if there is a __dict__ available.
             cached_properties = {}
 
-            # Don't import functools
-            if functools := sys.modules.get("functools"):
-                # Iterate over a copy as we will mutate the original
-                for k, v in ns.copy().items():
-                    if isinstance(v, functools.cached_property):
-                        cached_properties[k] = v
-                        del ns[k]
-                        # Add to slots only if it is not already a slot
-                        slot_attrib = base_attribs.get(k, NOTHING)
-                        if (
-                            slot_attrib is NOTHING
-                            or type(slot_attrib) not in existing_slot_types
-                        ):
-                            slot_values[k] = None
+            if "__dict__" not in slot_values and "__dict__" not in base_attribs:
+                # Don't import functools
+                if functools := sys.modules.get("functools"):
+                    # Iterate over a copy as we will mutate the original
+                    for k, v in ns.copy().items():
+                        if isinstance(v, functools.cached_property):
+                            cached_properties[k] = v
+                            del ns[k]
+                            # Add to slots only if it is not already a slot
+                            slot_attrib = base_attribs.get(k, NOTHING)
+                            if (
+                                slot_attrib is NOTHING
+                                or type(slot_attrib) not in existing_slot_types
+                            ):
+                                slot_values[k] = None
 
             # Place slots *after* everything else to be safe
             ns["__slots__"] = slot_values

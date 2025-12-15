@@ -3,7 +3,7 @@ import inspect
 
 import pytest
 
-from ducktools.classbuilder import get_flags
+from ducktools.classbuilder import _SlottedCachedProperty  # type: ignore
 from ducktools.classbuilder.prefab import Prefab, Attribute, SlotFields, get_attributes
 
 
@@ -257,7 +257,33 @@ class TestCachedProperty:
         ex = Example()
         assert not hasattr(ex, "__dict__")
         assert ex.h2g2 == 42
+        assert isinstance(Example.h2g2, _SlottedCachedProperty)
 
+    def test_dict_present_leaves_cached_property(self):
+        # Test cached_property is left in place if there is a __dict__ attribute available
+        class Example(Prefab):
+            __dict__: dict
+            @functools.cached_property
+            def h2g2(self):
+                return 42
+
+        ex = Example()
+        assert ex.h2g2 == 42
+        assert isinstance(Example.h2g2, functools.cached_property)
+
+    def test_dict_inherited_leaves_cached_property(self):
+        # Test it is left in place if __dict__ is inherited
+        class Example(Prefab):
+            __dict__: dict
+
+        class ExampleInherit(Example):
+            @functools.cached_property
+            def h2g2(self):
+                return 42
+
+        ex = ExampleInherit()
+        assert ex.h2g2 == 42
+        assert isinstance(ExampleInherit.h2g2, functools.cached_property)
 
     def test_subclass_cached_property(self):
         # Test we don't suffer from https://github.com/python-attrs/attrs/issues/1333
@@ -293,7 +319,7 @@ class TestCachedProperty:
         # This test exists to document the weirdness
         # Thankfully mypy flags this as an error
         class Child(Parent):
-            @functools.cached_property
+            @functools.cached_property  # type: ignore
             def name(self):
                 return "Bill"
 
