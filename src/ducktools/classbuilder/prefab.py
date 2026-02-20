@@ -91,6 +91,8 @@ def init_generator(cls, funcname="__init__"):
     flags = get_flags(cls)
 
     kw_only = flags.get("kw_only", False)
+    frozen = flags.get("frozen", False)
+    slotted = flags.get("slotted", False)
 
     # Handle pre/post init first - post_init can change types for __init__
     # Get pre and post init arguments
@@ -220,9 +222,23 @@ def init_generator(cls, funcname="__init__"):
         pre_init_call = ""
 
     if assignments or processes:
-        body = "\n".join(
-            f"    self.{name} = {value}" for name, value in assignments
-        )
+        if frozen and slotted:
+            body = "    __prefab_setattr_method = object.__setattr__\n"
+            body += "\n".join(
+                f"    __prefab_setattr_method(self, {name!r}, {value})"
+                for name, value in assignments
+            )
+        elif frozen:
+            body = "    __prefab_selfdict = self.__dict__\n"
+            body += "\n".join(
+                f"    __prefab_selfdict[{name!r}] = {value}"
+                for name, value in assignments
+            )
+        else:
+            body = "\n".join(
+                f"    self.{name} = {value}"
+                for name, value in assignments
+            )
         if processes:
             body += "\n"
             body += "\n".join(f"    {name} = {value}" for name, value in processes)
