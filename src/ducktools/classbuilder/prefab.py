@@ -223,9 +223,9 @@ def init_generator(cls, funcname="__init__"):
 
     if assignments or processes:
         if frozen and slotted:
-            body = "    __prefab_setattr_method = object.__setattr__\n"
-            body += "\n".join(
-                f"    __prefab_setattr_method(self, {name!r}, {value})"
+            globs["__object_setattr"] = object.__setattr__
+            body = "\n".join(
+                f"    __object_setattr(self, {name!r}, {value})"
                 for name, value in assignments
             )
         elif frozen:
