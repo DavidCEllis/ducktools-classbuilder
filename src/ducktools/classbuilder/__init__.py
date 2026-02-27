@@ -39,7 +39,7 @@ try:
         MemberDescriptorType as _MemberDescriptorType,
         MappingProxyType as _MappingProxyType
     )
-except ImportError:
+except ImportError:  # pragma: nocover
     from types import (
         MemberDescriptorType as _MemberDescriptorType,
         MappingProxyType as _MappingProxyType,
@@ -1328,14 +1328,19 @@ def make_unified_gatherer(
             # To choose between annotation and attribute gatherers
             # compare sets of names.
             cls_annotations = get_ns_annotations(cls_dict, cls=cls)
-            cls_attributes = {
-                k: v for k, v in cls_dict.items() if isinstance(v, field_type)
-            }
+            use_annotations = True
 
-            cls_annotation_names = cls_annotations.keys()
-            cls_attribute_names = cls_attributes.keys()
+            for k, v in cls_dict.items():
+                if isinstance(v, field_type):
+                    v_anno = cls_annotations.get(k, NOTHING)
+                    if v_anno is NOTHING:
+                        use_annotations = False
+                    else:
+                        if is_classvar(v_anno):
+                            k_type = type(v).__name__
+                            raise TypeError(f"{k!r} is a ClassVar, but {k_type!r} instances are not supported as ClassVars")
 
-            if set(cls_annotation_names).issuperset(set(cls_attribute_names)):
+            if use_annotations:
                 # All `Field` values have annotations, so use annotation gatherer
                 # Pass the original cls_or_ns object along with the already gathered annotations
 

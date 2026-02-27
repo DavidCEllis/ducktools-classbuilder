@@ -180,6 +180,13 @@ class TestClassVar:
         assert "y" in getattr(IgnoreAnnotatedClassVars, "__dict__")
         assert "z" in getattr(IgnoreAnnotatedClassVars, "__dict__")
 
+    def test_classvar_attribute_raises(self):
+        # Test that ClassVar values that use `attribute` raise a TypeError
+        with pytest.raises(TypeError):
+            @prefab
+            class FailsWithClassVar:
+                a: ClassVar = attribute(default=42)
+
 
 class TestSplitVarDef:
     # Tests for a split variable definition
