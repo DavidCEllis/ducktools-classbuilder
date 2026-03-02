@@ -42,6 +42,14 @@ class _LazyAnnotationLib:
 _lazy_annotationlib = _LazyAnnotationLib()
 
 
+def _get_annotate_from_class_namespace(ns):
+    # Copied from annotationlib.py to try to save an import
+    try:
+        return ns["__annotate__"]
+    except KeyError:
+        return ns.get("__annotate_func__", None)
+
+
 def get_func_annotations(func, use_forwardref=False):
     """
     Given a function, return the annotations dictionary
@@ -81,10 +89,10 @@ def get_ns_annotations(ns, cls=None, use_forwardref=False):
         annotations = annotations.copy()
     else:
         # See if we're using PEP-649 annotations
-        annotate = _lazy_annotationlib.get_annotate_from_class_namespace(ns)
+        annotate = _get_annotate_from_class_namespace(ns)
         if annotate:
             try:
-                annotations = annotate(_lazy_annotationlib.Format.VALUE)
+                annotations = annotate(1)  # Format.VALUE is 1
             except Exception:
                 fmt = (
                     _lazy_annotationlib.Format.FORWARDREF
