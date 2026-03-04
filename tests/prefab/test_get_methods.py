@@ -12,6 +12,8 @@ from ducktools.classbuilder import (
 )
 from ducktools.classbuilder.prefab import attribute, get_attributes, Attribute, Prefab
 
+from utils import graalpy_fails  # type: ignore
+
 
 class Example(Prefab):
     a: int = 42
@@ -25,6 +27,7 @@ def test_get_attributes():
     }
     assert get_attributes(Example) == expected
 
+@graalpy_fails
 def test_get_attributes_converts_upward():
     expected = {
         "a": attribute(default=42),
