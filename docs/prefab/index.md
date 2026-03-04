@@ -170,9 +170,6 @@ on intentional differences. Unintentional differences may be patched
 or will be added to this list.
 
 ### Functional differences ###
-1. prefabs do not generate the comparison methods other than `__eq__`.
-    * This isn't generally a feature I want or use, however with the tools it is easy
-      to add if this is a needed feature.
 1. the `as_dict` method in `prefab_classes` does *not* behave the same as
    dataclasses' `asdict`.
     * `as_dict` does *not* deepcopy the included fields, modification of mutable

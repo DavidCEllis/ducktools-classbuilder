@@ -14,6 +14,8 @@ Installation[^1]:
   * With [poetry](https://python-poetry.org)
     * `poetry add ducktools-classbuilder` to add to an existing project
 
+## Usage ##
+
 Create classes using type annotations:
 
 ```python
@@ -56,26 +58,7 @@ class Book:
 As with `dataclasses` or `attrs`, `ducktools-classbuilder` will handle writing the
 boilerplate `__init__`, `__eq__` and `__repr__` functions for you.
 
-Unlike `dataclasses` or `attrs`, `ducktools-classbuilder` generates and executes its
-templated functions lazily, so they are only executed if and when the methods are first
-used. This significantly reduces the time taken to create the classes as unused methods
-are never generated. Before generation occurs, the descriptors can be seen in the class
-`__dict__`, after first use these are replaced.
-
-```python
->>> Book.__dict__["__init__"]
-<MethodMaker for '__init__' method>
->>> Book()
-Book(title='The Hitchhikers Guide to the Galaxy', author='Douglas Adams', year=1979)
->>> Book.__dict__["__init__"]
-<function Book.__init__ at ...>
-```
-
-The gathering of field and class information is also separated from the build step
-so it is possible to change how this information is gathered without needing to rewrite
-the code generation tools.
-
-## The base class `Prefab` implementation ##
+### The base class `Prefab` implementation ###
 
 Alongside the `@prefab` decorator there is also a `Prefab` base class that can be used.
 
@@ -189,13 +172,163 @@ Annotations:
 
 </details>
 
-### Core ###
+## Why use this instead of dataclasses? ##
+
+### Faster Import ###
+
+```
+$ python --version
+Python 3.14.3
+
+$ python -Ximporttime -c "import dataclasses"
+import time: self [us] | cumulative | imported package
+...
+import time:       323 |       7758 | dataclasses
+
+$ python -Ximporttime -c "import ducktools.classbuilder.prefab"
+import time: self [us] | cumulative | imported package
+...
+import time:       198 |        776 | ducktools.classbuilder.prefab
+```
+
+### Faster Class Construction ###
+
+```
+~/src/ducktools-classbuilder/perf$ python perf_profile.py --test-all
+
+Python Version: 3.14.3 (main, Feb  4 2026, 00:00:00) [GCC 15.2.1 20260123 (Red Hat 15.2.1-7)]
+Classbuilder version: 0.12.4
+Platform: Linux-6.18.13-200.fc43.x86_64-x86_64-with-glibc2.42
+Time for 100 imports of 100 classes defined with 5 basic attributes
+| Method | Total Time (seconds) |
+| --- | --- |
+| standard classes | 0.05 |
+| namedtuple | 0.24 |
+| NamedTuple | 0.50 |
+| dataclasses | 1.65 |
+| attrs 25.4.0 | 2.37 |
+| pydantic 2.12.5 | 1.91 |
+| msgspec 0.20.0 | 0.09 |
+| prefab 0.12.4 | 0.18 |
+| prefab_eval 0.12.4 | 1.03 |
+```
+
+This class construction difference is due to `prefab` deferring constructing the methods
+such as `__init__`, `__eq__` and `__repr__` until they are actually used. If a method is
+not used, it is not constructed. That said, even with `prefab_eval` constructing all of
+the methods, it is still faster than dataclasses.
+
+### Partial init functions using `__prefab_post_init__` ###
+
+`@prefab` and the `Prefab` base class support `__prefab_pre_init__` and `__prefab_post_init__`
+methods.
+
+Both of these methods will take any field names as arguments. Those passed to `__prefab_pre_init__` will still be set inside the main `__init__` body, while those passed to `__prefab_post_init__` will not.
+
+`__prefab_pre_init__` is intended as a place to perform validation checks.
+
+`__prefab_post_init__` can be seen as a partial `__init__` function, only handling fields that require extra processing.
+
+Here is an example using `__prefab_post_init__` that converts a string or Path object into a path object:
+
+```python
+from pathlib import Path
+from ducktools.classbuilder.prefab import Prefab
+
+class AppDetails(Prefab, frozen=True):
+    app_name: str
+    app_path: Path
+
+    def __prefab_post_init__(self, app_path: str | Path):
+        # frozen in `Prefab` is implemented as a 'set-once' __setattr__ function.
+        # So we do not need to use `object.__setattr__` here (although it is faster)
+        self.app_path = Path(app_path)
+
+steam = AppDetails(
+    "Steam",
+    r"C:\Program Files (x86)\Steam\steam.exe"
+)
+
+print(steam)
+```
+
+<details>
+
+<summary>The generated code for the init method</summary>
+
+```python
+def __init__(self, app_name, app_path):
+    self.app_name = app_name
+    self.__prefab_post_init__(app_path=app_path)
+```
+
+Note: annotations are attached as `__annotations__` and so do not appear in generated
+source code.
+
+</details>
+
+### Other Differences ###
+
+`Prefab` and `@prefab` support many standard dataclass features along with
+some extra features and some intentional differences in design.
+
+* Slotted classes using the base `Prefab` class work with `functools.cached_property`
+* There is an optional `iter` argument that will make the class iterable
+* The `frozen` argument will make the dataclass a 'write once' object
+  * This is to make the partial `__prefab_post_init__` function more natural
+    to write for frozen classes
+* `dict_method=True` will generate an `as_dict` method that gives a dictionary of
+  attributes that have `serialize=True` (the default)
+* `ignore_annotations` can be used to only use the presence of `attribute` values
+  to decide how the class is constructed
+  * This is intended for cases where evaluating the annotations may trigger imports
+    which could be slow and unnecessary for the function of class generation
+* `replace=False` can be used to avoid defining the `__replace__` method
+  * The `__replace__` method itself is generated and as such is a little faster than
+    the one used by dataclasses
+* `attribute` has additional options over dataclasses' `Field`
+  * `iter=True` will include the attribute in the iterable if `__iter__` is generated
+  * `serialize=True` decides if the attribute is include in `as_dict`
+  * `exclude_field` is short for `repr=False`, `compare=False`, `iter=False`, `serialize=False`
+  * `private` is short for `exclude_field=True` and `init=False` and requires a default or factory
+  * `doc` will add this string as the value in slotted classes, which appears in `help()`
+* `build_prefab` can be used to dynamically create classes and *does* support a slots argument
+  * Unlike dataclasses, this does not create the class twice in order to provide slots
+* Class attribute values are obtained through `__dict__.get(...)` and not `getattr` and default values are not retained on the class
+  * This makes the behaviour more consistent between slotted and unslotted classes
+  * This does mean that descriptors are not supported as attributes as they are for
+    unslotted dataclasses. If a descriptor is provided, the descriptor itself will
+    become the default value (dataclasses will take whatever `.__get__` returns).
+
+There are also some intentionally missing features:
+
+* `as_dict` and the generated `.as_dict` method **do not** recurse or deep copy
+  * I think dataclasses' behaviour here is generally undesirable
+  * For serializing nested structures, it's better to use something like `cattrs`
+* `unsafe_hash` is not provided
+* `weakref_slot` is not available as an argument
+  * `__weakref__` can be added to slots by declaring it as if it were an attribute
+* There is no safety check for mutable defaults
+  * You should still use `default_factory` as you would for dataclasses, not doing so
+    is still incorrect
+  * `dataclasses` uses hashability as a proxy for mutability, but technically this is
+    inaccurate as you can be unhashable but immutable and mutable but hashable
+  * This may change in a future version, but I haven't felt the need to add this check so far
+* In Python 3.14 Annotations are gathered as `VALUE` if possible and `STRING` if this fails
+  * `VALUE` annotations are used as they are faster in most cases
+  * As the `__init__` method gets `__annotations__` these need to be either values or strings
+    to match the behaviour of previous Python versions
+* There is currently no equivalent to `InitVar`
+  * I'm not sure *how* I would want to implement this other than I don't _really_ want to use
+    annotations to decide behaviour (this is messy enough with `ClassVar` and `KW_ONLY`).
+
+## Core ##
 
 The main `ducktools.classbuilder` module provides tools for creating a customized version of the `dataclass` concept.
 
 * `MethodMaker`
   * This tool takes a function that generates source code and converts it into a descriptor
-    that will execute the source code and attach the gemerated method to a class on demand.
+    that will execute the source code and attach the generated method to a class on demand.
   * This is what you use if you need to write a customized `__init__` method or add some other
     generated method.
 * `Field`
@@ -226,112 +359,6 @@ The main `ducktools.classbuilder` module provides tools for creating a customize
 > for a full tutorial and
 > [extension_examples](https://ducktools-classbuilder.readthedocs.io/en/latest/extension_examples.html)
 > for other customizations.
-
-### Prefab ###
-
-The prebuilt 'prefab' implementation includes additional customization including
-`__prefab_pre_init__` and `__prefab_post_init__` methods.
-
-Both of these methods will take any field names as arguments. Those passed to `__prefab_pre_init__` will still be set
-inside the main `__init__` body, while those passed to `__prefab_post_init__` will not.
-
-`__prefab_pre_init__` is intended as a place to perform validation checks before values are set in the main body.
-`__prefab_post_init__` can be seen as a partial `__init__` function, where you only need to write
-the `__init__` function for arguments that need more than basic assignment.
-
-Here is an example using `__prefab_post_init__` that converts a string or Path object into a path object:
-
-```python
-from pathlib import Path
-from ducktools.classbuilder.prefab import Prefab
-
-class AppDetails(Prefab, frozen=True):
-    app_name: str
-    app_path: Path
-
-    def __prefab_post_init__(self, app_path: str | Path):
-        # frozen in `Prefab` is implemented as a 'set-once' __setattr__ function.
-        # So we do not need to use `object.__setattr__` here
-        self.app_path = Path(app_path)
-
-steam = AppDetails(
-    "Steam",
-    r"C:\Program Files (x86)\Steam\steam.exe"
-)
-
-print(steam)
-```
-
-<details>
-
-<summary>The generated code for the init method</summary>
-
-```python
-def __init__(self, app_name, app_path):
-    self.app_name = app_name
-    self.__prefab_post_init__(app_path=app_path)
-```
-
-Note: annotations are attached as `__annotations__` and so do not appear in generated
-source code.
-
-</details>
-
-#### Features and Differences ####
-
-`Prefab` and `@prefab` support many standard dataclass features along with
-some extra features and some intentional differences in design.
-
-* All standard methods are generated on-demand
-  * This makes the construction of classes much faster in general
-  * Generation is done and then cached on first access using non-data descriptors
-* Standard `__init__`, `__eq__` and `__repr__` methods are generated by default
-  - The `__repr__` implementation does not automatically protect against recursion,
-    but there is a `recursive_repr` argument that will do so if needed
-* `repr`, `eq` and `kw_only` arguments work as they do in `dataclasses`
-* There is an optional `iter` argument that will make the class iterable
-* `__prefab_post_init__` will take any field name as an argument and can
-  be used to write a 'partial' `__init__` function for only non-standard attributes
-* The `frozen` argument will make the dataclass a 'write once' object
-  * This is to make the partial `__prefab_post_init__` function more natural
-    to write for frozen classes
-* `dict_method=True` will generate an `as_dict` method that gives a dictionary of
-  attributes that have `serialize=True` (the default)
-* `ignore_annotations` can be used to only use the presence of `attribute` values
-  to decide how the class is constructed
-  * This is intended for cases where evaluating the annotations may trigger imports
-    which could be slow and unnecessary for the function of class generation
-* `replace=False` can be used to avoid defining the `__replace__` method
-* `attribute` has additional options over dataclasses' `Field`
-  * `iter=True` will include the attribute in the iterable if `__iter__` is generated
-  * `serialize=True` decides if the attribute is include in `as_dict`
-  * `exclude_field` is short for `repr=False`, `compare=False`, `iter=False`, `serialize=False`
-  * `private` is short for `exclude_field=True` and `init=False` and requires a default or factory
-  * `doc` will add this string as the value in slotted classes, which appears in `help()`
-* `build_prefab` can be used to dynamically create classes and *does* support a slots argument
-  * Unlike dataclasses, this does not create the class twice in order to provide slots
-
-There are also some intentionally missing features:
-
-* The `@prefab` decorator does not and will never support a `slots` argument
-  * Use `Prefab` for slots.
-* `as_dict` and the generated `.as_dict` method **do not** recurse or deep copy
-* `unsafe_hash` is not provided
-* `weakref_slot` is not available as an argument
-  * `__weakref__` can be added to slots by declaring it as if it were an attribute
-* There is no safety check for mutable defaults
-  * You should still use `default_factory` as you would for dataclasses, not doing so
-    is still incorrect
-  * `dataclasses` uses hashability as a proxy for mutability, but technically this is
-    inaccurate as you can be unhashable but immutable and mutable but hashable
-  * This may change in a future version, but I haven't felt the need to add this check so far
-* In Python 3.14 Annotations are gathered as `VALUE` if possible and `STRING` if this fails
-  * `VALUE` annotations are used as they are faster in most cases
-  * As the `__init__` method gets `__annotations__` these need to be either values or strings
-    to match the behaviour of previous Python versions
-* There is currently no equivalent to `InitVar`
-  * I'm not sure *how* I would want to implement this other than I don't _really_ want to use
-    annotations to decide behaviour (this is messy enough with `ClassVar` and `KW_ONLY`).
 
 ## What is the issue with generating `__slots__` with a decorator ##
 
