@@ -65,7 +65,7 @@ def _get_annotate_from_class_namespace(ns):
         return ns.get("__annotate_func__", None)
 
 
-def get_func_annotations(func, use_forwardref=False):
+def get_func_annotations(func):
     """
     Given a function, return the annotations dictionary
 
@@ -83,14 +83,13 @@ def get_func_annotations(func, use_forwardref=False):
     return annotations
 
 
-def get_ns_annotations(ns, cls=None, use_forwardref=False):
+def get_ns_annotations(ns, cls=None):
     """
     Given a class namespace, attempt to retrieve the
     annotations dictionary.
 
     :param ns: Class namespace (eg cls.__dict__)
     :param cls: Class if available
-    :param use_forwardref: Use FORWARDREF instead of STRING if VALUE fails
     :return: dictionary of annotations
     """
 
