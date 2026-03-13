@@ -262,8 +262,8 @@ def __init__(self, app_name, app_path):
     self.__prefab_post_init__(app_path=app_path)
 ```
 
-Note: annotations are attached as `__annotations__` and so do not appear in generated
-source code.
+Note: annotations are attached as `__annotations__` or `__annotate__` and so do not appear
+in generated source code.
 
 </details>
 
