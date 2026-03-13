@@ -20,19 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-def get_func_annotations(func, use_forwardref=False):
+def get_func_annotations(func):
     """
     Given a function, return the annotations dictionary
 
     :param func: function object
     :return: dictionary of annotations
     """
-    annotations = func.__annotations__
-    return annotations
-
+    return func.__annotations__
 
 # This is simplified under 3.13 or earlier
-def get_ns_annotations(ns, cls=None, use_forwardref=False):
+def get_ns_annotations(ns, cls=None):
     annotations = ns.get("__annotations__")
     if annotations is not None:
         annotations = annotations.copy()
@@ -40,3 +38,8 @@ def get_ns_annotations(ns, cls=None, use_forwardref=False):
         annotations = {}
     return annotations
 
+def resolve_type(obj, stringify_forwardrefs=False):
+    return obj
+
+def apply_annotations(obj, annotations):
+    obj.__annotations__ = annotations

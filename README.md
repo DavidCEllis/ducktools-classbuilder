@@ -78,7 +78,7 @@ class Slotted(Prefab):
         default="What do you get if you multiply six by nine?",
         doc="Life the universe and everything",
     )
-    python_path: Path("/usr/bin/python4")
+    python_path: Path = Path("/usr/bin/python4")
 
 ex = Slotted()
 print(ex)
@@ -262,8 +262,8 @@ def __init__(self, app_name, app_path):
     self.__prefab_post_init__(app_path=app_path)
 ```
 
-Note: annotations are attached as `__annotations__` and so do not appear in generated
-source code.
+Note: annotations are attached as `__annotations__` or `__annotate__` and so do not appear
+in generated source code.
 
 </details>
 
@@ -314,10 +314,14 @@ There are also some intentionally missing features:
   * `dataclasses` uses hashability as a proxy for mutability, but technically this is
     inaccurate as you can be unhashable but immutable and mutable but hashable
   * This may change in a future version, but I haven't felt the need to add this check so far
-* In Python 3.14 Annotations are gathered as `VALUE` if possible and `STRING` if this fails
-  * `VALUE` annotations are used as they are faster in most cases
-  * As the `__init__` method gets `__annotations__` these need to be either values or strings
-    to match the behaviour of previous Python versions
+* In Python 3.14 Annotations are gathered as `VALUE` if possible and `DeferredAnnotation` if this fails
+  * `VALUE` annotations are used as they are faster
+    * Forward references cause up to a 60% performance penalty on construction time
+    * This means in most cases, `STRING` annotations from `__init__` will be based on the `type_repr` of `VALUE` annotations
+  * If `VALUE` fails, `reannotate` is used to get deferred annotations that are evaluated on retrieval
+  * This means the annotations for the generated `__init__` should work as expected
+  * The `.type` attribute on `Field` or `Attribute` instances will attempt to resolve forward references
+    on retrieval.
 * There is currently no equivalent to `InitVar`
   * I'm not sure *how* I would want to implement this other than I don't _really_ want to use
     annotations to decide behaviour (this is messy enough with `ClassVar` and `KW_ONLY`).
