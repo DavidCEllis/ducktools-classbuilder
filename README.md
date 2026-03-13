@@ -78,7 +78,7 @@ class Slotted(Prefab):
         default="What do you get if you multiply six by nine?",
         doc="Life the universe and everything",
     )
-    python_path: Path("/usr/bin/python4")
+    python_path: Path = Path("/usr/bin/python4")
 
 ex = Slotted()
 print(ex)
