@@ -27,9 +27,7 @@ def get_func_annotations(func):
     :param func: function object
     :return: dictionary of annotations
     """
-    annotations = func.__annotations__
-    return annotations
-
+    return func.__annotations__
 
 # This is simplified under 3.13 or earlier
 def get_ns_annotations(ns, cls=None):
@@ -40,7 +38,7 @@ def get_ns_annotations(ns, cls=None):
         annotations = {}
     return annotations
 
-def resolve_type(obj, deferred_as_str=False):
+def resolve_type(obj, stringify_forwardrefs=False):
     return obj
 
 def apply_annotations(obj, annotations):

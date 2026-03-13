@@ -114,14 +114,38 @@ def get_ns_annotations(ns, cls=None):
     return annotations
 
 
-def resolve_type(obj, deferred_as_str=False):
+def resolve_type(obj, stringify_forwardrefs=False):
+    """
+    Resolve a DeferredAnnotation or return the original object
+
+    :param obj: object or deferred annotation
+    :param stringify_forwardrefs: return a string instead of a forwardref if
+                                  evaluation fails, defaults to False
+    :return: Evaluated reference
+    """
     if "reannotate" in sys.modules and isinstance(obj, _reannotate.DeferredAnnotation):
-        fmt = _annotationlib.Format.STRING if deferred_as_str else _annotationlib.Format.FORWARDREF
-        return obj.evaluate(format=fmt)
+        if stringify_forwardrefs:
+            try:
+                return obj.evaluate(format=_annotationlib.Format.VALUE)
+            except Exception:
+                return obj.evaluate(format=_annotationlib.Format.STRING)
+        else:
+            return obj.evaluate(format=_annotationlib.Format.FORWARDREF)
+
     return obj
 
 
 def apply_annotations(obj, annotations):
+    """
+    Apply annotations to an object
+
+    If ``reannotate`` has been imported, a new __annotate__ function will
+    be created to handle deferred annotations. Otherwise the annotations
+    will be attached to `__annotations__` as there are no forward references.
+
+    :param obj: object to annotate
+    :param annotations: annotations dictionary
+    """
     if "reannotate" in sys.modules:
         obj.__annotate__ = _reannotate.ReAnnotate(annotations)
     else:

@@ -1234,8 +1234,8 @@ def make_annotation_gatherer(
         kw_flag = False
 
         for k, v in cls_annotations.items():
-            # Resolve any DeferredAnnotation instances as strings
-            _t = resolve_type(v, deferred_as_str=True)
+            # Use strings instead of forwardrefs
+            _t = resolve_type(v, stringify_forwardrefs=False)
 
             # Ignore ClassVar
             if is_classvar(_t):
