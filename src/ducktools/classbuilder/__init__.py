@@ -45,7 +45,7 @@ except ImportError:  # pragma: nocover
         MappingProxyType as _MappingProxyType,
     )
 
-from .annotations import get_ns_annotations, is_classvar
+from .annotations import apply_annotations, get_ns_annotations, is_classvar, resolve_type
 from ._version import __version__, __version_tuple__  # noqa: F401
 
 # Change this name if you make heavy modifications
@@ -284,7 +284,7 @@ class MethodMaker:
 
         # Apply annotations
         if gen.annotations is not None:
-            method.__annotations__ = gen.annotations
+            apply_annotations(method, gen.annotations)
 
         # Replace this descriptor on the class with the generated function
         setattr(gen_cls, self.funcname, method)
@@ -987,7 +987,7 @@ class Field(metaclass=SlotMakerMeta):
     __slots__ = (
         "default",
         "default_factory",
-        "type",
+        "_type",
         "doc",
         "init",
         "repr",
@@ -1069,6 +1069,22 @@ class Field(metaclass=SlotMakerMeta):
         argument_dict = {**inst_fields, **kwargs}
 
         return cls(**argument_dict)
+
+    @property
+    def type(self):
+        return resolve_type(self._type)
+
+    @type.setter
+    def type(self, value):
+        try:
+            self._type = value
+        except TypeError:
+            # Under testing, frozen logic will prevent writing to _test
+            object.__setattr__(self, "_type", value)
+
+    @type.deleter
+    def type(self):
+        del self._type
 
 
 def _build_field():
@@ -1218,11 +1234,14 @@ def make_annotation_gatherer(
         kw_flag = False
 
         for k, v in cls_annotations.items():
+            # Resolve any DeferredAnnotation instances as strings
+            _t = resolve_type(v, deferred_as_str=True)
+
             # Ignore ClassVar
-            if is_classvar(v):
+            if is_classvar(_t):
                 continue
 
-            if v is KW_ONLY or (isinstance(v, str) and "KW_ONLY" in v):
+            if _t is KW_ONLY or (isinstance(_t, str) and _t == "KW_ONLY"):
                 if kw_flag:
                     raise SyntaxError("KW_ONLY sentinel may only appear once.")
                 kw_flag = True

@@ -1,8 +1,6 @@
-# This is no longer used but something similar may be needed for future python releases
-
 import sys
 
-if sys.version_info >= (3, 15):
+if sys.version_info >= (3, 14):
     from annotationlib import ForwardRef, type_repr
 
     class SimpleEqualToForwardRef:

@@ -40,3 +40,8 @@ def get_ns_annotations(ns, cls=None, use_forwardref=False):
         annotations = {}
     return annotations
 
+def resolve_type(obj, deferred_as_str=False):
+    return obj
+
+def apply_annotations(obj, annotations):
+    obj.__annotations__ = annotations

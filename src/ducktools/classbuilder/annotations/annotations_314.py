@@ -31,15 +31,30 @@ Hopefully in a future version of Python we will have complete, correct, performa
 so we can use a more standard format.
 """
 
-class _LazyAnnotationLib:
-    def __getattr__(self, item):
-        global _lazy_annotationlib
-        import annotationlib  # type: ignore
-        _lazy_annotationlib = annotationlib
-        return getattr(annotationlib, item)
+__lazy_modules__ = ["annotationlib", "reannotate"]
 
+import sys
 
-_lazy_annotationlib = _LazyAnnotationLib()
+if sys.version_info >= (3, 15):
+    import annotationlib as _annotationlib
+    import reannotate as _reannotate
+else:
+    class _LazyAnnotationLib:
+        def __getattr__(self, item):
+            global _annotationlib
+            import annotationlib  # type: ignore
+            _annotationlib = annotationlib
+            return getattr(annotationlib, item)
+
+    class _LazyReannotate:
+        def __getattr__(self, item):
+            global _reannotate
+            import reannotate
+            _reannotate = reannotate
+            return getattr(reannotate, item)
+
+    _annotationlib = _LazyAnnotationLib()
+    _reannotate = _LazyReannotate()
 
 
 def _get_annotate_from_class_namespace(ns):
@@ -61,12 +76,7 @@ def get_func_annotations(func, use_forwardref=False):
     try:
         raw_annotations = func.__annotations__
     except Exception:
-        fmt = (
-            _lazy_annotationlib.Format.FORWARDREF
-            if use_forwardref
-            else _lazy_annotationlib.Format.STRING
-        )
-        annotations = _lazy_annotationlib.get_annotations(func, format=fmt)
+        annotations = _reannotate.get_deferred_annotations(func)
     else:
         annotations = raw_annotations.copy()
 
@@ -94,15 +104,8 @@ def get_ns_annotations(ns, cls=None, use_forwardref=False):
             try:
                 annotations = annotate(1)  # Format.VALUE is 1
             except Exception:
-                fmt = (
-                    _lazy_annotationlib.Format.FORWARDREF
-                    if use_forwardref
-                    else _lazy_annotationlib.Format.STRING
-                )
-
-                annotations = _lazy_annotationlib.call_annotate_function(
+                annotations = _reannotate.call_annotate_deferred(
                     annotate,
-                    format=fmt,
                     owner=cls
                 )
 
@@ -110,3 +113,17 @@ def get_ns_annotations(ns, cls=None, use_forwardref=False):
         annotations = {}
 
     return annotations
+
+
+def resolve_type(obj, deferred_as_str=False):
+    if "reannotate" in sys.modules and isinstance(obj, _reannotate.DeferredAnnotation):
+        fmt = _annotationlib.Format.STRING if deferred_as_str else _annotationlib.Format.FORWARDREF
+        return obj.evaluate(format=fmt)
+    return obj
+
+
+def apply_annotations(obj, annotations):
+    if "reannotate" in sys.modules:
+        obj.__annotate__ = _reannotate.ReAnnotate(annotations)
+    else:
+        obj.__annotations__ = annotations

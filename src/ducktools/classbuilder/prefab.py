@@ -142,7 +142,8 @@ def init_generator(cls, funcname="__init__"):
             if name in post_init_annotations:
                 annotations[name] = post_init_annotations[name]
             elif attrib.type is not NOTHING:
-                annotations[name] = attrib.type
+                # Use the internal type to avoid evaluating DeferredAnnotation values
+                annotations[name] = attrib._type
 
             if attrib.default is not NOTHING:
                 if type(attrib.default) in literal_types:
