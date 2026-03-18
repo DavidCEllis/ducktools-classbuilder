@@ -1059,11 +1059,11 @@ wheels = [
 
 [[package]]
 name = "reannotate"
-version = "0.1.0"
+version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ba/29/ac66d177cc36730b326a1e79b1569ff8844e5d2ced7a9144d72327726c62/reannotate-0.1.0.tar.gz", hash = "sha256:7f97c99fdbabb2bb256cf2c96187633d5cdf0e8e206d120d2790f420f1a45349", size = 13586, upload-time = "2026-03-13T14:40:52.173Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/dd/ba85086ca64ca45e4126f0bae89fa50ab70a8938a16bc0345cd290586c54/reannotate-0.1.1.tar.gz", hash = "sha256:6df071c5a683dfc46940ab4496211c145b8f4acd0951aec6ef7bf37f75de717c", size = 14929, upload-time = "2026-03-18T17:43:12.111Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/30/a2/35004440f81258113ecd7a4bc7ac86db19a5f6ac4a1ec09bf8c69bf8b05e/reannotate-0.1.0-py3-none-any.whl", hash = "sha256:334f98a346a62215c07c5092af46a38cf34522dd0e403912954620db0b20297b", size = 11594, upload-time = "2026-03-13T14:40:50.793Z" },
+    { url = "https://files.pythonhosted.org/packages/01/8d/da54329e37b999f855b80334a1f896afc0f57fdfc862ad66d29ccf9a99a5/reannotate-0.1.1-py3-none-any.whl", hash = "sha256:b6bd2d7367c547937aa165058d4d351ec2d969cdaa1722b2851921742d147e35", size = 12599, upload-time = "2026-03-18T17:43:11.132Z" },
 ]
 
 [[package]]
