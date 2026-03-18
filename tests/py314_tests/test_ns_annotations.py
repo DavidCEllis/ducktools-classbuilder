@@ -6,7 +6,6 @@ import pathlib
 
 from typing import Annotated, ClassVar
 
-
 global_type = int
 
 
@@ -18,11 +17,14 @@ def test_bare_forwardref():
 
     annos = get_ns_annotations(Ex.__dict__)
 
-    assert annos == {
+    expected = {
         'a': "str",
         'b': "pathlib.Path",
         'c': "plain_forwardref",
     }
+
+    for k in annos.keys():
+        assert annos[k].as_str == expected[k]
 
 
 def test_inner_outer_ref():
@@ -44,9 +46,9 @@ def test_inner_outer_ref():
 
     annos = make_func()
 
-    assert annos['a_val'] == "inner_type"
-    assert annos['b_val'] == "global_type"
-    assert annos['c_val'] == "hyper_type"
+    assert annos['a_val'].as_str == "inner_type"
+    assert annos['b_val'].as_str == "global_type"
+    assert annos['c_val'].as_str == "hyper_type"
 
 
 def test_inner_outer_ref_resolved():
@@ -78,10 +80,12 @@ def test_func_annotations():
         return ''
 
     annos = get_func_annotations(forwardref_func)
-    assert annos == {
+    expected = {
         'x': "unknown",
         'return': "str",
     }
+    assert annos['x'].as_str == "unknown"
+    assert annos['return'].as_str == "str"
 
 
 def test_ns_annotations():

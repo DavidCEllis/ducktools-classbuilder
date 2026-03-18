@@ -24,20 +24,26 @@ import sys
 
 if sys.version_info >= (3, 14):
     from .annotations_314 import (
+        apply_annotations,
         get_func_annotations,
         get_ns_annotations,
+        resolve_type,
     )
 else:
     from .annotations_pre_314 import (
+        apply_annotations,
         get_func_annotations,
         get_ns_annotations,
+        resolve_type,
     )
 
 
 __all__ = [
+    "apply_annotations",
     "get_func_annotations",
     "get_ns_annotations",
     "is_classvar",
+    "resolve_type",
 ]
 
 

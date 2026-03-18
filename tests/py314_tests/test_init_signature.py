@@ -1,9 +1,10 @@
-from annotationlib import get_annotations, Format
+from annotationlib import get_annotations, Format, ForwardRef
 
 import pytest
 
-
 from ducktools.classbuilder.prefab import Prefab, prefab
+
+from _type_support import SimpleEqualToForwardRef
 
 
 # Aliases for alias test
@@ -41,8 +42,8 @@ def test_resolvable_annotations(format, expected):
 @pytest.mark.parametrize(
     ["format", "expected"],
     [
-        (Format.VALUE, {"return": None, "x": "str", "y": "late_definition"}),
-        (Format.FORWARDREF, {"return": None, "x": "str", "y": "late_definition"}),
+        (Format.VALUE, {"return": None, "x": str, "y": int}),
+        (Format.FORWARDREF, {"return": None, "x": str, "y": int}),
         (Format.STRING, {"return": "None", "x": "str", "y": "late_definition"}),
     ]
 )
@@ -63,8 +64,8 @@ def test_late_defined_annotations(format, expected):
 @pytest.mark.parametrize(
     ["format", "expected"],
     [
-        (Format.VALUE, {"return": None, "x": 'str', "y": 'list[late_definition]'}),
-        (Format.FORWARDREF, {"return": None, "x": 'str', "y": 'list[late_definition]'}),
+        (Format.VALUE, {"return": None, "x": str, "y": list[int]}),
+        (Format.FORWARDREF, {"return": None, "x": str, "y": list[int]}),
         (Format.STRING, {"return": "None", "x": "str", "y": "list[late_definition]"}),
     ]
 )
@@ -106,7 +107,7 @@ def test_alias_defined_annotations(format, expected):
 @pytest.mark.parametrize(
     ["format", "expected"],
     [
-        (Format.FORWARDREF, {"return": None, "x": "str", "y": "undefined"}),
+        (Format.FORWARDREF, {"return": None, "x": str, "y": "undefined"}),
         (Format.STRING, {"return": "None", "x": "str", "y": "undefined"}),
     ]
 )
@@ -118,7 +119,12 @@ def test_forwardref_annotation(format, expected):
 
     annos = get_annotations(Example.__init__, format=format)
 
-    assert annos == expected
+    for k in annos.keys():
+        actual, exp = annos[k], expected[k]
+        if isinstance(actual, ForwardRef):
+            assert actual.__forward_arg__ == exp
+        else:
+            assert actual == exp
 
 
 def test_contained_string_annotation():
@@ -130,16 +136,15 @@ def test_contained_string_annotation():
     assert annos == {"return": "None", "x": "list[undefined]"}
 
 
-def test_forwardref_string_converted():
-    # Does not raise an error with value annotations as the result has been converted to a string
+def test_forwardref_exception_raised():
+    # Raises an exception correctly as undefined is still undefined
     @prefab
     class Example:
         x: str
         y: undefined
 
-    annos = get_annotations(Example.__init__, format=Format.VALUE)
-
-    assert annos == {"return": None, 'x': "str", 'y': "undefined"}
+    with pytest.raises(NameError):
+        annos = get_annotations(Example.__init__, format=Format.VALUE)
 
 
 def test_with_post_init():
@@ -148,17 +153,22 @@ def test_with_post_init():
         x: str
         y: list[undefined]
 
-        def __prefab_post_init__(self, y: list[undefined] | None) -> None:
+        def __prefab_post_init__(self, y: list[also_undefined]) -> None:
             ...
 
-    annos_value = get_annotations(Example.__init__, format=Format.VALUE)
+    # VALUE annotations correctly raise
+    with pytest.raises(NameError):
+        get_annotations(Example.__init__, format=Format.VALUE)
 
+    # FORWARDREF work as expected
     annos = get_annotations(Example.__init__, format=Format.FORWARDREF)
 
-    assert annos_value == annos
+    undef = SimpleEqualToForwardRef("also_undefined")
 
-    assert annos == {
-        "x": "str",
-        "y": "list[undefined] | None",
-        "return": None,
+    expected = {
+        "x": str,
+        "y": list[undef],
+        "return": None
     }
+
+    assert annos == expected
