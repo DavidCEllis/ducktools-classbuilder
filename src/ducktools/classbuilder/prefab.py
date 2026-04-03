@@ -25,6 +25,12 @@ A 'prebuilt' implementation of class generation.
 
 Includes pre and post init functions along with other methods.
 """
+__lazy_modules__ = [
+    "ducktools.classbuilder.annotations",
+]
+
+import sys
+
 try:
     from _types import NoneType  # type: ignore
 except ImportError:
@@ -591,11 +597,15 @@ def _prefab_post_process(cls, /, *, fields, kw_only):
                 else:
                     if default_defined:
                         names = ", ".join(default_defined)
-                        raise SyntaxError(
-                            "non-default argument follows default argument",
-                            f"defaults: {names}",
-                            f"non_default after default: {name}",
+
+                        err = SyntaxError(
+                            "non-default argument follows default argument"
                         )
+                        if sys.version_info >= (3, 11):
+                            err.add_note(f"defaults: {names}")
+                            err.add_note(f"non_default after default: {name}")
+
+                        raise err
 
 
 def _make_prefab(

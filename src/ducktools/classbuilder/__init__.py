@@ -30,6 +30,11 @@
 # but is also the metaclass used to construct 'Field'.
 # Field itself sidesteps this by defining __slots__ to avoid that branch.
 
+__lazy_modules__ = [
+    "ducktools.classbuilder.annotations",
+    "ducktools.classbuilder._version",
+]
+
 import os
 import sys
 
