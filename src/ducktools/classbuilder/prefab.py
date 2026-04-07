@@ -65,6 +65,12 @@ PRE_INIT_FUNC = "__prefab_pre_init__"
 POST_INIT_FUNC = "__prefab_post_init__"
 
 
+# Some types can be represented as literals in generated source code
+# along with empty containers for factories
+LITERAL_TYPES = frozenset({str, bytes, int, float, complex, bool, NoneType})
+LITERAL_CONTAINERS = frozenset({dict, list, tuple})
+
+
 class PrefabError(Exception):
     pass
 
@@ -132,14 +138,6 @@ def init_generator(cls, funcname="__init__"):
             if extra_funcname == POST_INIT_FUNC:
                 post_init_annotations |= get_func_annotations(func)
 
-    # These types can be represented literally without their names
-    # Types that can contain things other than themselves are *not* included
-    literal_types = {str, bytes, int, float, complex, bool, NoneType}
-
-    # Mutable empty containers that can be represented as literals
-    #
-    literal_containers = {list, dict}
-
     pos_arglist = []
     kw_only_arglist = []
     for name, attrib in attributes.items():
@@ -152,7 +150,7 @@ def init_generator(cls, funcname="__init__"):
                 annotations[name] = attrib._type
 
             if attrib.default is not NOTHING:
-                if type(attrib.default) in literal_types:
+                if type(attrib.default) in LITERAL_TYPES:
                     # Just use the literal in these cases
                     arg = f"{name}={attrib.default!r}"
                 else:
@@ -165,7 +163,7 @@ def init_generator(cls, funcname="__init__"):
                 # Use NONE here and call the factory later
                 # This matches the behaviour of compiled
                 arg = f"{name}=None"
-                if attrib.default_factory not in literal_containers:
+                if attrib.default_factory not in LITERAL_CONTAINERS:
                     globs[f"_{name}_factory"] = attrib.default_factory
             else:
                 arg = name
@@ -176,10 +174,10 @@ def init_generator(cls, funcname="__init__"):
         # Not in init, but need to set defaults
         else:
             if attrib.default is not NOTHING:
-                if type(attrib.default) not in literal_types:
+                if type(attrib.default) not in LITERAL_TYPES:
                     globs[f"_{name}_default"] = attrib.default
             elif attrib.default_factory is not NOTHING:
-                if attrib.default_factory not in literal_containers:
+                if attrib.default_factory not in LITERAL_CONTAINERS:
                     globs[f"_{name}_factory"] = attrib.default_factory
 
     pos_args = ", ".join(pos_arglist)
@@ -196,7 +194,7 @@ def init_generator(cls, funcname="__init__"):
     for name, attrib in attributes.items():
         if attrib.init:
             if attrib.default_factory is not NOTHING:
-                if attrib.default_factory in literal_containers:
+                if attrib.default_factory in LITERAL_CONTAINERS:
                     value = f"{name} if {name} is not None else {attrib.default_factory()!r}"
                 else:
                     value = f"{name} if {name} is not None else _{name}_factory()"
@@ -204,12 +202,12 @@ def init_generator(cls, funcname="__init__"):
                 value = name
         else:
             if attrib.default_factory is not NOTHING:
-                if attrib.default_factory in literal_containers:
+                if attrib.default_factory in LITERAL_CONTAINERS:
                     value = f"{attrib.default_factory()!r}"
                 else:
                     value = f"_{name}_factory()"
             elif attrib.default is not NOTHING:
-                if type(attrib.default) in literal_types:
+                if type(attrib.default) in LITERAL_TYPES:
                     value = f"{attrib.default!r}"
                 else:
                     value = f"_{name}_default"
