@@ -527,63 +527,36 @@ def _prefab_preprocess(
 def _prefab_post_process(cls, /, *, fields, kw_only):
     # Processor to do post-construction checks
     # Error check: Check that the arguments to pre/post init are valid fields
-    try:
-        func = getattr(cls, PRE_INIT_FUNC)
-        func_code = func.__code__
-    except AttributeError:
-        pass
-    else:
-        if func_code.co_posonlyargcount > 0:
-            raise PrefabError(
-                "Positional only arguments are not supported in pre or post init functions."
-            )
-
-        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
-
-        # Include the first argument if the method is static
-        is_static = type(cls.__dict__.get(PRE_INIT_FUNC)) is staticmethod
-
-        arglist = (
-            func_code.co_varnames[:argcount]
-            if is_static
-            else func_code.co_varnames[1:argcount]
-        )
-
-        for item in arglist:
-            if item not in fields.keys():
+    for func_name in (PRE_INIT_FUNC, POST_INIT_FUNC):
+        try:
+            func = getattr(cls, func_name)
+            func_code = func.__code__
+        except AttributeError:
+            pass
+        else:
+            if func_code.co_posonlyargcount > 0:
                 raise PrefabError(
-                    f"{item} argument in {PRE_INIT_FUNC} is not a valid attribute."
+                    f"Positional only arguments are not supported in {func_name} functions."
                 )
 
-    try:
-        func = getattr(cls, POST_INIT_FUNC)
-        func_code = func.__code__
-    except AttributeError:
-        pass
-    else:
-        if func_code.co_posonlyargcount > 0:
-            raise PrefabError(
-                "Positional only arguments are not supported in pre or post init functions."
+            argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+
+            # Include the first argument if the method is static
+            is_static = type(cls.__dict__.get(func_name)) is staticmethod
+
+            arglist = (
+                func_code.co_varnames[:argcount]
+                if is_static
+                else func_code.co_varnames[1:argcount]
             )
 
-        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+            for item in arglist:
+                if item not in fields.keys():
+                    raise PrefabError(
+                        f"{item} argument in {func_name} is not a valid attribute."
+                    )
 
-        # Include the first argument if the method is static
-        is_static = type(cls.__dict__.get(POST_INIT_FUNC)) is staticmethod
-
-        arglist = (
-            func_code.co_varnames[:argcount]
-            if is_static
-            else func_code.co_varnames[1:argcount]
-        )
-
-        for item in arglist:
-            if item not in fields.keys():
-                raise PrefabError(
-                    f"{item} argument in {POST_INIT_FUNC} is not a valid attribute."
-                )
-
-    default_defined = []
+    default_defined = []  # Use a list instead of a set to keep the order
 
     # Error check: After inheritance,
     for name, attrib in fields.items():
