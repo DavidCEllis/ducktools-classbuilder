@@ -1,6 +1,10 @@
-from ducktools.classbuilder.annotations import replace_generic_with_arg, get_func_annotations
+from ducktools.classbuilder.annotations import replace_generic_with_arg, get_func_annotations, resolve_type
 from ducktools.classbuilder.prefab import InitVar
+
+from annotationlib import ForwardRef
 from typing import Annotated
+
+from reannotate import DeferredAnnotation
 
 
 class TestGenericStrip:
@@ -94,3 +98,25 @@ class TestGenericStrip:
         new_generic = replace_generic_with_arg(a_anno)
         assert new_generic == "list[str]"
 
+
+class TestResolveType:
+    def resolve_type_ref(self):
+        def f(a: int, b: undefined): ...
+
+        annos = get_func_annotations(f)
+
+        assert resolve_type(annos['a']) is int
+
+        b_fr = resolve_type(annos['b'])
+        assert isinstance(b_fr, ForwardRef)
+        assert b_fr.__arg__ == "undefined"
+
+    def resolve_type_str(self):
+        def f(a: int, b: undefined): ...
+
+        annos = get_func_annotations(f)
+
+        assert resolve_type(annos['a'], stringify_forwardrefs=True) is int
+
+        b_fr = resolve_type(annos['b'], stringify_forwardrefs=True)
+        assert b_fr == "undefined"
