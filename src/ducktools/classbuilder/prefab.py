@@ -54,7 +54,7 @@ from . import (
     build_completed,
 )
 
-from .annotations import get_func_annotations
+from .annotations import get_func_annotations, is_type, replace_generic_with_arg
 
 # These aren't used but are re-exported for ease of use
 from . import SlotFields as SlotFields, KW_ONLY as KW_ONLY
@@ -72,6 +72,10 @@ LITERAL_CONTAINERS = frozenset({dict, list, tuple})
 
 
 class PrefabError(Exception):
+    pass
+
+
+class InitVar[T]:
     pass
 
 
@@ -110,6 +114,8 @@ def init_generator(cls, funcname="__init__"):
     # Get pre and post init arguments
     pre_init_args = []
     post_init_args = []
+    initvar_names = []
+    initvar_defaults = {}
     post_init_annotations = {}
 
     for extra_funcname, func_arglist in [
@@ -122,21 +128,49 @@ def init_generator(cls, funcname="__init__"):
         except AttributeError:
             pass
         else:
-            argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+            poscount = func_code.co_argcount
+            kwonlycount = func_code.co_kwonlyargcount
+            argcount = poscount + kwonlycount
 
             # Identify if method is static, if so include first arg, otherwise skip
             is_static = type(cls.__dict__.get(extra_funcname)) is staticmethod
 
-            arglist = (
-                func_code.co_varnames[:argcount]
-                if is_static
-                else func_code.co_varnames[1:argcount]
-            )
+            varnames = func_code.co_varnames
+
+            arglist = varnames[:argcount] if is_static else varnames[1:argcount]
 
             func_arglist.extend(arglist)
 
             if extra_funcname == POST_INIT_FUNC:
-                post_init_annotations |= get_func_annotations(func)
+                # Handle default values for InitVars
+                pos_defaults = func.__defaults__
+                kw_defaults = func.__kwdefaults__
+
+                if pos_defaults:
+                    post_start = len(varnames) - kwonlycount - len(pos_defaults)
+
+                    arg_defaults = {
+                        k: v for k, v in zip(varnames[post_start:], pos_defaults)
+                    }
+                else:
+                    arg_defaults = {}
+
+                if kw_defaults:
+                    arg_defaults |= kw_defaults
+
+                annos = {}
+                for k, v in get_func_annotations(func).items():
+                    if is_type(v, InitVar):
+                        initvar_names.append(k)
+                        annos[k] = replace_generic_with_arg(v)
+                        # Use try/except for defaults as None is valid
+                        try:
+                            initvar_defaults[k] = arg_defaults[k]
+                        except KeyError:
+                            pass
+                    else:
+                        annos[k] = v
+                post_init_annotations |= annos
 
     pos_arglist = []
     kw_only_arglist = []
@@ -179,6 +213,25 @@ def init_generator(cls, funcname="__init__"):
             elif attrib.default_factory is not NOTHING:
                 if attrib.default_factory not in LITERAL_CONTAINERS:
                     globs[f"_{name}_factory"] = attrib.default_factory
+
+    # Add any post init args to kw_only list
+    for name in initvar_names:
+        try:
+            iv_default = initvar_defaults[name]
+        except KeyError:
+            arg = name
+        else:
+            globs[f"_{name}_initvar_default"] = iv_default
+            arg = f"{name}=_{name}_initvar_default"
+
+        try:
+            anno = post_init_annotations[name]
+        except KeyError:
+            pass
+        else:
+            annotations[name] = anno
+
+        kw_only_arglist.append(arg)
 
     pos_args = ", ".join(pos_arglist)
     kw_args = ", ".join(kw_only_arglist)
@@ -550,11 +603,26 @@ def _prefab_post_process(cls, /, *, fields, kw_only):
                 else func_code.co_varnames[1:argcount]
             )
 
+            annotations = get_func_annotations(func)
+            initvars = {
+                name for name, anno in annotations.items()
+                if is_type(anno, InitVar)
+            }
+
+            fieldnames = fields.keys()
+
+            if not initvars.isdisjoint(fieldnames):
+                names = ", ".join(initvars & fieldnames)
+                raise PrefabError(
+                    f"Fields can not also be InitVars: \"{names}\""
+                )
+
             for item in arglist:
-                if item not in fields.keys():
+                if item not in fieldnames and item not in initvars:
                     raise PrefabError(
-                        f"{item} argument in {func_name} is not a valid attribute."
+                        f"{item} argument in {func_name} is not a valid attribute or InitVar."
                     )
+
 
     default_defined = []  # Use a list instead of a set to keep the order
 

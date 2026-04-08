@@ -1,4 +1,5 @@
 """Tests for the behaviour of __init__"""
+import inspect
 
 from pathlib import Path
 from typing import Union
@@ -6,7 +7,7 @@ from typing import Union
 import pytest
 
 from ducktools.classbuilder import get_generated_code
-from ducktools.classbuilder.prefab import prefab, attribute
+from ducktools.classbuilder.prefab import prefab, attribute, InitVar, PrefabError
 
 
 # Classes for tests
@@ -257,22 +258,16 @@ def test_empty_containers_factory_default():
 
 
 def test_signature():
-    import inspect
-
     init_sig = inspect.signature(TypeSignatureInit.__init__)
     assert str(init_sig) == "(self, x: int, y: str = 'Test') -> None"
 
 
 def test_partial_signature():
-    import inspect
-
     init_sig = inspect.signature(UnannotatedInit.__init__)
     assert str(init_sig) == "(self, x, y='Test')"
 
 
 def test_inherited_signature():
-    import inspect
-
     @prefab
     class Base:
         x: int
@@ -313,3 +308,43 @@ def test_factory_globals():
     globs = get_generated_code(EmptySubclass)["__init__"].globs
 
     assert globs == {"_x_factory": SubList}
+
+
+class TestInitVar:
+    def test_initvar_basic(self):
+        @prefab
+        class Multiplier:
+            x: int
+            def __prefab_post_init__(self, x: int, y: InitVar[int]) -> None:
+                self.x = x * y
+
+        init_annos = Multiplier.__init__.__annotations__
+
+        assert init_annos['x'] is int
+        assert init_annos['y'] is int
+
+        mp = Multiplier(2, y=4)
+        assert mp.x == 8
+
+        sig = inspect.signature(Multiplier)
+
+        # InitVar values are always KW Only
+        assert str(sig) == "(x: int, *, y: int) -> None"
+
+    def test_non_initvar_fails(self):
+        with pytest.raises(PrefabError):
+            @prefab
+            class Multiplier:
+                x: int
+                def __prefab_post_init__(self, x: int, y: int) -> None:
+                    self.x = x * y
+
+    def test_initvars_kwonly(self):
+        @prefab
+        class Example:
+            def __prefab_post_init__(self, *, x: InitVar[str]): ...
+
+        sig = inspect.signature(Example)
+
+        # InitVar values are always KW Only
+        assert str(sig) == "(*, x: str) -> None"

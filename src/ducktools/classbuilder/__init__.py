@@ -1239,7 +1239,6 @@ def make_annotation_gatherer(
         kw_flag = False
 
         for k, v in cls_annotations.items():
-            # Use strings instead of forwardrefs
             _t = resolve_type(v, stringify_forwardrefs=False)
 
             # Ignore ClassVar
