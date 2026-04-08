@@ -100,7 +100,7 @@ class TestGenericStrip:
 
 
 class TestResolveType:
-    def resolve_type_ref(self):
+    def test_resolve_type_ref(self):
         def f(a: int, b: undefined): ...
 
         annos = get_func_annotations(f)
@@ -111,7 +111,7 @@ class TestResolveType:
         assert isinstance(b_fr, ForwardRef)
         assert b_fr.__arg__ == "undefined"
 
-    def resolve_type_str(self):
+    def test_resolve_type_str(self):
         def f(a: int, b: undefined): ...
 
         annos = get_func_annotations(f)
