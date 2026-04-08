@@ -6,6 +6,7 @@ from typing import Annotated, ClassVar
 from ducktools.classbuilder.annotations import (
     get_ns_annotations,
     is_classvar,
+    is_type,
 )
 
 
@@ -57,3 +58,17 @@ def test_is_classvar():
 
     assert not is_classvar(str)
     assert not is_classvar(Annotated[str, ''])
+
+
+def test_is_type():
+    assert is_type(list, list)
+    assert is_type(list[str], list)
+    assert is_type(list['ref'], list)
+
+    assert is_type(str, str)
+    assert is_type("str", str)
+
+    assert is_type("list[str]", list)
+
+    assert is_type(Annotated[list[str], ''], list)
+    assert is_type("Annotated[list[str], '']", list)

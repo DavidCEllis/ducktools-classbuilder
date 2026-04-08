@@ -1,4 +1,7 @@
+import sys
+
 from annotationlib import get_annotations, Format, ForwardRef
+from unittest.mock import patch
 
 import pytest
 
@@ -172,3 +175,17 @@ def test_with_post_init():
     }
 
     assert annos == expected
+
+
+def test_direct_annotations():
+    modules = sys.modules.copy()
+    modules.pop("reannotate")
+
+    with patch("sys.modules", modules):
+        @prefab
+        class ExampleWithAnnotations:
+            a: int
+            b: str
+
+        annos = ExampleWithAnnotations.__init__.__annotations__
+    assert annos == {"a": int, "b": str, "return": None}

@@ -98,6 +98,36 @@ class TestGenericStrip:
         new_generic = replace_generic_with_arg(a_anno)
         assert new_generic == "list[str]"
 
+    def test_no_generic(self):
+        def f(a: str): ...
+
+        annos = get_func_annotations(f)
+        a_anno = annos['a']
+
+        new_generic = replace_generic_with_arg(a_anno)
+
+        assert new_generic is str
+
+    def test_no_generic_fr(self):
+        def f(a: str, b: undefined): ...
+
+        annos = get_func_annotations(f)
+        a_anno = annos['a']
+
+        new_generic = replace_generic_with_arg(a_anno)
+
+        assert new_generic.evaluate() is str
+
+    def test_no_generic_str(self):
+        def f(a: "str"): ...
+
+        annos = get_func_annotations(f)
+        a_anno = annos['a']
+
+        new_generic = replace_generic_with_arg(a_anno)
+
+        assert new_generic == "str"
+
 
 class TestResolveType:
     def test_resolve_type_ref(self):
