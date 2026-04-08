@@ -352,7 +352,7 @@ class TestInitVar:
     def test_initvar_defaults(self):
         @prefab
         class Example:
-            t: tuple[str, int, float] = ()
+            t: tuple[str, int, float] | None = None
 
             def __prefab_post_init__(
                 self,
