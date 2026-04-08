@@ -348,3 +348,25 @@ class TestInitVar:
 
         # InitVar values are always KW Only
         assert str(sig) == "(*, x: str) -> None"
+
+    def test_initvar_defaults(self):
+        @prefab
+        class Example:
+            t: tuple[str, int, float] = ()
+
+            def __prefab_post_init__(
+                self,
+                t,
+                x: InitVar[str],
+                y: InitVar[int] = 42,
+                *,
+                z: InitVar[float] = 3.14
+            ):
+                if not t:
+                    self.t = (x, y, z)
+                else:
+                    self.t = t
+
+        ex = Example(x="a")
+
+        assert ex.t == ("a", 42, 3.14)
