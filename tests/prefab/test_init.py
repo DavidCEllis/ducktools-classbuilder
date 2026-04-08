@@ -358,9 +358,9 @@ class TestInitVar:
                 self,
                 t,
                 x: InitVar[str],
-                y: InitVar[int] = 42,
+                y: InitVar[int] = InitVar(42),
                 *,
-                z: InitVar[float] = 3.14
+                z: InitVar[float] = InitVar(3.14)
             ):
                 if not t:
                     self.t = (x, y, z)

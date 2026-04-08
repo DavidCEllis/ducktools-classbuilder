@@ -76,7 +76,9 @@ class PrefabError(Exception):
 
 
 class InitVar[T]:
-    pass
+    def __new__(cls, arg):
+        # This lets you wrap arguments in InitVar
+        return arg
 
 
 def get_attributes(cls, *, local=False):
