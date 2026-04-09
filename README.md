@@ -262,10 +262,48 @@ def __init__(self, app_name, app_path):
     self.__prefab_post_init__(app_path=app_path)
 ```
 
+The generated `__init__` function will always pass arguments to `__prefab_post_init__` by
+keyword. As such, positional only arguments are *not* supported in `__prefab_post_init__`.
+
 Note: annotations are attached as `__annotations__` or `__annotate__` and so do not appear
 in generated source code.
 
 </details>
+
+#### InitVar in post init
+
+This `__prefab_post_init__` is also how `InitVar` is supported in prefabs.
+
+The exact workings of this are still subject to change.
+
+**Unlike `dataclasses` these are **not** declared as class annotations**. Instead the
+`InitVar[T]` annotations are used directly on the `__prefab_post_init__` function declaration.
+Default values are taken from the default value in the `__prefab_post_init__` function.
+
+Unlike `dataclasses`, init only variables declared in this way are *always* keyword only in the
+actual `__init__` function.
+
+```python
+import inspect
+from ducktools.classbuilder.prefab import prefab, InitVar
+
+@prefab
+class Example:
+    a: int = 6
+    def __prefab_post_init__(self, a, multiplier: InitVar[int] = 7):
+        self.a = a * multiplier
+
+print(inspect.signature(Example))
+print(Example())
+```
+
+Output:
+```python
+(a: int = 6, *, multiplier: int = 7) -> None
+Example(a=42)
+```
+
+Note that the type of the InitVar has been unwrapped for the annotation at runtime.
 
 ### Other Differences ###
 
@@ -322,9 +360,6 @@ There are also some intentionally missing features:
   * This means the annotations for the generated `__init__` should work as expected
   * The `.type` attribute on `Field` or `Attribute` instances will attempt to resolve forward references
     on retrieval.
-* There is currently no equivalent to `InitVar`
-  * I'm not sure *how* I would want to implement this other than I don't _really_ want to use
-    annotations to decide behaviour (this is messy enough with `ClassVar` and `KW_ONLY`).
 
 ## Core ##
 
