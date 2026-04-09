@@ -3,6 +3,7 @@ import types
 import typing
 import typing_extensions
 
+__lazy_modules__: list[str]
 
 from collections.abc import Callable
 from types import MappingProxyType

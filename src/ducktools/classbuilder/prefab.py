@@ -32,9 +32,9 @@ __lazy_modules__ = [
 import sys
 
 try:
-    from _types import NoneType  # type: ignore
+    from _types import GenericAlias, NoneType  # type: ignore
 except ImportError:
-    from types import NoneType
+    from types import GenericAlias, NoneType
 
 from . import (
     NOTHING, FIELD_NOTHING,
@@ -75,10 +75,15 @@ class PrefabError(Exception):
     pass
 
 
-class InitVar[T]:
+class InitVar:
     def __new__(cls, arg):
-        # This lets you wrap arguments in InitVar
+        # arguments can be wrapped in InitVar
         return arg
+
+    def __class_getitem__(cls, t):
+        if isinstance(t, tuple):
+            return GenericAlias(cls, t)
+        return GenericAlias(cls, (t,))
 
 
 def get_attributes(cls, *, local=False):

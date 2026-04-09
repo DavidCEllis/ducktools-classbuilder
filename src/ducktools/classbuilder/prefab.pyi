@@ -1,7 +1,8 @@
 import typing
-from types import MappingProxyType
+from types import GenericAlias, MappingProxyType
 from typing_extensions import dataclass_transform
 
+__lazy_modules__: list[str]
 
 # Suppress weird pylance error
 from collections.abc import Callable  # type: ignore
@@ -20,16 +21,23 @@ from . import SlotFields as SlotFields, KW_ONLY as KW_ONLY
 # noinspection PyUnresolvedReferences
 from . import _NothingType
 
+_T = typing.TypeVar("_T")
+
 PREFAB_FIELDS: str
 PREFAB_INIT_FUNC: str
 PRE_INIT_FUNC: str
 POST_INIT_FUNC: str
 
+LITERAL_TYPES: frozenset[type]
+LITERAL_CONTAINERS: frozenset[type]
+
 _CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
 
 class PrefabError(Exception): ...
 
-class InitVar[T](typing.Any): ...
+class InitVar(typing.Any):
+    def __class_getitem__(cls, t: _T) -> GenericAlias: ...
+    def __new__(cls, arg: _T) -> _T: ...  # type: ignore
 
 def get_attributes(cls: type, *, local: bool = ...) -> dict[str, Attribute]: ...
 
@@ -147,8 +155,6 @@ def _make_prefab(
     gathered_fields: Callable[[type], tuple[dict[str, Attribute], dict[str, typing.Any]]] | None = ...,
     ignore_annotations: bool = ...,
 ) -> type: ...
-
-_T = typing.TypeVar("_T")
 
 # noinspection PyUnresolvedReferences
 @dataclass_transform(field_specifiers=(Attribute, attribute))
