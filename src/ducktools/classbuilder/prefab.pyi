@@ -35,7 +35,7 @@ _CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
 
 class PrefabError(Exception): ...
 
-class InitVar(typing.Any):
+class InitParam(typing.Any):
     def __class_getitem__(cls, t: _T) -> GenericAlias: ...
     def __new__(cls, arg: _T) -> _T: ...  # type: ignore
 

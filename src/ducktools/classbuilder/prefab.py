@@ -75,9 +75,9 @@ class PrefabError(Exception):
     pass
 
 
-class InitVar:
+class InitParam:
     def __new__(cls, arg):
-        # arguments can be wrapped in InitVar
+        # arguments can be wrapped in InitParam
         return arg
 
     def __class_getitem__(cls, t):
@@ -121,8 +121,8 @@ def init_generator(cls, funcname="__init__"):
     # Get pre and post init arguments
     pre_init_args = []
     post_init_args = []
-    initvar_names = []
-    initvar_defaults = {}
+    initparam_names = []
+    initparam_defaults = {}
     post_init_annotations = {}
 
     for extra_funcname, func_arglist in [
@@ -149,7 +149,7 @@ def init_generator(cls, funcname="__init__"):
             func_arglist.extend(arglist)
 
             if extra_funcname == POST_INIT_FUNC:
-                # Handle default values for InitVars
+                # Handle default values for InitParams
                 pos_defaults = func.__defaults__
                 kw_defaults = func.__kwdefaults__
 
@@ -167,12 +167,12 @@ def init_generator(cls, funcname="__init__"):
 
                 annos = {}
                 for k, v in get_func_annotations(func).items():
-                    if is_type(v, InitVar):
-                        initvar_names.append(k)
+                    if is_type(v, InitParam):
+                        initparam_names.append(k)
                         annos[k] = replace_generic_with_arg(v)
                         # Use try/except for defaults as None is valid
                         try:
-                            initvar_defaults[k] = arg_defaults[k]
+                            initparam_defaults[k] = arg_defaults[k]
                         except KeyError:
                             pass
                     else:
@@ -222,14 +222,14 @@ def init_generator(cls, funcname="__init__"):
                     globs[f"_{name}_factory"] = attrib.default_factory
 
     # Add any post init args to kw_only list
-    for name in initvar_names:
+    for name in initparam_names:
         try:
-            iv_default = initvar_defaults[name]
+            param_default = initparam_defaults[name]
         except KeyError:
             arg = name
         else:
-            globs[f"_{name}_initvar_default"] = iv_default
-            arg = f"{name}=_{name}_initvar_default"
+            globs[f"_{name}_initparam_default"] = param_default
+            arg = f"{name}=_{name}_initparam_default"
 
         try:
             anno = post_init_annotations[name]
@@ -611,23 +611,23 @@ def _prefab_post_process(cls, /, *, fields, kw_only):
             )
 
             annotations = get_func_annotations(func)
-            initvars = {
+            initparams = {
                 name for name, anno in annotations.items()
-                if is_type(anno, InitVar)
+                if is_type(anno, InitParam)
             }
 
             fieldnames = fields.keys()
 
-            if not initvars.isdisjoint(fieldnames):
-                names = ", ".join(initvars & fieldnames)
+            if not initparams.isdisjoint(fieldnames):
+                names = ", ".join(initparams & fieldnames)
                 raise PrefabError(
-                    f"Fields can not also be InitVars: \"{names}\""
+                    f"Fields can not also be InitParams: \"{names}\""
                 )
 
             for item in arglist:
-                if item not in fieldnames and item not in initvars:
+                if item not in fieldnames and item not in initparams:
                     raise PrefabError(
-                        f"{item} argument in {func_name} is not a valid attribute or InitVar."
+                        f"{item} argument in {func_name} is not a valid attribute or InitParam"
                     )
 
 

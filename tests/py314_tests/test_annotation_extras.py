@@ -1,5 +1,5 @@
 from ducktools.classbuilder.annotations import replace_generic_with_arg, get_func_annotations, resolve_type
-from ducktools.classbuilder.prefab import InitVar
+from ducktools.classbuilder.prefab import InitParam
 
 from annotationlib import ForwardRef
 from typing import Annotated
@@ -9,7 +9,7 @@ from reannotate import DeferredAnnotation
 
 class TestGenericStrip:
     def test_basic_generic(self):
-        def f(a: InitVar[str]): ...
+        def f(a: InitParam[str]): ...
 
         annos = get_func_annotations(f)
         a_anno = annos['a']
@@ -20,7 +20,7 @@ class TestGenericStrip:
 
     def test_basic_deferred(self):
         # Add a forwardref to force the use of DeferredAnnotations
-        def f(a: InitVar[str], b: undefined): ...
+        def f(a: InitParam[str], b: undefined): ...
 
         annos = get_func_annotations(f)
         a_anno = annos['a']
@@ -31,7 +31,7 @@ class TestGenericStrip:
 
     def test_basic_str(self):
         # Use strings
-        def f(a: "InitVar[str]"): ...
+        def f(a: "InitParam[str]"): ...
 
         annos = get_func_annotations(f)
         a_anno = annos['a']
@@ -41,7 +41,7 @@ class TestGenericStrip:
         assert new_generic == "str"
 
     def test_layered_generic(self):
-        def f(a: InitVar[list[str]]): ...
+        def f(a: InitParam[list[str]]): ...
 
         annos = get_func_annotations(f)
         a_anno = annos['a']
@@ -52,7 +52,7 @@ class TestGenericStrip:
 
 
     def test_layered_deferred(self):
-        def f(a: InitVar[list[str]], b: undefined): ...
+        def f(a: InitParam[list[str]], b: undefined): ...
 
         annos = get_func_annotations(f)
         a_anno = annos['a']
@@ -62,7 +62,7 @@ class TestGenericStrip:
         assert new_generic.evaluate() == list[str]
 
     def test_layered_string(self):
-        def f(a: "InitVar[list[str]]"): ...
+        def f(a: "InitParam[list[str]]"): ...
 
         annos = get_func_annotations(f)
         a_anno = annos['a']

@@ -270,14 +270,15 @@ in generated source code.
 
 </details>
 
-#### InitVar in post init
+#### InitParam in post init
 
-This `__prefab_post_init__` is also how `InitVar` is supported in prefabs.
+This `__prefab_post_init__` is also how adding extra arguments to `__init__` is supported in
+prefabs.
 
-The exact workings of this are still subject to change.
+These are the equivalent to `InitVar` in dataclasses.
 
 **Unlike `dataclasses` these are **not** declared as class annotations**. Instead the
-`InitVar[T]` annotations are used directly on the `__prefab_post_init__` function declaration.
+`InitParam[T]` annotations are used directly on the `__prefab_post_init__` function declaration.
 Default values are taken from the default value in the `__prefab_post_init__` function.
 
 Unlike `dataclasses`, init only variables declared in this way are *always* keyword only in the
@@ -285,12 +286,12 @@ actual `__init__` function.
 
 ```python
 import inspect
-from ducktools.classbuilder.prefab import prefab, InitVar
+from ducktools.classbuilder.prefab import prefab, InitParam
 
 @prefab
 class Example:
     a: int = 6
-    def __prefab_post_init__(self, a, multiplier: InitVar[int] = 7):
+    def __prefab_post_init__(self, a, multiplier: InitParam[int] = 7):
         self.a = a * multiplier
 
 print(inspect.signature(Example))
@@ -303,7 +304,7 @@ Output:
 Example(a=42)
 ```
 
-Note that the type of the InitVar has been unwrapped for the annotation at runtime.
+Note that the type of the InitParam has been unwrapped for the annotation at runtime.
 
 ### Other Differences ###
 

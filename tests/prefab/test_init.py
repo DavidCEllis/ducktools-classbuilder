@@ -7,7 +7,7 @@ from typing import Union
 import pytest
 
 from ducktools.classbuilder import get_generated_code
-from ducktools.classbuilder.prefab import prefab, attribute, InitVar, PrefabError
+from ducktools.classbuilder.prefab import prefab, attribute, InitParam, PrefabError
 
 
 # Classes for tests
@@ -310,12 +310,12 @@ def test_factory_globals():
     assert globs == {"_x_factory": SubList}
 
 
-class TestInitVar:
-    def test_initvar_basic(self):
+class TestInitParam:
+    def test_initparam_basic(self):
         @prefab
         class Multiplier:
             x: int
-            def __prefab_post_init__(self, x: int, y: InitVar[int]) -> None:
+            def __prefab_post_init__(self, x: int, y: InitParam[int]) -> None:
                 self.x = x * y
 
         init_annos = Multiplier.__init__.__annotations__
@@ -328,10 +328,10 @@ class TestInitVar:
 
         sig = inspect.signature(Multiplier)
 
-        # InitVar values are always KW Only
+        # InitParam values are always KW Only
         assert str(sig) == "(x: int, *, y: int) -> None"
 
-    def test_non_initvar_fails(self):
+    def test_non_initparam_fails(self):
         with pytest.raises(PrefabError):
             @prefab
             class Multiplier:
@@ -339,17 +339,17 @@ class TestInitVar:
                 def __prefab_post_init__(self, x: int, y: int) -> None:
                     self.x = x * y
 
-    def test_initvars_kwonly(self):
+    def test_initparams_kwonly(self):
         @prefab
         class Example:
-            def __prefab_post_init__(self, *, x: InitVar[str]): ...
+            def __prefab_post_init__(self, *, x: InitParam[str]): ...
 
         sig = inspect.signature(Example)
 
-        # InitVar values are always KW Only
+        # InitParam values are always KW Only
         assert str(sig) == "(*, x: str) -> None"
 
-    def test_initvar_defaults(self):
+    def test_initparam_defaults(self):
         @prefab
         class Example:
             t: tuple[str, int, float] | None = None
@@ -357,10 +357,10 @@ class TestInitVar:
             def __prefab_post_init__(
                 self,
                 t,
-                x: InitVar[str],
-                y: InitVar[int] = InitVar(42),
+                x: InitParam[str],
+                y: InitParam[int] = InitParam(42),
                 *,
-                z: InitVar[float] = InitVar(3.14)
+                z: InitParam[float] = InitParam(3.14)
             ):
                 if not t:
                     self.t = (x, y, z)
