@@ -22,14 +22,14 @@
 
 import sys
 
-if sys.version_info >= (3, 14):
+if sys.version_info >= (3, 14):  # cover-req-le3.14
     from .annotations_314 import (
         apply_annotations,
         get_func_annotations,
         get_ns_annotations,
         resolve_type,
     )
-else:
+else:  # cover-req-lt3.14
     from .annotations_pre_314 import (
         apply_annotations,
         get_func_annotations,

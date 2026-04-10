@@ -19,6 +19,11 @@ class Example(Prefab):
     a: int = 42
     b: str = "Life the Universe and Everything"
 
+class ExamplePrint(Prefab):
+    a: int = 42
+    b: str = "Life the Universe and Everything"
+    c: set[str] = attribute(default_factory=set)  # use set as it has no literal
+
 
 def test_get_attributes():
     expected = {
@@ -70,10 +75,10 @@ def test_get_generated_code_source():
 def test_print_generated_code():
     # Test the generated source code is actually in the output string
     output = StringIO()
-    code = get_generated_code(Example)
+    code = get_generated_code(ExamplePrint)
 
     with patch("sys.stdout", output):
-        print_generated_code(Example)
+        print_generated_code(ExamplePrint)
 
     output_text = output.getvalue()
 

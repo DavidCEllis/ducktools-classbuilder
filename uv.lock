@@ -286,6 +286,16 @@ toml = [
 ]
 
 [[package]]
+name = "coverage-simple-excludes"
+version = "1.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "coverage" },
+    { name = "re-int-ineq" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/34/b7/7b1460c3e7bb83b36c2b828a4e08c63ae6b3dcebcedf612ec31039b8434d/coverage_simple_excludes-1.1.1.tar.gz", hash = "sha256:401e2ab99ba0f1b972262412f06bfe294e63ea2c718f8eb2e5b9f5367d8be4ac", size = 12260, upload-time = "2025-12-02T13:35:44.084Z" }
+
+[[package]]
 name = "docutils"
 version = "0.21.2"
 source = { registry = "https://pypi.org/simple" }
@@ -330,6 +340,7 @@ docs = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "coverage-simple-excludes" },
     { name = "mypy", marker = "platform_python_implementation == 'CPython'" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -352,6 +363,7 @@ provides-extras = ["docs"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "coverage-simple-excludes", specifier = ">=1.1.1" },
     { name = "mypy", marker = "platform_python_implementation == 'CPython'", specifier = ">=1.16" },
     { name = "pytest", specifier = ">=8.4" },
     { name = "pytest-cov", specifier = ">=6.1" },
@@ -1068,6 +1080,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f0/7a/1c7270340330e575b92f397352af856a8c06f230aa3e76f86b39d01b416a/pyyaml-6.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4ad1906908f2f5ae4e5a8ddfce73c320c2a1429ec52eafd27138b7f1cbe341c9", size = 174062, upload-time = "2025-09-25T21:32:55.767Z" },
     { url = "https://files.pythonhosted.org/packages/f1/12/de94a39c2ef588c7e6455cfbe7343d3b2dc9d6b6b2f40c4c6565744c873d/pyyaml-6.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:ebc55a14a21cb14062aa4162f906cd962b28e2e9ea38f9b4391244cd8de4ae0b", size = 149341, upload-time = "2025-09-25T21:32:56.828Z" },
 ]
+
+[[package]]
+name = "re-int-ineq"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/9c/b068abf71b3f35d9f29d11c31631a380830883f847f9b4e9db37878d4c72/re-int-ineq-0.9.0.tar.gz", hash = "sha256:0ff761aaa0f4fed0119af6bb3242a6cd23d727dea37e818ef1753eb7972fbbf1", size = 13799, upload-time = "2024-03-08T19:24:49.288Z" }
 
 [[package]]
 name = "reannotate"
