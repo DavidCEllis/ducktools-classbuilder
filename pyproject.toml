@@ -6,13 +6,13 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name="ducktools-classbuilder"
-description="Toolkit for creating class boilerplate generators"
+name = "ducktools-classbuilder"
+description = "Toolkit for creating class boilerplate generators"
 authors = [
-  { name="David C Ellis" },
+    { name = "David C Ellis" },
 ]
 license = "MIT"
-readme="README.md"
+readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -21,11 +21,12 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Operating System :: OS Independent",
 ]
 dynamic = ['version']
 dependencies = [
-    "reannotate>=0.1.0 ; python_full_version >= '3.14'",
+    "reannotate>=0.1.3 ; python_full_version >= '3.14'",
 ]
 
 [project.optional-dependencies]
@@ -36,12 +37,16 @@ docs = [
     "sphinx_rtd_theme>=3.0",
 ]
 
+[project.urls]
+"Homepage" = "https://github.com/davidcellis/ducktools-classbuilder"
+
 [dependency-groups]
 dev = [
     "pytest>=8.4",
     "pytest-cov>=6.1",
     "mypy>=1.16; platform_python_implementation == 'CPython'",
     "typing-extensions>=4.14",
+    "coverage-simple-excludes>=1.1.1",
 ]
 performance = [
     "attrs>=25.0",
@@ -59,13 +64,19 @@ __version__ = "{version}"
 __version_tuple__ = {version_tuple}
 """
 
-[project.urls]
-"Homepage" = "https://github.com/davidcellis/ducktools-classbuilder"
-
 [tool.pytest.ini_options]
-addopts= "--cov=src/ --cov-report=term-missing"
+addopts = "--cov=src/ --cov-report=term-missing"
 testpaths = [
     "tests",
+]
+
+[tool.coverage.run]
+plugins = ["coverage_simple_excludes"]
+
+[tool.coverage.report]
+fail_under = 90
+exclude_also = [
+    "def __repr__",
 ]
 
 [tool.mypy]

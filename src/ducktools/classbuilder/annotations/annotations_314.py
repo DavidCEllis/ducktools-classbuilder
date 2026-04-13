@@ -35,10 +35,10 @@ __lazy_modules__ = ["annotationlib", "reannotate"]
 
 import sys
 
-if sys.version_info >= (3, 15):
+if sys.version_info >= (3, 15):  # cover-req-ge3.15
     import annotationlib as _annotationlib
     import reannotate as _reannotate
-else:
+else:  # cover-req-lt3.15
     class _LazyAnnotationLib:
         def __getattr__(self, item):
             global _annotationlib

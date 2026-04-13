@@ -25,10 +25,16 @@ A 'prebuilt' implementation of class generation.
 
 Includes pre and post init functions along with other methods.
 """
+__lazy_modules__ = [
+    "ducktools.classbuilder.annotations",
+]
+
+import sys
+
 try:
-    from _types import NoneType  # type: ignore
+    from _types import GenericAlias, NoneType  # type: ignore
 except ImportError:
-    from types import NoneType
+    from types import GenericAlias, NoneType
 
 from . import (
     NOTHING, FIELD_NOTHING,
@@ -48,7 +54,7 @@ from . import (
     build_completed,
 )
 
-from .annotations import get_func_annotations
+from .annotations import get_func_annotations, is_type, replace_generic_with_arg
 
 # These aren't used but are re-exported for ease of use
 from . import SlotFields as SlotFields, KW_ONLY as KW_ONLY
@@ -59,8 +65,25 @@ PRE_INIT_FUNC = "__prefab_pre_init__"
 POST_INIT_FUNC = "__prefab_post_init__"
 
 
+# Some types can be represented as literals in generated source code
+# along with empty containers for factories
+LITERAL_TYPES = frozenset({str, bytes, int, float, complex, bool, NoneType})
+LITERAL_CONTAINERS = frozenset({dict, list, tuple})
+
+
 class PrefabError(Exception):
     pass
+
+
+class InitParam:
+    def __new__(cls, arg):
+        # arguments can be wrapped in InitParam
+        return arg
+
+    def __class_getitem__(cls, t):
+        if isinstance(t, tuple):
+            return GenericAlias(cls, t)
+        return GenericAlias(cls, (t,))
 
 
 def get_attributes(cls, *, local=False):
@@ -98,6 +121,8 @@ def init_generator(cls, funcname="__init__"):
     # Get pre and post init arguments
     pre_init_args = []
     post_init_args = []
+    initparam_names = []
+    initparam_defaults = {}
     post_init_annotations = {}
 
     for extra_funcname, func_arglist in [
@@ -110,29 +135,49 @@ def init_generator(cls, funcname="__init__"):
         except AttributeError:
             pass
         else:
-            argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+            poscount = func_code.co_argcount
+            kwonlycount = func_code.co_kwonlyargcount
+            argcount = poscount + kwonlycount
 
             # Identify if method is static, if so include first arg, otherwise skip
             is_static = type(cls.__dict__.get(extra_funcname)) is staticmethod
 
-            arglist = (
-                func_code.co_varnames[:argcount]
-                if is_static
-                else func_code.co_varnames[1:argcount]
-            )
+            varnames = func_code.co_varnames
+
+            arglist = varnames[:argcount] if is_static else varnames[1:argcount]
 
             func_arglist.extend(arglist)
 
             if extra_funcname == POST_INIT_FUNC:
-                post_init_annotations |= get_func_annotations(func)
+                # Handle default values for InitParams
+                pos_defaults = func.__defaults__
+                kw_defaults = func.__kwdefaults__
 
-    # These types can be represented literally without their names
-    # Types that can contain things other than themselves are *not* included
-    literal_types = {str, bytes, int, float, complex, bool, NoneType}
+                if pos_defaults:
+                    post_start = len(varnames) - kwonlycount - len(pos_defaults)
 
-    # Mutable empty containers that can be represented as literals
-    #
-    literal_containers = {list, dict}
+                    arg_defaults = {
+                        k: v for k, v in zip(varnames[post_start:], pos_defaults)
+                    }
+                else:
+                    arg_defaults = {}
+
+                if kw_defaults:
+                    arg_defaults |= kw_defaults
+
+                annos = {}
+                for k, v in get_func_annotations(func).items():
+                    if is_type(v, InitParam):
+                        initparam_names.append(k)
+                        annos[k] = replace_generic_with_arg(v)
+                        # Use try/except for defaults as None is valid
+                        try:
+                            initparam_defaults[k] = arg_defaults[k]
+                        except KeyError:
+                            pass
+                    else:
+                        annos[k] = v
+                post_init_annotations |= annos
 
     pos_arglist = []
     kw_only_arglist = []
@@ -146,7 +191,7 @@ def init_generator(cls, funcname="__init__"):
                 annotations[name] = attrib._type
 
             if attrib.default is not NOTHING:
-                if type(attrib.default) in literal_types:
+                if type(attrib.default) in LITERAL_TYPES:
                     # Just use the literal in these cases
                     arg = f"{name}={attrib.default!r}"
                 else:
@@ -159,7 +204,7 @@ def init_generator(cls, funcname="__init__"):
                 # Use NONE here and call the factory later
                 # This matches the behaviour of compiled
                 arg = f"{name}=None"
-                if attrib.default_factory not in literal_containers:
+                if attrib.default_factory not in LITERAL_CONTAINERS:
                     globs[f"_{name}_factory"] = attrib.default_factory
             else:
                 arg = name
@@ -170,11 +215,30 @@ def init_generator(cls, funcname="__init__"):
         # Not in init, but need to set defaults
         else:
             if attrib.default is not NOTHING:
-                if type(attrib.default) not in literal_types:
+                if type(attrib.default) not in LITERAL_TYPES:
                     globs[f"_{name}_default"] = attrib.default
             elif attrib.default_factory is not NOTHING:
-                if attrib.default_factory not in literal_containers:
+                if attrib.default_factory not in LITERAL_CONTAINERS:
                     globs[f"_{name}_factory"] = attrib.default_factory
+
+    # Add any post init args to kw_only list
+    for name in initparam_names:
+        try:
+            param_default = initparam_defaults[name]
+        except KeyError:
+            arg = name
+        else:
+            globs[f"_{name}_initparam_default"] = param_default
+            arg = f"{name}=_{name}_initparam_default"
+
+        try:
+            anno = post_init_annotations[name]
+        except KeyError:
+            pass
+        else:
+            annotations[name] = anno
+
+        kw_only_arglist.append(arg)
 
     pos_args = ", ".join(pos_arglist)
     kw_args = ", ".join(kw_only_arglist)
@@ -190,7 +254,7 @@ def init_generator(cls, funcname="__init__"):
     for name, attrib in attributes.items():
         if attrib.init:
             if attrib.default_factory is not NOTHING:
-                if attrib.default_factory in literal_containers:
+                if attrib.default_factory in LITERAL_CONTAINERS:
                     value = f"{name} if {name} is not None else {attrib.default_factory()!r}"
                 else:
                     value = f"{name} if {name} is not None else _{name}_factory()"
@@ -198,12 +262,12 @@ def init_generator(cls, funcname="__init__"):
                 value = name
         else:
             if attrib.default_factory is not NOTHING:
-                if attrib.default_factory in literal_containers:
+                if attrib.default_factory in LITERAL_CONTAINERS:
                     value = f"{attrib.default_factory()!r}"
                 else:
                     value = f"_{name}_factory()"
             elif attrib.default is not NOTHING:
-                if type(attrib.default) in literal_types:
+                if type(attrib.default) in LITERAL_TYPES:
                     value = f"{attrib.default!r}"
                 else:
                     value = f"_{name}_default"
@@ -523,63 +587,51 @@ def _prefab_preprocess(
 def _prefab_post_process(cls, /, *, fields, kw_only):
     # Processor to do post-construction checks
     # Error check: Check that the arguments to pre/post init are valid fields
-    try:
-        func = getattr(cls, PRE_INIT_FUNC)
-        func_code = func.__code__
-    except AttributeError:
-        pass
-    else:
-        if func_code.co_posonlyargcount > 0:
-            raise PrefabError(
-                "Positional only arguments are not supported in pre or post init functions."
-            )
-
-        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
-
-        # Include the first argument if the method is static
-        is_static = type(cls.__dict__.get(PRE_INIT_FUNC)) is staticmethod
-
-        arglist = (
-            func_code.co_varnames[:argcount]
-            if is_static
-            else func_code.co_varnames[1:argcount]
-        )
-
-        for item in arglist:
-            if item not in fields.keys():
+    for func_name in (PRE_INIT_FUNC, POST_INIT_FUNC):
+        try:
+            func = getattr(cls, func_name)
+            func_code = func.__code__
+        except AttributeError:
+            pass
+        else:
+            if func_code.co_posonlyargcount > 0:
                 raise PrefabError(
-                    f"{item} argument in {PRE_INIT_FUNC} is not a valid attribute."
+                    f"Positional only arguments are not supported in {func_name} functions."
                 )
 
-    try:
-        func = getattr(cls, POST_INIT_FUNC)
-        func_code = func.__code__
-    except AttributeError:
-        pass
-    else:
-        if func_code.co_posonlyargcount > 0:
-            raise PrefabError(
-                "Positional only arguments are not supported in pre or post init functions."
+            argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+
+            # Include the first argument if the method is static
+            is_static = type(cls.__dict__.get(func_name)) is staticmethod
+
+            arglist = (
+                func_code.co_varnames[:argcount]
+                if is_static
+                else func_code.co_varnames[1:argcount]
             )
 
-        argcount = func_code.co_argcount + func_code.co_kwonlyargcount
+            annotations = get_func_annotations(func)
+            initparams = {
+                name for name, anno in annotations.items()
+                if is_type(anno, InitParam)
+            }
 
-        # Include the first argument if the method is static
-        is_static = type(cls.__dict__.get(POST_INIT_FUNC)) is staticmethod
+            fieldnames = fields.keys()
 
-        arglist = (
-            func_code.co_varnames[:argcount]
-            if is_static
-            else func_code.co_varnames[1:argcount]
-        )
-
-        for item in arglist:
-            if item not in fields.keys():
+            if not initparams.isdisjoint(fieldnames):
+                names = ", ".join(initparams & fieldnames)
                 raise PrefabError(
-                    f"{item} argument in {POST_INIT_FUNC} is not a valid attribute."
+                    f"Fields can not also be InitParams: \"{names}\""
                 )
 
-    default_defined = []
+            for item in arglist:
+                if item not in fieldnames and item not in initparams:
+                    raise PrefabError(
+                        f"{item} argument in {func_name} is not a valid attribute or InitParam"
+                    )
+
+
+    default_defined = []  # Use a list instead of a set to keep the order
 
     # Error check: After inheritance,
     for name, attrib in fields.items():
@@ -591,11 +643,15 @@ def _prefab_post_process(cls, /, *, fields, kw_only):
                 else:
                     if default_defined:
                         names = ", ".join(default_defined)
-                        raise SyntaxError(
-                            "non-default argument follows default argument",
-                            f"defaults: {names}",
-                            f"non_default after default: {name}",
+
+                        err = SyntaxError(
+                            "non-default argument follows default argument"
                         )
+                        if sys.version_info >= (3, 11):
+                            err.add_note(f"defaults: {names}")
+                            err.add_note(f"non_default after default: {name}")
+
+                        raise err
 
 
 def _make_prefab(

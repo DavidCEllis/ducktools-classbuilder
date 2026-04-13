@@ -30,6 +30,11 @@
 # but is also the metaclass used to construct 'Field'.
 # Field itself sidesteps this by defining __slots__ to avoid that branch.
 
+__lazy_modules__ = [
+    "ducktools.classbuilder.annotations",
+    "ducktools.classbuilder._version",
+]
+
 import os
 import sys
 
@@ -1234,7 +1239,6 @@ def make_annotation_gatherer(
         kw_flag = False
 
         for k, v in cls_annotations.items():
-            # Use strings instead of forwardrefs
             _t = resolve_type(v, stringify_forwardrefs=False)
 
             # Ignore ClassVar
