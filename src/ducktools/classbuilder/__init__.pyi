@@ -5,7 +5,7 @@ import typing_extensions
 
 __lazy_modules__: list[str]
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from types import MappingProxyType
 
 if sys.version_info >= (3, 14):
@@ -141,6 +141,8 @@ hash_maker: MethodMaker
 default_methods: frozenset[MethodMaker]
 
 _TypeT = typing.TypeVar("_TypeT", bound=type)
+
+def add_methods(cls: type, methods: Iterable[MethodMaker]) -> dict[str, MethodMaker]: ...
 
 @typing.overload
 def builder(
