@@ -578,7 +578,6 @@ def _prefab_preprocess(
         "dict_method": dict_method,
         "recursive_repr": recursive_repr,
         "ignore_annotations": ignore_annotations,
-        "gatherer": gatherer,
     }
 
     return gatherer, methods, flags
@@ -764,6 +763,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
         :param ignore_annotations: Ignore type annotations when gathering fields, only look for
                                 slots or attribute(...) values
         :param slots: automatically generate slots for this class's attributes
+        :param gatherer: A gatherer to use for collecting `Attribute`s
         """
         default_values = {
             "init": True,
@@ -777,7 +777,6 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
             "replace": True,
             "dict_method": False,
             "recursive_repr": False,
-            "gatherer": prefab_gatherer,
         }
 
         try:

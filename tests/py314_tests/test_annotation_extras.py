@@ -1,5 +1,6 @@
+from ducktools.classbuilder import Field
 from ducktools.classbuilder.annotations import replace_generic_with_arg, get_func_annotations, resolve_type
-from ducktools.classbuilder.prefab import InitParam
+from ducktools.classbuilder.prefab import InitParam, Attribute
 
 from annotationlib import ForwardRef
 from typing import Annotated
@@ -150,3 +151,17 @@ class TestResolveType:
 
         b_fr = resolve_type(annos['b'], stringify_forwardrefs=True)
         assert b_fr == "undefined"
+
+    def test_auto_resolve_type(self):
+        # test type is resolved on Field and Attribute instances
+        ref = ForwardRef("int")
+        def_anno = DeferredAnnotation(str)
+
+        fld_ref = Field(type=ref)
+        fld_def = Field(type=def_anno)
+
+        attrib_ref = Attribute(type=ref)
+        attrib_def = Attribute(type=def_anno)
+
+        assert fld_ref.type == attrib_ref.type == int
+        assert fld_def.type == attrib_def.type == str

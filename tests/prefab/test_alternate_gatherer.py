@@ -1,9 +1,9 @@
-from ducktools.classbuilder import SlotFields, make_field_gatherer, make_slot_gatherer, get_flags
+from ducktools.classbuilder import META_GATHERER_NAME, SlotFields, make_field_gatherer, make_slot_gatherer, get_flags
 from ducktools.classbuilder.prefab import attribute, Attribute, Prefab, prefab, get_attributes
 
 
 slot_gatherer = make_slot_gatherer(field_type=Attribute)
-attrib_gatherer = make_field_gatherer(field_type=Attribute, leave_default_values=True)
+attrib_gatherer = make_field_gatherer(field_type=Attribute, leave_default_values=False)
 
 class TestUsesGatherer:
     def test_decorator(self):
@@ -36,15 +36,10 @@ class TestIgnoresAnnotations:
         assert not hasattr(ex, 'b')
         assert ex.c == 42
 
-        assert AnnotationsNotGathered.c == 42
-
         assert get_attributes(AnnotationsNotGathered) == {'c': attribute(default=42)}
 
-        assert get_flags(AnnotationsNotGathered)['gatherer'] == attrib_gatherer
-
     def test_baseclass(self):
-        @prefab(gatherer=attrib_gatherer)
-        class AnnotationsNotGathered:
+        class AnnotationsNotGathered(Prefab, gatherer=attrib_gatherer):
             a: int
             b: str
             c: int = attribute(default=42)
@@ -54,7 +49,17 @@ class TestIgnoresAnnotations:
         assert not hasattr(ex, 'b')
         assert ex.c == 42
 
-        assert AnnotationsNotGathered.c == 42
-
         assert get_attributes(AnnotationsNotGathered) == {'c': attribute(default=42)}
-        assert get_flags(AnnotationsNotGathered)['gatherer'] == attrib_gatherer
+
+        # Base class examples keep the meta gatherer
+        assert getattr(AnnotationsNotGathered, META_GATHERER_NAME) == attrib_gatherer
+
+        # Check the meta gatherer is preserved in a subclass
+        class AnnotationsNotGatheredSub(AnnotationsNotGathered):
+            d: int
+            e: str
+            f: int = attribute(default=314)
+
+        assert getattr(AnnotationsNotGatheredSub, META_GATHERER_NAME) == attrib_gatherer
+
+        assert get_attributes(AnnotationsNotGatheredSub) == {'c': attribute(default=42), 'f': attribute(default=314)}

@@ -142,7 +142,12 @@ default_methods: frozenset[MethodMaker]
 
 _TypeT = typing.TypeVar("_TypeT", bound=type)
 
-def add_methods(cls: type, methods: Iterable[MethodMaker]) -> dict[str, MethodMaker]: ...
+def add_methods(
+    cls: type,
+    methods: Iterable[MethodMaker],
+    *,
+    internals: None | dict[str, typing.Any] = ...
+) -> dict[str, MethodMaker]: ...
 
 @typing.overload
 def builder(

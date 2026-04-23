@@ -55,7 +55,7 @@ from ._version import __version__, __version_tuple__  # noqa: F401
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
-META_GATHERER_NAME = "_meta_gatherer"
+META_GATHERER_NAME = "__classbuilder_meta_gatherer__"
 GATHERED_DATA = "__classbuilder_gathered_fields__"
 
 # If testing, make Field classes frozen to make sure attributes are not
@@ -1384,7 +1384,8 @@ def make_unified_gatherer(
                     if v_anno is NOTHING:
                         use_annotations = False
                     else:
-                        if is_classvar(v_anno):
+                        _t = resolve_type(v_anno)
+                        if is_classvar(_t):
                             k_type = type(v).__name__
                             raise TypeError(f"{k!r} is a ClassVar, but {k_type!r} instances are not supported as ClassVars")
 

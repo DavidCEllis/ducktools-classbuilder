@@ -35,6 +35,7 @@ __lazy_modules__ = ["annotationlib", "reannotate"]
 
 import sys
 
+# fmt: off
 if sys.version_info >= (3, 15):  # cover-req-ge3.15
     import annotationlib as _annotationlib
     import reannotate as _reannotate
@@ -55,6 +56,7 @@ else:  # cover-req-lt3.15
 
     _annotationlib = _LazyAnnotationLib()
     _reannotate = _LazyReannotate()
+# fmt: on
 
 
 def _get_annotate_from_class_namespace(ns):
@@ -103,10 +105,7 @@ def get_ns_annotations(ns, cls=None):
             try:
                 annotations = annotate(1)  # Format.VALUE is 1
             except Exception:
-                annotations = _reannotate.call_annotate_deferred(
-                    annotate,
-                    owner=cls
-                )
+                annotations = _reannotate.call_annotate_deferred(annotate, owner=cls)
 
     if annotations is None:
         annotations = {}
@@ -123,7 +122,11 @@ def resolve_type(obj, stringify_forwardrefs=False):
                                   evaluation fails, defaults to False
     :return: Evaluated reference
     """
-    if "reannotate" in sys.modules and isinstance(obj, _reannotate.DeferredAnnotation):
+    # fmt: off
+    if (
+        "reannotate" in sys.modules
+        and isinstance(obj, (_reannotate.DeferredAnnotation, _annotationlib.ForwardRef))
+    ):
         if stringify_forwardrefs:
             try:
                 return obj.evaluate(format=_annotationlib.Format.VALUE)
@@ -131,6 +134,7 @@ def resolve_type(obj, stringify_forwardrefs=False):
                 return obj.evaluate(format=_annotationlib.Format.STRING)
         else:
             return obj.evaluate(format=_annotationlib.Format.FORWARDREF)
+    # fmt: on
 
     return obj
 
