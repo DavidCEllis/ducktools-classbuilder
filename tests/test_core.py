@@ -105,6 +105,14 @@ def test_add_methods():
     assert ex.demo() == 42
 
 
+def test_add_methods_fails():
+    # Test that add_methods fails on non built classes
+    class Example:
+        pass
+
+    with pytest.raises(TypeError):
+        add_methods(Example, [init_maker])
+
 def test_construct_field():
     f = Field()
     assert f.default is NOTHING
