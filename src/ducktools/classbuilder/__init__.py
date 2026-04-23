@@ -640,22 +640,29 @@ _field_init_maker = MethodMaker(
 )
 
 
-def add_methods(cls, methods):
+def add_methods(cls, methods, *, internals=None):
     """
     Unconditionally add methods to a class and update the internals dict
 
     :param methods: iterable of methods to add to a class
+    :param internals: the classbuilder_internals dict of the class
+                      this is used directly by `builder`
     :return: The complete current set of methods assigned to the class
     """
-    internal_methods = {}
-    internals = cls.__dict__[INTERNALS_DICT]
+    if internals is None:
+        try:
+            internals = cls.__dict__[INTERNALS_DICT]
+        except KeyError:
+            raise TypeError(f"{cls} is not a classbuilder generated class")
+
     existing_methods = internals.get("methods", {})
+    new_methods = {}
 
     for method in methods:
         setattr(cls, method.funcname, method)
-        internal_methods[method.funcname] = method
+        new_methods[method.funcname] = method
 
-    all_methods = _MappingProxyType(existing_methods | internal_methods)
+    all_methods = _MappingProxyType(existing_methods | new_methods)
 
     # Update the internals dict
     internals["methods"] = all_methods
@@ -734,7 +741,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, f
     internals["fields"] = fields
 
     # Assign all of the method generators
-    internal_methods = add_methods(cls, methods)
+    internal_methods = add_methods(cls, methods, internals=internals)
 
     if "__eq__" in internal_methods and "__hash__" not in internal_methods:
         # If an eq method has been defined and a hash method has not
