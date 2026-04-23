@@ -6,6 +6,7 @@ from ducktools.classbuilder import (
     INTERNALS_DICT,
     NOTHING,
 
+    add_methods,
     builder,
     default_methods,
     eq_maker,
@@ -79,6 +80,38 @@ def test_method_maker():
     # Should no longer be equal as demo was called
     assert ValueX.__dict__["demo"] != method_desc
 
+
+@graalpy_fails
+def test_add_methods():
+    # This is to test add_methods with internals=None
+    # add_methods with internals specified is tested
+    # by the standard builder
+    @slotclass
+    class Example:
+        __slots__ = SlotFields(x=42)
+
+    def generator(cls, funcname="demo"):
+        code = f"def {funcname}(self): return self.x"
+        globs = {}
+        return GeneratedCode(code, globs)
+
+    method_desc = MethodMaker("demo", generator)
+
+    add_methods(Example, [method_desc])
+
+    assert get_methods(Example)["demo"] == method_desc
+
+    ex = Example()
+    assert ex.demo() == 42
+
+
+def test_add_methods_fails():
+    # Test that add_methods fails on non built classes
+    class Example:
+        pass
+
+    with pytest.raises(TypeError):
+        add_methods(Example, [init_maker])
 
 def test_construct_field():
     f = Field()

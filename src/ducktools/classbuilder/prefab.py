@@ -491,6 +491,7 @@ def _prefab_preprocess(
     replace,
     dict_method,
     recursive_repr,
+    gatherer,
     gathered_fields,
     ignore_annotations,
 ):
@@ -499,7 +500,7 @@ def _prefab_preprocess(
 
     cls_dict = cls.__dict__
 
-    if build_completed(cls_dict):
+    if build_completed(cls):
         raise PrefabError(
             f"Decorated class {cls.__name__!r} "
             f"has already been processed as a Prefab."
@@ -519,9 +520,7 @@ def _prefab_preprocess(
     slots = cls_dict.get("__slots__")
     slotted = False if slots is None else True
 
-    if gathered_fields is None:
-        gatherer = prefab_gatherer
-    else:
+    if gathered_fields is not None:
         gatherer = gathered_fields
 
     # Decide which methods need to be added to the class based on presence
@@ -584,7 +583,7 @@ def _prefab_preprocess(
     return gatherer, methods, flags
 
 
-def _prefab_post_process(cls, /, *, fields, kw_only):
+def _prefab_postprocess(cls, /, *, fields, kw_only):
     # Processor to do post-construction checks
     # Error check: Check that the arguments to pre/post init are valid fields
     for func_name in (PRE_INIT_FUNC, POST_INIT_FUNC):
@@ -668,6 +667,7 @@ def _make_prefab(
     replace=True,
     dict_method=False,
     recursive_repr=False,
+    gatherer=prefab_gatherer,
     gathered_fields=None,
     ignore_annotations=False,
 ):
@@ -687,11 +687,13 @@ def _make_prefab(
     :param replace: Add a generated __replace__ method
     :param dict_method: Include an as_dict method for faster dictionary creation
     :param recursive_repr: Safely handle repr in case of recursion
+    :param gatherer: A gatherer to use for collecting `Attribute`s
     :param gathered_fields: Pre-gathered fields callable, to skip re-collecting attributes
     :param ignore_annotations: Ignore annotated fields and only look at `attribute` fields
     :return: class with __ methods defined
     """
     # Preprocess to obtain settings
+    # gatherer will be appropriately replaced if gathered_fields is defined
     gatherer, methods, flags = _prefab_preprocess(
         cls,
         init=init,
@@ -705,6 +707,7 @@ def _make_prefab(
         replace=replace,
         dict_method=dict_method,
         recursive_repr=recursive_repr,
+        gatherer=gatherer,
         gathered_fields=gathered_fields,
         ignore_annotations=ignore_annotations,
     )
@@ -729,7 +732,7 @@ def _make_prefab(
         )
 
     # Post construction checks
-    _prefab_post_process(cls, kw_only=kw_only, fields=fields)
+    _prefab_postprocess(cls, kw_only=kw_only, fields=fields)
 
     return cls
 
@@ -760,6 +763,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
         :param ignore_annotations: Ignore type annotations when gathering fields, only look for
                                 slots or attribute(...) values
         :param slots: automatically generate slots for this class's attributes
+        :param gatherer: A gatherer to use for collecting `Attribute`s
         """
         default_values = {
             "init": True,
@@ -819,6 +823,7 @@ def prefab(
     replace=True,
     dict_method=False,
     recursive_repr=False,
+    gatherer=prefab_gatherer,
     ignore_annotations=False,
 ):
     """
@@ -858,6 +863,7 @@ def prefab(
             replace=replace,
             dict_method=dict_method,
             recursive_repr=recursive_repr,
+            gatherer=gatherer,
             ignore_annotations=ignore_annotations,
         )
     else:
@@ -874,6 +880,7 @@ def prefab(
             replace=replace,
             dict_method=dict_method,
             recursive_repr=recursive_repr,
+            gatherer=gatherer,
             ignore_annotations=ignore_annotations,
         )
 

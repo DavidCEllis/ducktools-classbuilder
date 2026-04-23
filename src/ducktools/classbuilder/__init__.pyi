@@ -5,7 +5,7 @@ import typing_extensions
 
 __lazy_modules__: list[str]
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from types import MappingProxyType
 
 if sys.version_info >= (3, 14):
@@ -42,7 +42,7 @@ def get_generated_code(cls: type) -> dict[str, GeneratedCode]: ...
 
 def print_generated_code(cls: type) -> None: ...
 
-def build_completed(ns: _CopiableMappings) -> bool: ...
+def build_completed(cls: type) -> bool: ...
 
 def _get_inst_fields(inst: typing.Any) -> dict[str, typing.Any]: ...
 
@@ -142,6 +142,13 @@ default_methods: frozenset[MethodMaker]
 
 _TypeT = typing.TypeVar("_TypeT", bound=type)
 
+def add_methods(
+    cls: type,
+    methods: Iterable[MethodMaker],
+    *,
+    internals: None | dict[str, typing.Any] = ...
+) -> dict[str, MethodMaker]: ...
+
 @typing.overload
 def builder(
     cls: _TypeT,
@@ -184,6 +191,8 @@ class SlotMakerMeta(type):
     ) -> _TypeT: ...
 
 
+# Only technically frozen under testing but we should *act* like they are frozen
+@typing.dataclass_transform(field_specifiers=(Field,), frozen_default=True)
 class Field(metaclass=SlotMakerMeta):
     default: _NothingType | typing.Any
     default_factory: _NothingType | typing.Any
@@ -214,6 +223,7 @@ class Field(metaclass=SlotMakerMeta):
     def __init_subclass__(cls, frozen: bool = ..., ignore_annotations: bool = ...): ...
     def __repr__(self) -> str: ...
     def __eq__(self, other: Field | object) -> bool: ...
+    def __replace__(self, **kwargs) -> typing.Self: ...
     def validate_field(self) -> None: ...
     @classmethod
     def from_field(cls, fld: Field, /, **kwargs: typing.Any) -> typing.Self: ...

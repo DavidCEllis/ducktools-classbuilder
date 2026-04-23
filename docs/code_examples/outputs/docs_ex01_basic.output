@@ -15,6 +15,8 @@ class Slotted(ducktools.classbuilder.prefab.Prefab)
  |
  |  Methods defined here:
  |
+ |  __classbuilder_meta_gatherer__ = field_unified_gatherer(cls_or_ns) from ducktools.classbuilder.make_unified_gatherer.<locals>
+ |
  |  __eq__(self, other) from Slotted
  |
  |  __init__(
@@ -72,4 +74,5 @@ class Slotted(ducktools.classbuilder.prefab.Prefab)
  |      :param ignore_annotations: Ignore type annotations when gathering fields, only look for
  |                              slots or attribute(...) values
  |      :param slots: automatically generate slots for this class's attributes
+ |      :param gatherer: A gatherer to use for collecting `Attribute`s
 

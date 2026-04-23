@@ -55,7 +55,7 @@ from ._version import __version__, __version_tuple__  # noqa: F401
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
-META_GATHERER_NAME = "_meta_gatherer"
+META_GATHERER_NAME = "__classbuilder_meta_gatherer__"
 GATHERED_DATA = "__classbuilder_gathered_fields__"
 
 # If testing, make Field classes frozen to make sure attributes are not
@@ -158,16 +158,16 @@ def print_generated_code(cls):
         print(textwrap.indent("\n".join(annotation_list), "    "))
 
 
-def build_completed(ns):
+def build_completed(cls):
     """
     Utility function to determine if a class has completed the construction
     process.
 
-    :param ns: class namespace
+    :param cls: class to check
     :return: True if built, False otherwise
     """
     try:
-        return ns[INTERNALS_DICT]["build_complete"]
+        return cls.__dict__[INTERNALS_DICT]["build_complete"]
     except KeyError:
         return False
 
@@ -640,6 +640,36 @@ _field_init_maker = MethodMaker(
 )
 
 
+def add_methods(cls, methods, *, internals=None):
+    """
+    Unconditionally add methods to a class and update the internals dict
+
+    :param methods: iterable of methods to add to a class
+    :param internals: the classbuilder_internals dict of the class
+                      this is used directly by `builder`
+    :return: The complete current set of methods assigned to the class
+    """
+    if internals is None:
+        try:
+            internals = cls.__dict__[INTERNALS_DICT]
+        except KeyError:
+            raise TypeError(f"{cls} is not a classbuilder generated class")
+
+    existing_methods = internals.get("methods", {})
+    new_methods = {}
+
+    for method in methods:
+        setattr(cls, method.funcname, method)
+        new_methods[method.funcname] = method
+
+    all_methods = _MappingProxyType(existing_methods | new_methods)
+
+    # Update the internals dict
+    internals["methods"] = all_methods
+
+    return all_methods
+
+
 def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, field_getter=get_fields):
     """
     The main builder for class generation
@@ -711,10 +741,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, f
     internals["fields"] = fields
 
     # Assign all of the method generators
-    internal_methods = {}
-    for method in methods:
-        setattr(cls, method.funcname, method)
-        internal_methods[method.funcname] = method
+    internal_methods = add_methods(cls, methods, internals=internals)
 
     if "__eq__" in internal_methods and "__hash__" not in internal_methods:
         # If an eq method has been defined and a hash method has not
@@ -722,8 +749,6 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, f
         # defined a hash method
         if "__hash__" not in cls.__dict__:
             setattr(cls, "__hash__", None)
-
-    internals["methods"] = _MappingProxyType(internal_methods)
 
     # Fix for inspect.signature(cls)
     if fix_signature:
@@ -1121,7 +1146,7 @@ def _build_field():
     }
     modifications = {"__slots__": field_docs}
 
-    field_methods = {repr_maker, eq_maker}
+    field_methods = {repr_maker, eq_maker, replace_maker}
     if _UNDER_TESTING:
         field_methods |= {frozen_setattr_maker, frozen_delattr_maker}
 
@@ -1359,7 +1384,8 @@ def make_unified_gatherer(
                     if v_anno is NOTHING:
                         use_annotations = False
                     else:
-                        if is_classvar(v_anno):
+                        _t = resolve_type(v_anno)
+                        if is_classvar(_t):
                             k_type = type(v).__name__
                             raise TypeError(f"{k!r} is a ClassVar, but {k_type!r} instances are not supported as ClassVars")
 

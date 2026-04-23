@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from ducktools.classbuilder import slotclass, SlotFields
+from ducktools.classbuilder.prefab import Prefab
 
 class_register = {}
 
@@ -9,6 +9,7 @@ def register(cls):
     return cls
 
 
+# Order is important here
 @dataclass(slots=True)
 @register
 class DataCoords:
@@ -16,13 +17,10 @@ class DataCoords:
     y: float = 0.0
 
 
-@slotclass
 @register
-class SlotCoords:
-    __slots__ = SlotFields(x=0.0, y=0.0)
-    # Type hints don't affect class construction, these are optional.
-    x: float
-    y: float
+class SlotCoords(Prefab):
+    x: float = 0.0
+    y: float = 0.0
 
 
 print(DataCoords())

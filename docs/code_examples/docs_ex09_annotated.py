@@ -1,22 +1,18 @@
 # Don't use __future__ annotations with get_ns_annotations in this case
 # as it doesn't evaluate string annotations.
 
-# NOTE: In Python 3.14 this will currently only work if there are *no* forward references.
-
+import sys
 import types
+from functools import wraps
 from typing import Annotated, Any, ClassVar, get_origin
 
 from ducktools.classbuilder import (
-    builder,
-    default_methods,
-    get_fields,
     get_methods,
-    Field,
-    SlotMakerMeta,
     NOTHING,
 )
+from ducktools.classbuilder.prefab import prefab, Prefab, Attribute, attribute, get_attributes
 
-from ducktools.classbuilder.annotations import get_ns_annotations
+from ducktools.classbuilder.annotations import get_ns_annotations, is_classvar, resolve_type
 
 
 # Our 'Annotated' tools need to be combinable and need to contain the keyword argument
@@ -48,6 +44,7 @@ KW_ONLY = FieldModifier(kw_only=True)
 NO_INIT = FieldModifier(init=False)
 NO_REPR = FieldModifier(repr=False)
 NO_COMPARE = FieldModifier(compare=False)
+NO_SERIALIZE = FieldModifier(serialize=False)
 IGNORE_ALL = FieldModifier(init=False, repr=False, compare=False)
 
 
@@ -68,6 +65,12 @@ def annotated_gatherer(cls_or_ns):
     for key, anno in cls_annotations.items():
         modifiers = {}
 
+        # Under Python 3.14 these may be `DeferredAnnotations`
+        # Resolve them to ForwardRefs
+        anno = resolve_type(anno)
+        if is_classvar(anno):
+            continue
+
         if get_origin(anno) is Annotated:
             meta = anno.__metadata__
             for v in meta:
@@ -78,22 +81,19 @@ def annotated_gatherer(cls_or_ns):
             # Extract the actual annotation from the first argument
             anno = anno.__origin__
 
-        if anno is ClassVar or get_origin(anno) is ClassVar:
-            continue
-
         if key in cls_dict:
             val = cls_dict[key]
-            if isinstance(val, Field):
+            if isinstance(val, Attribute):
                 # Make a new field - DO NOT MODIFY FIELDS IN PLACE
-                fld = Field.from_field(val, type=anno, **modifiers)
+                fld = Attribute.from_field(val, type=anno, **modifiers)
                 cls_modifications[key] = NOTHING
             elif not isinstance(val, types.MemberDescriptorType):
-                fld = Field(default=val, type=anno, **modifiers)
+                fld = Attribute(default=val, type=anno, **modifiers)
                 cls_modifications[key] = NOTHING
             else:
-                fld = Field(type=anno, **modifiers)
+                fld = Attribute(type=anno, **modifiers)
         else:
-            fld = Field(type=anno, **modifiers)
+            fld = Attribute(type=anno, **modifiers)
 
         cls_fields[key] = fld
 
@@ -101,36 +101,14 @@ def annotated_gatherer(cls_or_ns):
 
 
 # As a decorator
-def annotatedclass(cls=None, *, kw_only=False):
-    if not cls:
-        return lambda cls_: annotatedclass(cls_, kw_only=kw_only)
-
-    return builder(
-        cls,
-        gatherer=annotated_gatherer,
-        methods=default_methods,
-        flags={"slotted": False, "kw_only": kw_only}
-    )
+@wraps(prefab)
+def annotatedclass(cls=None, **kwargs):
+    return prefab(cls, gatherer=annotated_gatherer, **kwargs)
 
 
 # As a base class with slots
-class AnnotatedClass(metaclass=SlotMakerMeta, gatherer=annotated_gatherer):
-
-    def __init_subclass__(cls, kw_only=False, **kwargs):
-        slots = "__slots__" in cls.__dict__
-
-        # if slots is True then fields will already be present in __slots__
-        # Use the slot_gatherer for this case
-        gatherer = annotated_gatherer
-
-        builder(
-            cls,
-            gatherer=gatherer,
-            methods=default_methods,
-            flags={"slotted": slots, "kw_only": kw_only}
-        )
-
-        super().__init_subclass__(**kwargs)
+class AnnotatedClass(Prefab, gatherer=annotated_gatherer):
+    pass
 
 
 if __name__ == "__main__":
@@ -144,9 +122,12 @@ if __name__ == "__main__":
         z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"  # type: ignore
         a: Annotated[int, NO_INIT] = "Not In __init__ signature"  # type: ignore
         b: Annotated[str, NO_REPR] = "Not In Repr"
-        c: Annotated[list[str], NO_COMPARE] = Field(default_factory=list)  # type: ignore
+        c: Annotated[list[str], NO_COMPARE] = attribute(default_factory=list)  # type: ignore
         d: Annotated[str, IGNORE_ALL] = "Not Anywhere"
         e: Annotated[str, KW_ONLY, NO_COMPARE]
+        if sys.version_info >= (3, 14):
+            # Forward references work in 3.14
+            f: Annotated[unknown, NO_COMPARE, NO_SERIALIZE] = 42
 
 
     class Y(AnnotatedClass):
@@ -155,16 +136,17 @@ if __name__ == "__main__":
         z: Annotated[ClassVar[str], "Should be ignored"] = "This should also be ignored"  # type: ignore
         a: Annotated[int, NO_INIT] = "Not In __init__ signature"  # type: ignore
         b: Annotated[str, NO_REPR] = "Not In Repr"
-        c: Annotated[list[str], NO_COMPARE] = Field(default_factory=list)  # type: ignore
+        c: Annotated[list[str], NO_COMPARE] = attribute(default_factory=list)  # type: ignore
         d: Annotated[str, IGNORE_ALL] = "Not Anywhere"
         e: Annotated[str, KW_ONLY, NO_COMPARE]
-
+        if sys.version_info >= (3, 14):
+            f: Annotated[unknown, NO_COMPARE, NO_SERIALIZE] = 42
 
     # Unslotted Demo
     ex = X("Value of x", e="Value of e")  # type: ignore
     print(ex, "\n")
 
-    pp(get_fields(X))
+    pp(get_attributes(X))
     print("\n")
 
     # Slotted Demo
@@ -183,6 +165,6 @@ if __name__ == "__main__":
         # Both classes generate identical source code
         genX = method.code_generator(X)
         genY = method.code_generator(Y)
-        assert genX == genY
+        assert genX.source_code == genY.source_code
 
         print(genX.source_code)
