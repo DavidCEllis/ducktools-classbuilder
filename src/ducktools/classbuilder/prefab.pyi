@@ -10,6 +10,7 @@ from collections.abc import Callable  # type: ignore
 from . import (
     NOTHING,
     Field,
+    GathererProtocol,
     GeneratedCode,
     MethodMaker,
     SlotMakerMeta,
@@ -152,6 +153,7 @@ def _make_prefab(
     replace: bool = ...,
     dict_method: bool = ...,
     recursive_repr: bool = ...,
+    gatherer: GathererProtocol[Attribute] = ...,
     gathered_fields: Callable[[type], tuple[dict[str, Attribute], dict[str, typing.Any]]] | None = ...,
     ignore_annotations: bool = ...,
 ) -> type: ...
@@ -176,6 +178,7 @@ class Prefab(metaclass=SlotMakerMeta):
         replace: bool = ...,
         dict_method: bool = ...,
         recursive_repr: bool = ...,
+        gatherer: GathererProtocol[Attribute] = ...,
     ) -> None: ...
 
 # As far as I can tell these are the correct types
@@ -229,6 +232,7 @@ def prefab(
     replace: bool = ...,
     dict_method: bool = ...,
     recursive_repr: bool = ...,
+    gatherer: GathererProtocol[Attribute] = ...,
     ignore_annotations: bool = ...,
 ) -> typing.Any: ...
 
