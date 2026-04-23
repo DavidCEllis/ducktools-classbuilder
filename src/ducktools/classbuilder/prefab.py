@@ -584,7 +584,7 @@ def _prefab_preprocess(
     return gatherer, methods, flags
 
 
-def _prefab_post_process(cls, /, *, fields, kw_only):
+def _prefab_postprocess(cls, /, *, fields, kw_only):
     # Processor to do post-construction checks
     # Error check: Check that the arguments to pre/post init are valid fields
     for func_name in (PRE_INIT_FUNC, POST_INIT_FUNC):
@@ -729,7 +729,7 @@ def _make_prefab(
         )
 
     # Post construction checks
-    _prefab_post_process(cls, kw_only=kw_only, fields=fields)
+    _prefab_postprocess(cls, kw_only=kw_only, fields=fields)
 
     return cls
 
