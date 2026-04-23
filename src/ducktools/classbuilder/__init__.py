@@ -1146,7 +1146,7 @@ def _build_field():
     }
     modifications = {"__slots__": field_docs}
 
-    field_methods = {repr_maker, eq_maker}
+    field_methods = {repr_maker, eq_maker, replace_maker}
     if _UNDER_TESTING:
         field_methods |= {frozen_setattr_maker, frozen_delattr_maker}
 

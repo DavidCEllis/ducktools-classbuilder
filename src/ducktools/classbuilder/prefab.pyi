@@ -58,6 +58,7 @@ class Attribute(Field):
     __slots__: dict
     __signature__: _SignatureMaker
     __classbuilder_gathered_fields__: tuple[dict[str, Field], dict[str, typing.Any]]
+    __classbuilder_meta_gatherer__: GathererProtocol
 
     iter: bool
     serialize: bool
@@ -162,7 +163,7 @@ def _make_prefab(
 @dataclass_transform(field_specifiers=(Attribute, attribute))
 class Prefab(metaclass=SlotMakerMeta):
     __classbuilder_internals__: dict[str, typing.Any]
-    _meta_gatherer: Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]] = ...
+    __classbuilder_meta_gatherer__: GathererProtocol
     __slots__: dict[str, typing.Any] = ...
     def __init_subclass__(
         cls,
