@@ -82,13 +82,15 @@ their attribute is set.
 ## Gatherers ##
 ### What about using annotations instead of `Field(init=False, ...)` ###
 
-This seems to be a feature people keep requesting for `dataclasses`.
+This seems to be a feature people keep requesting for `dataclasses`. This implements it on top of `prefab`.
 
 To implement this you need to create a new annotated_gatherer function.
 
-> Note: Field classes will be frozen when running under pytest.
+> Note: Field class instances will be frozen when running under pytest.
 >       They should not be mutated by gatherers.
->       If you need to change the value of a field use Field.from_field(...) to make a new instance.
+>       If you need to change the value of a field use field_type.from_field(...) to make a new instance.
 
 ```{literalinclude} code_examples/docs_ex09_annotated.py
 ```
+
+Note that this is unlikely ever to be a standard feature of `prefab` as I think this is worse.

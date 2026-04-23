@@ -1,1 +1,32 @@
 ConverterEx(unconverted='42', converted=42)
+Source:
+    def __eq__(self, other):
+        return (
+            self.unconverted == other.unconverted
+            and self.converted == other.converted
+        ) if self.__class__ is other.__class__ else NotImplemented
+
+    def __init__(self, unconverted, converted):
+        self.unconverted = unconverted
+        self.converted = converted
+
+    def __replace__(self, /, **changes):
+        new_kwargs = {'unconverted': self.unconverted, 'converted': self.converted}
+        new_kwargs |= changes
+        return self.__class__(**new_kwargs)
+
+    def __repr__(self):
+        return f'{type(self).__qualname__}(unconverted={self.unconverted!r}, converted={self.converted!r})'
+
+    def __setattr__(self, name, value):
+        if conv := _converters.get(name):
+            _object_setattr(self, name, conv(value))
+        else:
+            _object_setattr(self, name, value)
+
+
+Globals:
+    __setattr__: {'_converters': {'converted': <class 'int'>}, '_object_setattr': <slot wrapper '__setattr__' of 'object' objects>}
+
+Annotations:
+    __init__: {'unconverted': <class 'str'>, 'converted': <class 'int'>, 'return': None}

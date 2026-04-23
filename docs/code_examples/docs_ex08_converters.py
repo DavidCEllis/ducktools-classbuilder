@@ -1,18 +1,20 @@
 from ducktools.classbuilder import (
-    builder,
-    default_methods,
+    add_methods,
     get_fields,
-    slot_gatherer,
-    Field,
+    make_unified_gatherer,
+    print_generated_code,
     GeneratedCode,
-    SlotFields,
     MethodMaker,
 )
+from ducktools.classbuilder.prefab import attribute, Attribute, Prefab
 
 
-class ConverterField(Field):
-    converter = Field(default=None)
+class ConverterAttribute(Attribute):
+    converter = attribute(default=None)
 
+# This makes the internal field instances into `ConverterAttribute` instead of `Attribute`
+# which would be the default for `prefab`
+gatherer = make_unified_gatherer(field_type=ConverterAttribute)
 
 def setattr_generator(cls, funcname="__setattr__"):
     fields = get_fields(cls)
@@ -38,20 +40,20 @@ def setattr_generator(cls, funcname="__setattr__"):
 
 
 setattr_maker = MethodMaker("__setattr__", setattr_generator)
-methods = frozenset(default_methods | {setattr_maker})
+extra_methods = {setattr_maker}
 
 
-def converterclass(cls, /):
-    return builder(cls, gatherer=slot_gatherer, methods=methods)
+class ConverterClass(Prefab, gatherer=gatherer):
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        add_methods(cls, extra_methods)
 
 
 if __name__ == "__main__":
-    @converterclass
-    class ConverterEx:
-        __slots__ = SlotFields(
-            unconverted=ConverterField(),
-            converted=ConverterField(converter=int),
-        )
+    class ConverterEx(ConverterClass):
+        unconverted: str
+        converted: int = ConverterAttribute(converter=int)
 
     ex = ConverterEx("42", "42")
     print(ex)
+    print_generated_code(ConverterEx)
