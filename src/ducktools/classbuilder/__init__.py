@@ -158,16 +158,16 @@ def print_generated_code(cls):
         print(textwrap.indent("\n".join(annotation_list), "    "))
 
 
-def build_completed(ns):
+def build_completed(cls):
     """
     Utility function to determine if a class has completed the construction
     process.
 
-    :param ns: class namespace
+    :param cls: class to check
     :return: True if built, False otherwise
     """
     try:
-        return ns[INTERNALS_DICT]["build_complete"]
+        return cls.__dict__[INTERNALS_DICT]["build_complete"]
     except KeyError:
         return False
 

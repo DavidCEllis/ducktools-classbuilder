@@ -500,7 +500,7 @@ def _prefab_preprocess(
 
     cls_dict = cls.__dict__
 
-    if build_completed(cls_dict):
+    if build_completed(cls):
         raise PrefabError(
             f"Decorated class {cls.__name__!r} "
             f"has already been processed as a Prefab."
