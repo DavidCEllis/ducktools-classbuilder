@@ -1075,7 +1075,7 @@ class Field(metaclass=SlotMakerMeta):
 
     def __init_subclass__(cls, frozen=False, ignore_annotations=False):
         # Subclasses of Field can be created as if they are dataclasses
-        field_methods = {_field_init_maker, repr_maker, eq_maker}
+        field_methods = {_field_init_maker, repr_maker, eq_maker, replace_maker}
         if frozen or _UNDER_TESTING:
             field_methods |= {frozen_setattr_maker, frozen_delattr_maker}
 
