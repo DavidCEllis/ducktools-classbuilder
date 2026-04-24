@@ -486,6 +486,8 @@ def eq_generator(cls, funcname="__eq__"):
     # fmt: off
     code = (
         f"def {funcname}(self, other):\n"
+        f"    if self is other:\n"
+        f"        return True\n"
         f"    return (\n"
         f"        {instance_comparison}\n"
         f"    ) if {class_comparison} else NotImplemented\n"
@@ -497,20 +499,36 @@ def eq_generator(cls, funcname="__eq__"):
 
 
 def get_order_generator(cls, funcname, *, operator):
+    class_comparison = "self.__class__ is other.__class__"
     field_names = [
         name
         for name, attrib in get_fields(cls).items()
         if attrib.compare
     ]
 
-    self_tuple = ", ".join(f"self.{name}" for name in field_names)
-    other_tuple = self_tuple.replace("self.", "other.")
+    # Equal objects should be False for gt/lt comparisons
+    eq_return = "True" if "=" in operator else "False"
+
+    instance_comparisons = [
+        (
+            f"        if self.{name} != other.{name}:\n"
+            f"            return self.{name} {operator} other.{name}\n"
+        )
+        for name in field_names
+    ]
+    instance_comparisons.append(
+        f"        return {eq_return}"
+    )
+
+    instance_comparison = "".join(instance_comparisons)
 
     # fmt: off
     code = (
         f"def {funcname}(self, other):\n"
-        f"    if self.__class__ is other.__class__:\n"
-        f"        return ({self_tuple}) {operator} ({other_tuple})\n"
+        f"    if self is other:\n"
+        f"        return {eq_return}\n"
+        f"    if {class_comparison}:\n"
+        f"{instance_comparison}\n"
         f"    return NotImplemented\n"
     )
     # fmt: on
@@ -1057,7 +1075,7 @@ class Field(metaclass=SlotMakerMeta):
 
     def __init_subclass__(cls, frozen=False, ignore_annotations=False):
         # Subclasses of Field can be created as if they are dataclasses
-        field_methods = {_field_init_maker, repr_maker, eq_maker}
+        field_methods = {_field_init_maker, repr_maker, eq_maker, replace_maker}
         if frozen or _UNDER_TESTING:
             field_methods |= {frozen_setattr_maker, frozen_delattr_maker}
 
