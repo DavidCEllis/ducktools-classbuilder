@@ -36,23 +36,33 @@ try:
 except ImportError:
     from types import GenericAlias, NoneType
 
+#fmt: off
 from . import (
+    # Constants
     NOTHING, FIELD_NOTHING,
+
+    # Classes
     Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
-    builder, get_flags, get_fields,
-    make_unified_gatherer,
+
+    # Builder
+    builder,
+
+    # Internals Retrieval
+    build_completed,
+    get_flags, get_fields, get_methods,
+
+    # Method Makers
     eq_maker,
-    lt_maker,
-    le_maker,
-    gt_maker,
-    ge_maker,
-    frozen_setattr_maker,
-    frozen_delattr_maker,
+    frozen_delattr_maker, frozen_setattr_maker,
+    get_repr_generator,
+    ge_maker, gt_maker, le_maker, lt_maker,
     hash_maker,
     replace_maker,
-    get_repr_generator,
-    build_completed,
+
+    # Gatherer
+    make_unified_gatherer,
 )
+#fmt: on
 
 from .annotations import get_func_annotations, is_type, replace_generic_with_arg
 
