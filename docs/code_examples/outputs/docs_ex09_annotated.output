@@ -15,6 +15,8 @@ Slots: {'x': None, 'a': None, 'b': None, 'c': None, 'd': None, 'e': None, 'f': N
 
 Source:
 def __eq__(self, other):
+    if self is other:
+        return True
     return (
         self.x == other.x
         and self.a == other.a
