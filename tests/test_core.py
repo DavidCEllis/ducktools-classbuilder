@@ -438,56 +438,57 @@ def test_slotclass_dict():
     assert inst.__dict__ == {"c": 42}
 
 
-def test_fieldclass():
-    class NewField(Field):
-        serialize: bool = True
+class TestSubclassingField:
+    def test_fieldclass(self):
+        class NewField(Field):
+            serialize: bool = True
 
-    f = NewField()
+        f = NewField()
 
-    assert f.default is NOTHING
-    assert f.default_factory is NOTHING
-    assert f.type is NOTHING
-    assert f.doc is None
-    assert f.serialize is True
+        assert f.default is NOTHING
+        assert f.default_factory is NOTHING
+        assert f.type is NOTHING
+        assert f.doc is None
+        assert f.serialize is True
 
-    f2 = NewField(default=1, serialize=False)
+        f2 = NewField(default=1, serialize=False)
 
-    assert f2.default == 1
-    assert f2.serialize is False
+        assert f2.default == 1
+        assert f2.serialize is False
 
-    with pytest.raises(TypeError):
-        # All arguments are keyword only in fieldclasses
-        NewField(42)
-
-
-def test_fieldclass_frozen():
-    class NewField(Field, frozen=True):
-        serialize: bool = True
-
-    f = NewField()
-
-    attr_changes = {
-        "default": False,
-        "default_factory": list,
-        "type": bool,
-        "doc": "This should fail",
-        "serialize": False,
-    }
-
-    for k, v in attr_changes.items():
         with pytest.raises(TypeError):
-            setattr(f, k, v)
+            # All arguments are keyword only in fieldclasses
+            NewField(42)
 
-    for k in attr_changes:
+
+    def test_fieldclass_frozen(self):
+        class NewField(Field, frozen=True):
+            serialize: bool = True
+
+        f = NewField()
+
+        attr_changes = {
+            "default": False,
+            "default_factory": list,
+            "type": bool,
+            "doc": "This should fail",
+            "serialize": False,
+        }
+
+        for k, v in attr_changes.items():
+            with pytest.raises(TypeError):
+                setattr(f, k, v)
+
+        for k in attr_changes:
+            with pytest.raises(TypeError):
+                delattr(f, k)
+
+        # Even slotted fields raise TypeError as setattr happens first
         with pytest.raises(TypeError):
-            delattr(f, k)
+            setattr(f, "new_attribute", False)
 
-    # Even slotted fields raise TypeError as setattr happens first
-    with pytest.raises(TypeError):
-        setattr(f, "new_attribute", False)
-
-    with pytest.raises(TypeError):
-        delattr(f, "new_attribute")
+        with pytest.raises(TypeError):
+            delattr(f, "new_attribute")
 
 
 @graalpy_fails
