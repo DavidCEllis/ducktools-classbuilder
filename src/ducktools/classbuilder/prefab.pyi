@@ -17,7 +17,11 @@ from . import (
     _SignatureMaker
 )
 
-from . import SlotFields as SlotFields, KW_ONLY as KW_ONLY
+from . import (
+    KW_ONLY as KW_ONLY,
+    SlotFields as SlotFields,
+    replace as replace,
+)
 
 # noinspection PyUnresolvedReferences
 from . import _NothingType
@@ -262,5 +266,3 @@ def is_prefab(o: typing.Any) -> bool: ...
 def is_prefab_instance(o: object) -> bool: ...
 
 def as_dict(o) -> dict[str, typing.Any]: ...
-
-def replace(obj: _T, /, **changes: typing.Any) -> _T: ...

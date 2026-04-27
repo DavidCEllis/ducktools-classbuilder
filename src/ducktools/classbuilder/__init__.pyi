@@ -309,6 +309,8 @@ def unified_gatherer(cls_or_ns: type | _CopiableMappings) -> _gatherer_returntyp
 
 def check_argument_order(cls: type) -> None: ...
 
+def replace(obj: _T, /, **changes: typing.Any) -> _T: ...
+
 @typing.overload
 def slotclass(
     cls: _TypeT,

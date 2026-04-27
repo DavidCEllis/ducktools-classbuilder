@@ -67,7 +67,11 @@ from . import (
 from .annotations import get_func_annotations, is_type, replace_generic_with_arg
 
 # These aren't used but are re-exported for ease of use
-from . import SlotFields as SlotFields, KW_ONLY as KW_ONLY
+from . import (
+    KW_ONLY as KW_ONLY,
+    SlotFields as SlotFields,
+    replace as replace,
+)
 
 PREFAB_FIELDS = "PREFAB_FIELDS"
 PREFAB_INIT_FUNC = "__prefab_init__"
@@ -123,7 +127,6 @@ def init_generator(cls, funcname="__init__"):
     attributes = get_attributes(cls)
     flags = get_flags(cls)
 
-    kw_only = flags.get("kw_only", False)
     frozen = flags.get("frozen", False)
     slotted = flags.get("slotted", False)
 
@@ -218,7 +221,7 @@ def init_generator(cls, funcname="__init__"):
                     globs[f"_{name}_factory"] = attrib.default_factory
             else:
                 arg = name
-            if attrib.kw_only or kw_only:
+            if attrib.kw_only:
                 kw_only_arglist.append(arg)
             else:
                 pos_arglist.append(arg)
@@ -1038,20 +1041,3 @@ def as_dict(o):
         for name, attrib in flds.items()
         if attrib.serialize
     }
-
-
-def replace(obj, /, **changes):
-    """
-    Create a copy of a prefab instance with values provided to 'changes' replaced
-
-    :param obj: prefab instance
-    :return: new prefab instance
-    """
-    if not is_prefab_instance(obj):
-        raise TypeError("replace() should be called on prefab instances")
-    try:
-        replace_func = obj.__replace__
-    except AttributeError:
-        raise TypeError(f"{obj.__class__.__name__!r} does not support __replace__")
-
-    return replace_func(**changes)
