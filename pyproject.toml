@@ -83,3 +83,7 @@ exclude_also = [
 # A combination of types in stubs and tests using dataclass syntax
 # means that there are a number of annotations in otherwise unannotated areas
 disable_error_code = ["annotation-unchecked"]
+
+[tool.uv]
+exclude-newer = "1 week"
+exclude-newer-package = { reannotate = "1 hour" }
