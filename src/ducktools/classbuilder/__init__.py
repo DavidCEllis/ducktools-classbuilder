@@ -175,12 +175,24 @@ def build_completed(cls):
 # As 'None' can be a meaningful value we need a sentinel value
 # to use to show no value has been provided.
 class _NothingType:
-    def __init__(self, custom=None):
-        self.custom = custom
+    # Repeated calls to the same nothing type should
+    # return the same object
+    _registry = {}  # type: ignore
+
+    def __new__(cls, custom=None):
+        # Instances with the same custom name
+        # should be the same object
+        inst = cls._registry.get(custom)
+        if not inst:
+            inst = super().__new__(cls)
+            inst.custom = custom
+            cls._registry[custom] = inst
+        return inst
+
     def __repr__(self):
         if self.custom:
-            return f"<{self.custom} NOTHING OBJECT>"
-        return "<NOTHING OBJECT>"
+            return f"<{self.custom} NOTHING Sentinel>"
+        return "<NOTHING Sentinel>"
 
 
 NOTHING = _NothingType()

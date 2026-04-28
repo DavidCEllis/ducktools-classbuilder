@@ -1,12 +1,12 @@
 <generated class X; x='Value of x', a='Not In __init__ signature', c=[], e='Value of e', f=42> 
 
-{'x': Attribute(default=<NOTHING OBJECT>, default_factory=<NOTHING OBJECT>, type=<class 'str'>, doc=None, init=True, repr=True, compare=True, kw_only=False, iter=True, serialize=True, metadata={}),
- 'a': Attribute(default='Not In __init__ signature', default_factory=<NOTHING OBJECT>, type=<class 'int'>, doc=None, init=False, repr=True, compare=True, kw_only=False, iter=True, serialize=True, metadata={}),
- 'b': Attribute(default='Not In Repr', default_factory=<NOTHING OBJECT>, type=<class 'str'>, doc=None, init=True, repr=False, compare=True, kw_only=False, iter=True, serialize=True, metadata={}),
- 'c': Attribute(default=<NOTHING OBJECT>, default_factory=<class 'list'>, type=list[str], doc=None, init=True, repr=True, compare=False, kw_only=False, iter=True, serialize=True, metadata={}),
- 'd': Attribute(default='Not Anywhere', default_factory=<NOTHING OBJECT>, type=<class 'str'>, doc=None, init=False, repr=False, compare=False, kw_only=False, iter=True, serialize=True, metadata={}),
- 'e': Attribute(default=<NOTHING OBJECT>, default_factory=<NOTHING OBJECT>, type=<class 'str'>, doc=None, init=True, repr=True, compare=False, kw_only=True, iter=True, serialize=True, metadata={}),
- 'f': Attribute(default=42, default_factory=<NOTHING OBJECT>, type=ForwardRef('unknown'), doc=None, init=True, repr=True, compare=False, kw_only=False, iter=True, serialize=False, metadata={})}
+{'x': Attribute(default=<NOTHING Sentinel>, default_factory=<NOTHING Sentinel>, type=<class 'str'>, doc=None, init=True, repr=True, compare=True, kw_only=False, iter=True, serialize=True, metadata={}),
+ 'a': Attribute(default='Not In __init__ signature', default_factory=<NOTHING Sentinel>, type=<class 'int'>, doc=None, init=False, repr=True, compare=True, kw_only=False, iter=True, serialize=True, metadata={}),
+ 'b': Attribute(default='Not In Repr', default_factory=<NOTHING Sentinel>, type=<class 'str'>, doc=None, init=True, repr=False, compare=True, kw_only=False, iter=True, serialize=True, metadata={}),
+ 'c': Attribute(default=<NOTHING Sentinel>, default_factory=<class 'list'>, type=list[str], doc=None, init=True, repr=True, compare=False, kw_only=False, iter=True, serialize=True, metadata={}),
+ 'd': Attribute(default='Not Anywhere', default_factory=<NOTHING Sentinel>, type=<class 'str'>, doc=None, init=False, repr=False, compare=False, kw_only=False, iter=True, serialize=True, metadata={}),
+ 'e': Attribute(default=<NOTHING Sentinel>, default_factory=<NOTHING Sentinel>, type=<class 'str'>, doc=None, init=True, repr=True, compare=False, kw_only=True, iter=True, serialize=True, metadata={}),
+ 'f': Attribute(default=42, default_factory=<NOTHING Sentinel>, type=ForwardRef('unknown'), doc=None, init=True, repr=True, compare=False, kw_only=False, iter=True, serialize=False, metadata={})}
 
 
 <generated class Y; x='Value of x', a='Not In __init__ signature', c=[], e='Value of e', f=42> 

@@ -1,10 +1,14 @@
 # Tests for the core 'builder'
 import inspect
 import pytest
+import pickle
 
 from ducktools.classbuilder import (
+    _NothingType,
+
     INTERNALS_DICT,
     NOTHING,
+    FIELD_NOTHING,
 
     add_methods,
     builder,
@@ -122,6 +126,16 @@ def test_construct_field():
 
     with pytest.raises(AttributeError):
         Field(default=None, default_factory=list)
+
+
+def test_nothing_type():
+    # Test that creating new sentinels actually
+    # gives the original sentinel
+    assert _NothingType() is NOTHING
+    assert _NothingType("FIELD") is FIELD_NOTHING
+
+    dumps, loads = pickle.dumps, pickle.loads
+    assert loads(dumps(NOTHING)) is NOTHING
 
 
 def test_eq_field():
@@ -537,10 +551,10 @@ def test_gatheredfields():
     assert repr(flds).endswith(
         "GatheredFields("
         "fields={'x': Field("
-        "default=1, default_factory=<NOTHING OBJECT>, type=<NOTHING OBJECT>, doc=None, "
+        "default=1, default_factory=<NOTHING Sentinel>, type=<NOTHING Sentinel>, doc=None, "
         "init=True, repr=True, compare=True, kw_only=False"
         ")}, "
-        "modifications={'x': <NOTHING OBJECT>}"
+        "modifications={'x': <NOTHING Sentinel>}"
         ")"
     )
 
