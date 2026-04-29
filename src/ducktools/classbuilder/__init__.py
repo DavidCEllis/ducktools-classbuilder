@@ -246,6 +246,25 @@ class GeneratedCode:
             )
         return NotImplemented
 
+    def generate(self, classname):
+        local_vars = {}
+        exec(self.source_code, self.globs, local_vars)
+
+        # The only object in local_vars will be the function
+        funcname, method = local_vars.popitem()
+
+        try:
+            method.__qualname__ = f"{classname}.{funcname}"
+        except AttributeError:
+            # This might be a property or some other special
+            # descriptor. Don't try to rename.
+            pass
+
+        if self.annotations:
+            apply_annotations(method, self.annotations)
+
+        return method
+
 
 class MethodMaker:
     """
@@ -267,8 +286,6 @@ class MethodMaker:
         return f"<MethodMaker for {self.funcname!r} method>"
 
     def __get__(self, inst, cls):
-        local_vars = {}
-
         # This can be called via super().funcname(...) in which case the class
         # may not be the correct one. If this is the correct class
         # it should have this descriptor in the class dict under
@@ -289,19 +306,7 @@ class MethodMaker:
                 )
 
         gen = self.code_generator(gen_cls, self.funcname)
-        exec(gen.source_code, gen.globs, local_vars)
-        method = local_vars.get(self.funcname)
-
-        try:
-            method.__qualname__ = f"{gen_cls.__qualname__}.{self.funcname}"
-        except AttributeError:
-            # This might be a property or some other special
-            # descriptor. Don't try to rename.
-            pass
-
-        # Apply annotations
-        if gen.annotations is not None:
-            apply_annotations(method, gen.annotations)
+        method = gen.generate(classname=gen_cls.__qualname__)
 
         # Replace this descriptor on the class with the generated function
         setattr(gen_cls, self.funcname, method)
