@@ -52,7 +52,7 @@ from . import (
     get_flags, get_fields, get_methods,
 
     # Method Makers
-    eq_maker,
+    cached_eq_maker as eq_maker,
     frozen_delattr_maker, frozen_setattr_maker,
     get_repr_generator,
     ge_maker, gt_maker, le_maker, lt_maker,

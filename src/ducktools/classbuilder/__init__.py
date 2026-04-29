@@ -41,11 +41,13 @@ import sys
 try:
     # Use the internal C module if it is available
     from _types import (  # type: ignore
+        FunctionType as _FunctionType,
         MemberDescriptorType as _MemberDescriptorType,
         MappingProxyType as _MappingProxyType
     )
 except ImportError:  # pragma: nocover
     from types import (
+        FunctionType as _FunctionType,
         MemberDescriptorType as _MemberDescriptorType,
         MappingProxyType as _MappingProxyType,
     )
@@ -57,6 +59,9 @@ from ._version import __version__, __version_tuple__  # noqa: F401
 INTERNALS_DICT = "__classbuilder_internals__"
 META_GATHERER_NAME = "__classbuilder_meta_gatherer__"
 GATHERED_DATA = "__classbuilder_gathered_fields__"
+
+# Special Cache name
+REPLACE_NAME = "_classbuilder_cache_names_"
 
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
@@ -246,7 +251,7 @@ class GeneratedCode:
             )
         return NotImplemented
 
-    def generate(self, classname):
+    def generate(self, cls):
         local_vars = {}
         exec(self.source_code, self.globs, local_vars)
 
@@ -254,7 +259,7 @@ class GeneratedCode:
         funcname, method = local_vars.popitem()
 
         try:
-            method.__qualname__ = f"{classname}.{funcname}"
+            method.__qualname__ = f"{cls.__qualname__}.{funcname}"
         except AttributeError:
             # This might be a property or some other special
             # descriptor. Don't try to rename.
@@ -306,7 +311,98 @@ class MethodMaker:
                 )
 
         gen = self.code_generator(gen_cls, self.funcname)
-        method = gen.generate(classname=gen_cls.__qualname__)
+        method = gen.generate(cls=gen_cls)
+
+        # Replace this descriptor on the class with the generated function
+        setattr(gen_cls, self.funcname, method)
+
+        # Use 'get' to return the generated function as a bound method
+        # instead of as a regular function for first usage.
+        return method.__get__(inst, cls)
+
+
+class CachedMethodMaker:
+    def __init__(self, funcname, arg_getter, generic_code_generator, call_outer=False):
+        self.funcname = funcname
+        self.arg_getter = arg_getter
+        self.generic_code_generator = generic_code_generator
+        self.call_outer = call_outer
+
+        self._cache = {}
+
+    def __repr__(self):
+        return f"<CachedMethodMaker for {self.funcname!r} method>"
+
+    @property
+    def code_generator(self):
+        def gen(cls, funcname=self.funcname):
+            argcount = len(self.arg_getter(cls))
+            return self.generic_code_generator(argcount, funcname)
+        return gen
+
+    def get_method(self, cls, funcname):
+        args = self.arg_getter(cls)
+        arg_count = len(args)
+
+        try:
+            func_maker = self._cache[arg_count]
+        except KeyError:
+            gen = self.generic_code_generator(arg_count, funcname)
+            local_vars = {}
+            exec(gen.source_code, gen.globs, local_vars)
+            _, func_maker = local_vars.popitem()
+            self._cache[arg_count] = func_maker
+
+        # The retrieved function may require being called with the arg list
+        # in order to replace internal strings.
+        if self.call_outer:
+            func = func_maker(args)
+        else:
+            func = func_maker
+
+        arg_fixes = {
+            f"{REPLACE_NAME}{i}": arg for i, arg in enumerate(args)
+        }
+
+        co_names = func.__code__.co_names
+        new_co_names = tuple(arg_fixes.get(name, name) for name in co_names)
+
+        # Copy and patch names in the general function
+        method = _FunctionType(
+            func.__code__.replace(co_names=new_co_names),
+            func.__globals__,
+            name=self.funcname,
+            argdefs=func.__defaults__,
+            closure=func.__closure__,
+            kwdefaults=func.__kwdefaults__,
+        )
+
+        # Patch up the name and annotations
+        try:
+            method.__qualname__ = f"{cls.__qualname__}.{funcname}"
+        except AttributeError:
+            # This might be a property or some other special
+            # descriptor. Don't try to rename.
+            pass
+
+        return method
+
+    def __get__(self, inst, cls):
+        if cls.__dict__.get(self.funcname) is self:
+            gen_cls = cls
+        else:
+            for c in cls.__mro__[1:]:  # skip 'cls' as special cased
+                if c.__dict__.get(self.funcname) is self:
+                    gen_cls = c
+                    break
+            else:  # pragma: no cover
+                # This should only be reached if called with incorrect arguments
+                # manually
+                raise AttributeError(
+                    f"Could not find {self!r} in class {cls.__name__!r} MRO."
+                )
+
+        method = self.get_method(gen_cls, self.funcname)
 
         # Replace this descriptor on the class with the generated function
         setattr(gen_cls, self.funcname, method)
@@ -346,6 +442,14 @@ class _SignatureMaker:
 
 
 signature_maker = _SignatureMaker()
+
+
+# Argument getters for the generic cached methods
+def get_compare_args(cls):
+    return tuple(k for k, v in get_fields(cls).items() if v.compare)
+
+def get_repr_args(cls):
+    return tuple(k for k, v in get_fields(cls).items() if v.repr)
 
 
 def get_init_generator(null=NOTHING, extra_code=None):
@@ -512,6 +616,33 @@ def eq_generator(cls, funcname="__eq__"):
     return GeneratedCode(code, globs)
 
 
+def generic_eq_generator(argcount, funcname="__eq__"):
+    class_comparison = "self.__class__ is other.__class__"
+
+    if argcount > 0:
+        instance_comparison = "\n            and ".join(
+            f"self.{REPLACE_NAME}{i} == other.{REPLACE_NAME}{i}"
+            for i in range(argcount)
+        )
+    else:
+        instance_comparison = "True"
+
+    # fmt: off
+    code = (
+        f"def {funcname}(self, other):\n"
+        f"    if self is other:\n"
+        f"        return True\n"
+        f"    return (\n"
+        f"        {instance_comparison}\n"
+        f"    ) if {class_comparison} else NotImplemented\n"
+    )
+    # fmt: on
+
+    globs = {}
+
+    return GeneratedCode(code, globs)
+
+
 def get_order_generator(cls, funcname, *, operator):
     class_comparison = "self.__class__ is other.__class__"
     field_names = [
@@ -666,6 +797,7 @@ def hash_generator(cls, funcname="__hash__"):
 init_maker = MethodMaker("__init__", init_generator)
 repr_maker = MethodMaker("__repr__", repr_generator)
 eq_maker = MethodMaker("__eq__", eq_generator)
+cached_eq_maker = CachedMethodMaker("__eq__", get_compare_args, generic_eq_generator, call_outer=False)
 lt_maker = MethodMaker("__lt__", lt_generator)
 le_maker = MethodMaker("__le__", le_generator)
 gt_maker = MethodMaker("__gt__", gt_generator)
