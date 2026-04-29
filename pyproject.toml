@@ -72,6 +72,7 @@ testpaths = [
 
 [tool.coverage.run]
 plugins = ["coverage_simple_excludes"]
+omit = ["_cached_methods.py"]
 
 [tool.coverage.report]
 fail_under = 90
