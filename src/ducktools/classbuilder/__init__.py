@@ -54,6 +54,7 @@ except ImportError:  # pragma: nocover
 
 from .annotations import apply_annotations, get_ns_annotations, is_classvar, resolve_type
 from ._version import __version__, __version_tuple__  # noqa: F401
+from ._cached_methods import eq_cache
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -322,13 +323,19 @@ class MethodMaker:
 
 
 class CachedMethodMaker:
-    def __init__(self, funcname, arg_getter, generic_code_generator, call_outer=False):
+    def __init__(
+        self,
+        funcname,
+        arg_getter,
+        generic_code_generator,
+        call_outer=False,
+        cache=None,
+    ):
         self.funcname = funcname
         self.arg_getter = arg_getter
         self.generic_code_generator = generic_code_generator
         self.call_outer = call_outer
-
-        self._cache = {}
+        self.cache = cache if cache else {}
 
     def __repr__(self):
         return f"<CachedMethodMaker for {self.funcname!r} method>"
@@ -345,13 +352,13 @@ class CachedMethodMaker:
         arg_count = len(args)
 
         try:
-            func_maker = self._cache[arg_count]
+            func_maker = self.cache[arg_count]
         except KeyError:
             gen = self.generic_code_generator(arg_count, funcname)
             local_vars = {}
             exec(gen.source_code, gen.globs, local_vars)
             _, func_maker = local_vars.popitem()
-            self._cache[arg_count] = func_maker
+            self.cache[arg_count] = func_maker
 
         # The retrieved function may require being called with the arg list
         # in order to replace internal strings.
@@ -384,6 +391,9 @@ class CachedMethodMaker:
             # This might be a property or some other special
             # descriptor. Don't try to rename.
             pass
+
+        # Remove reference to the cache module
+        method.__module__ = None
 
         return method
 
@@ -586,36 +596,6 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
 repr_generator = get_repr_generator()
 
 
-def eq_generator(cls, funcname="__eq__"):
-    class_comparison = "self.__class__ is other.__class__"
-    field_names = [
-        name
-        for name, attrib in get_fields(cls).items()
-        if attrib.compare
-    ]
-
-    if field_names:
-        instance_comparison = "\n        and ".join(
-            f"self.{name} == other.{name}" for name in field_names
-        )
-    else:
-        instance_comparison = "True"
-
-    # fmt: off
-    code = (
-        f"def {funcname}(self, other):\n"
-        f"    if self is other:\n"
-        f"        return True\n"
-        f"    return (\n"
-        f"        {instance_comparison}\n"
-        f"    ) if {class_comparison} else NotImplemented\n"
-    )
-    # fmt: on
-    globs = {}
-
-    return GeneratedCode(code, globs)
-
-
 def generic_eq_generator(argcount, funcname="__eq__"):
     class_comparison = "self.__class__ is other.__class__"
 
@@ -796,8 +776,13 @@ def hash_generator(cls, funcname="__hash__"):
 # Descriptor instances for every class.
 init_maker = MethodMaker("__init__", init_generator)
 repr_maker = MethodMaker("__repr__", repr_generator)
-eq_maker = MethodMaker("__eq__", eq_generator)
-cached_eq_maker = CachedMethodMaker("__eq__", get_compare_args, generic_eq_generator, call_outer=False)
+eq_maker = CachedMethodMaker(
+    "__eq__",
+    get_compare_args,
+    generic_eq_generator,
+    call_outer=False,
+    cache=eq_cache,
+)
 lt_maker = MethodMaker("__lt__", lt_generator)
 le_maker = MethodMaker("__le__", le_generator)
 gt_maker = MethodMaker("__gt__", gt_generator)

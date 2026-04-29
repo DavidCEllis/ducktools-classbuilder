@@ -49,10 +49,10 @@ from . import (
 
     # Internals Retrieval
     build_completed,
-    get_flags, get_fields, get_methods,
+    get_flags, get_fields,
 
     # Method Makers
-    cached_eq_maker as eq_maker,
+    eq_maker,
     frozen_delattr_maker, frozen_setattr_maker,
     get_repr_generator,
     ge_maker, gt_maker, le_maker, lt_maker,
