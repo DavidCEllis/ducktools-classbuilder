@@ -57,10 +57,11 @@ from .annotations import apply_annotations, get_ns_annotations, is_classvar, res
 from ._version import __version__, __version_tuple__  # noqa: F401
 
 try:
-    from ._cached_methods import eq_cache
+    from ._cached_methods import eq_cache, repr_cache
 except ImportError:  # pragma: nocover
     # Needed for generating cached methods after deletion
     eq_cache = {}
+    repr_cache = {}
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -430,7 +431,7 @@ def generic_to_class_generator(
         # Patch up the method
         # Call with args if needed to patch string names
         if unwrap:
-            raw_func = raw_func(argnames)
+            raw_func = raw_func(*argnames)
 
         arg_fixes = {
             f"{REPLACE_NAME}{i}": arg for i, arg in enumerate(argnames)
@@ -539,15 +540,7 @@ def repr_generator(cls, funcname="__repr__"):
     fields = get_fields(cls)
 
     globs = {}
-    will_eval = True
-    valid_names = []
-
-    for name, fld in fields.items():
-        if fld.repr:
-            valid_names.append(name)
-
-        if will_eval and (fld.init ^ fld.repr):
-            will_eval = False
+    valid_names = [k for k, v in fields.items() if v.repr]
 
     content = ", ".join(
         f"{name}={{self.{name}!r}}"
@@ -564,6 +557,23 @@ def repr_generator(cls, funcname="__repr__"):
         f"    return f'{{type(self).__qualname__}}({content})'\n"
     )
     # fmt: on
+
+    return GeneratedCode(code, globs)
+
+
+@_simple_cache()
+def generic_repr_generator(argcount, *, funcname="__repr__"):
+    content = ", ".join(
+        f"{{{REPLACE_NAME}[{i}]}}={{self.{REPLACE_NAME}{i}!r}}"
+        for i in range(argcount)
+    )
+    code = (
+        f"def _make_{funcname}(*{REPLACE_NAME}):\n"
+        f"    def {funcname}(self):\n"
+        f"        return f'{{type(self).__qualname__}}({content})'\n"
+        f"    return {funcname}\n"
+    )
+    globs = {}
 
     return GeneratedCode(code, globs)
 
@@ -781,7 +791,17 @@ def hash_generator(cls, funcname="__hash__"):
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
 init_maker = MethodMaker("__init__", init_generator)
-repr_maker = MethodMaker("__repr__", repr_generator)
+repr_maker = MethodMaker(
+    "__repr__",
+    repr_generator,
+    generic_to_class_generator(
+        generic_repr_generator,
+        get_repr_args,
+        unwrap=True,
+        cache=repr_cache,
+        decorator=_RECURSIVE_REPR,
+    )
+)
 eq_maker = MethodMaker(
     "__eq__",
     eq_generator,

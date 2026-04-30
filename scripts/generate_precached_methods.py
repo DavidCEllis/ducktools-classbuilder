@@ -5,16 +5,19 @@ import ducktools.classbuilder as dtbuild
 DEST = Path(dtbuild.__file__).parent / "_cached_methods.py"
 COUNT = 20
 
-def pre_generate_cache(func, count, cache_name):
+def pre_generate_cache(funcname, func, count, cache_name, wrapped=False):
     methods_list = []
     cache_lines_list = []
 
     for i in range(count):
-        funcname = f"__eq_{i}__"
+        name = f"{funcname}_{i}"
         methods_list.append(
-            func(i, funcname=funcname).source_code
+            func(i, funcname=name).source_code
         )
-        cache_lines_list.append(f"    ({i},): {funcname},")
+        if wrapped:
+            cache_lines_list.append(f"    ({i},): _make_{name},")
+        else:
+            cache_lines_list.append(f"    ({i},): {name},")
 
     methods = "\n".join(methods_list)
     cache_lines = "\n".join(cache_lines_list)
@@ -27,7 +30,8 @@ def main():
         f.write("# This module is automatically generated from a script\n")
         f.write("# DO NOT EDIT BY HAND\n\n")
 
-        f.write(pre_generate_cache(dtbuild.generic_eq_generator, COUNT, "eq_cache"))
+        f.write(pre_generate_cache("_eq", dtbuild.generic_eq_generator, COUNT, "eq_cache"))
+        f.write(pre_generate_cache("_repr", dtbuild.generic_repr_generator, COUNT, "repr_cache", wrapped=True))
 
 if __name__ == "__main__":
     main()
