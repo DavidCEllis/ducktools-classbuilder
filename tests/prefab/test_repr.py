@@ -40,7 +40,7 @@ class RegularReprOneArg:
     y: str = attribute(default="World", init=False, repr=False)
 
 
-@prefab(recursive_repr=True)
+@prefab
 class RecursiveObject:
     x: "RecursiveObject | None" = None
 

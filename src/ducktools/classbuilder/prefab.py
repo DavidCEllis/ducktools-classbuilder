@@ -54,7 +54,7 @@ from . import (
     # Method Makers
     eq_maker,
     frozen_delattr_maker, frozen_setattr_maker,
-    get_repr_generator,
+    repr_maker,
     ge_maker, gt_maker, le_maker, lt_maker,
     hash_maker,
     replace_maker,
@@ -380,14 +380,6 @@ def as_dict_generator(cls, funcname="as_dict"):
 
 init_maker = MethodMaker("__init__", init_generator)
 prefab_init_maker = MethodMaker(PREFAB_INIT_FUNC, init_generator)
-repr_maker = MethodMaker(
-    "__repr__",
-    get_repr_generator(recursion_safe=False, eval_safe=True)
-)
-recursive_repr_maker = MethodMaker(
-    "__repr__",
-    get_repr_generator(recursion_safe=True, eval_safe=True)
-)
 iter_maker = MethodMaker("__iter__", iter_generator)
 asdict_maker = MethodMaker("as_dict", as_dict_generator)
 
@@ -503,7 +495,6 @@ def _prefab_preprocess(
     frozen,
     replace,
     dict_method,
-    recursive_repr,
     gatherer,
     gathered_fields,
     ignore_annotations,
@@ -545,10 +536,7 @@ def _prefab_preprocess(
         methods.add(prefab_init_maker)
 
     if repr and "__repr__" not in cls_dict:
-        if recursive_repr:
-            methods.add(recursive_repr_maker)
-        else:
-            methods.add(repr_maker)
+        methods.add(repr_maker)
     if eq and "__eq__" not in cls_dict:
         methods.add(eq_maker)
     if order:
@@ -589,7 +577,6 @@ def _prefab_preprocess(
         "frozen": frozen,
         "replace": replace,
         "dict_method": dict_method,
-        "recursive_repr": recursive_repr,
         "ignore_annotations": ignore_annotations,
     }
 
@@ -679,7 +666,6 @@ def _make_prefab(
     frozen=False,
     replace=True,
     dict_method=False,
-    recursive_repr=False,
     gatherer=prefab_gatherer,
     gathered_fields=None,
     ignore_annotations=False,
@@ -699,7 +685,6 @@ def _make_prefab(
                    such as lists)
     :param replace: Add a generated __replace__ method
     :param dict_method: Include an as_dict method for faster dictionary creation
-    :param recursive_repr: Safely handle repr in case of recursion
     :param gatherer: A gatherer to use for collecting `Attribute`s
     :param gathered_fields: Pre-gathered fields callable, to skip re-collecting attributes
     :param ignore_annotations: Ignore annotated fields and only look at `attribute` fields
@@ -719,7 +704,6 @@ def _make_prefab(
         frozen=frozen,
         replace=replace,
         dict_method=dict_method,
-        recursive_repr=recursive_repr,
         gatherer=gatherer,
         gathered_fields=gathered_fields,
         ignore_annotations=ignore_annotations,
@@ -772,7 +756,6 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
                     (This does not prevent the modification of mutable attributes such as lists)
         :param replace: generate a __replace__ method
         :param dict_method: Include an as_dict method for faster dictionary creation
-        :param recursive_repr: Safely handle repr in case of recursion
         :param ignore_annotations: Ignore type annotations when gathering fields, only look for
                                 slots or attribute(...) values
         :param slots: automatically generate slots for this class's attributes
@@ -789,7 +772,6 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
             "frozen": False,
             "replace": True,
             "dict_method": False,
-            "recursive_repr": False,
         }
 
         try:
@@ -835,7 +817,6 @@ def prefab(
     frozen=False,
     replace=True,
     dict_method=False,
-    recursive_repr=False,
     gatherer=prefab_gatherer,
     ignore_annotations=False,
 ):
@@ -855,7 +836,6 @@ def prefab(
                    (This does not prevent the modification of mutable attributes such as lists)
     :param replace: generate a __replace__ method
     :param dict_method: Include an as_dict method for faster dictionary creation
-    :param recursive_repr: Safely handle repr in case of recursion
     :param ignore_annotations: Ignore type annotations when gathering fields, only look for
                                slots or attribute(...) values
 
@@ -875,7 +855,6 @@ def prefab(
             frozen=frozen,
             replace=replace,
             dict_method=dict_method,
-            recursive_repr=recursive_repr,
             gatherer=gatherer,
             ignore_annotations=ignore_annotations,
         )
@@ -892,7 +871,6 @@ def prefab(
             frozen=frozen,
             replace=replace,
             dict_method=dict_method,
-            recursive_repr=recursive_repr,
             gatherer=gatherer,
             ignore_annotations=ignore_annotations,
         )
@@ -915,7 +893,6 @@ def build_prefab(
     frozen=False,
     replace=True,
     dict_method=False,
-    recursive_repr=False,
     slots=False,
 ):
     """
@@ -937,7 +914,6 @@ def build_prefab(
                    (This does not prevent the modification of mutable attributes such as lists)
     :param replace: generate a __replace__ method
     :param dict_method: Include an as_dict method for faster dictionary creation
-    :param recursive_repr: Safely handle repr in case of recursion
     :param slots: Make the resulting class slotted
     :return: class with __ methods defined
     """
@@ -981,7 +957,6 @@ def build_prefab(
         frozen=frozen,
         replace=replace,
         dict_method=dict_method,
-        recursive_repr=recursive_repr,
         gathered_fields=gathered_fields,
     )
 

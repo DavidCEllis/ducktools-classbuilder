@@ -70,7 +70,6 @@ class Slotted(ducktools.classbuilder.prefab.Prefab)
  |                  (This does not prevent the modification of mutable attributes such as lists)
  |      :param replace: generate a __replace__ method
  |      :param dict_method: Include an as_dict method for faster dictionary creation
- |      :param recursive_repr: Safely handle repr in case of recursion
  |      :param ignore_annotations: Ignore type annotations when gathering fields, only look for
  |                              slots or attribute(...) values
  |      :param slots: automatically generate slots for this class's attributes

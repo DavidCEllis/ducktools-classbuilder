@@ -535,50 +535,37 @@ def get_init_generator(null=NOTHING, extra_code=None):
 init_generator = get_init_generator()
 
 
-def get_repr_generator(recursion_safe=False, eval_safe=False):
-    """
+def repr_generator(cls, funcname="__repr__"):
+    fields = get_fields(cls)
 
-    :param recursion_safe: use reprlib.recursive_repr
-    :param eval_safe: if the repr is known not to eval correctly,
-                      generate a repr which will intentionally
-                      not evaluate.
-    :return:
-    """
-    def cls_repr_generator(cls, funcname="__repr__"):
-        fields = get_fields(cls)
+    globs = {}
+    will_eval = True
+    valid_names = []
 
-        globs = {}
-        will_eval = True
-        valid_names = []
+    for name, fld in fields.items():
+        if fld.repr:
+            valid_names.append(name)
 
-        for name, fld in fields.items():
-            if fld.repr:
-                valid_names.append(name)
+        if will_eval and (fld.init ^ fld.repr):
+            will_eval = False
 
-            if will_eval and (fld.init ^ fld.repr):
-                will_eval = False
+    content = ", ".join(
+        f"{name}={{self.{name}!r}}"
+        for name in valid_names
+    )
 
-        content = ", ".join(
-            f"{name}={{self.{name}!r}}"
-            for name in valid_names
-        )
+    globs["_recursive_repr"] = _RECURSIVE_REPR
+    recursion_func = "@_recursive_repr\n"
 
-        globs["_recursive_repr"] = _RECURSIVE_REPR
-        recursion_func = "@_recursive_repr\n"
+    # fmt: off
+    code = (
+        f"{recursion_func}"
+        f"def {funcname}(self):\n"
+        f"    return f'{{type(self).__qualname__}}({content})'\n"
+    )
+    # fmt: on
 
-        # fmt: off
-        code = (
-            f"{recursion_func}"
-            f"def {funcname}(self):\n"
-            f"    return f'{{type(self).__qualname__}}({content})'\n"
-        )
-        # fmt: on
-
-        return GeneratedCode(code, globs)
-    return cls_repr_generator
-
-
-repr_generator = get_repr_generator()
+    return GeneratedCode(code, globs)
 
 
 def eq_generator(cls, funcname="__eq__"):
