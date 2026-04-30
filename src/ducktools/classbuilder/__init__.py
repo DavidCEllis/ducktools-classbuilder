@@ -37,6 +37,7 @@ __lazy_modules__ = [
 
 import os
 import sys
+import reprlib
 
 try:
     # Use the internal C module if it is available
@@ -72,6 +73,9 @@ REPLACE_NAME = "_classbuilder_cache_names_"
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = os.environ.get("PYTEST_VERSION") is not None
+
+# Create the instance here so instances are identical
+_RECURSIVE_REPR = reprlib.recursive_repr()
 
 
 def get_fields(cls, *, local=False):
@@ -559,33 +563,15 @@ def get_repr_generator(recursion_safe=False, eval_safe=False):
             for name in valid_names
         )
 
-        if recursion_safe:
-            import reprlib
-            globs["_recursive_repr"] = reprlib.recursive_repr()
-            recursion_func = "@_recursive_repr\n"
-        else:
-            recursion_func = ""
+        globs["_recursive_repr"] = _RECURSIVE_REPR
+        recursion_func = "@_recursive_repr\n"
 
         # fmt: off
-        if eval_safe and will_eval is False:
-            if content:
-                code = (
-                    f"{recursion_func}"
-                    f"def {funcname}(self):\n"
-                    f"    return f'<generated class {{type(self).__qualname__}}; {content}>'\n"
-                )
-            else:
-                code = (
-                    f"{recursion_func}"
-                    f"def {funcname}(self):\n"
-                    f"    return f'<generated class {{type(self).__qualname__}}>'\n"
-                )
-        else:
-            code = (
-                f"{recursion_func}"
-                f"def {funcname}(self):\n"
-                f"    return f'{{type(self).__qualname__}}({content})'\n"
-            )
+        code = (
+            f"{recursion_func}"
+            f"def {funcname}(self):\n"
+            f"    return f'{{type(self).__qualname__}}({content})'\n"
+        )
         # fmt: on
 
         return GeneratedCode(code, globs)

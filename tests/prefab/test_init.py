@@ -229,8 +229,8 @@ def test_exclude_field():
 
     assert x.x == "EXCLUDED_FIELD"
     assert y.x == "STILL_EXCLUDED"
-    assert repr(x) == "<generated class ExcludeField>"
-    assert repr(y) == "<generated class ExcludeField>"
+    assert repr(x) == "ExcludeField()"
+    assert repr(y) == "ExcludeField()"
     assert x == y
 
 

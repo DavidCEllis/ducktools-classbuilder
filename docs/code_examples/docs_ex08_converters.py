@@ -2,7 +2,7 @@ from ducktools.classbuilder import (
     add_methods,
     get_fields,
     make_unified_gatherer,
-    print_generated_code,
+    get_generated_code,
     GeneratedCode,
     MethodMaker,
 )
@@ -56,4 +56,8 @@ if __name__ == "__main__":
 
     ex = ConverterEx("42", "42")
     print(ex)
-    print_generated_code(ConverterEx)
+    print()
+    code = get_generated_code(ConverterEx)
+
+    for k in sorted(code):
+        print(code[k].source_code)
