@@ -6,11 +6,18 @@ DEST = Path(dtbuild.__file__).parent / "_cached_methods.py"
 COUNT = 20
 
 def pre_generate_cache(func, count, cache_name):
-    methods = "\n".join(
-        func(i, f"__eq_{i}__").source_code
-        for i in range(count)
-    )
-    cache_lines = "\n".join(f"    {i}: __eq_{i}__," for i in range(count))
+    methods_list = []
+    cache_lines_list = []
+
+    for i in range(count):
+        funcname = f"__eq_{i}__"
+        methods_list.append(
+            func(i, funcname=funcname).source_code
+        )
+        cache_lines_list.append(f"    ({i},): {funcname},")
+
+    methods = "\n".join(methods_list)
+    cache_lines = "\n".join(cache_lines_list)
 
     return f"{methods}\n{cache_name} = {{\n{cache_lines}\n}}\n"
 
