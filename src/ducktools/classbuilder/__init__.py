@@ -58,7 +58,7 @@ from ._version import __version__, __version_tuple__  # noqa: F401
 
 try:
     from ._cached_methods import eq_cache, repr_cache
-except ImportError:  # pragma: nocover
+except Exception:  # pragma: nocover
     # Needed for generating cached methods after deletion
     eq_cache = {}
     repr_cache = {}
@@ -298,16 +298,18 @@ class MethodMaker:
     This is used to convert a code generator that returns code and a globals
     dictionary into a descriptor to assign on a generated class.
     """
-    def __init__(self, funcname, code_generator, cached_generator=None):
+    def __init__(self, funcname, code_generator, cached_generator=None, decorator=None):
         """
         :param funcname: name of the generated function eg `__init__`
         :param code_generator: code generator function to operate on a class.
         :param cached_generator: a method generator that includes an internal cache
+        :param decorator: a decorator to apply directly to method after it has been created
         """
 
         self.funcname = funcname
         self.code_generator = code_generator
         self.cached_generator = cached_generator
+        self.decorator = decorator
 
     def __repr__(self):
         return f"<MethodMaker for {self.funcname!r} method>"
@@ -348,6 +350,9 @@ class MethodMaker:
 
         if gen.annotations:
             apply_annotations(method, gen.annotations)
+
+        if self.decorator:
+            method = self.decorator(method)
 
         # Replace this descriptor on the class with the generated function
         setattr(gen_cls, self.funcname, method)
@@ -408,8 +413,9 @@ def generic_to_class_generator(
     cache=None,
     default_fixer=None,
     method_check=None,
-    decorator=None,
 ):
+    # This takes a generic source generator and converts it into a function
+    # generator with cached methods backing it
     @_simple_cache(cache)
     def source_exec(*args, funcname):
         gen = generic_generator(*args, funcname=funcname)
@@ -457,9 +463,6 @@ def generic_to_class_generator(
 
         # Remove the module reference to avoid retrieving incorrect code
         method.__module__ = None
-
-        if decorator:
-            method = decorator(method)
 
         return gen, method
 
@@ -536,56 +539,62 @@ def get_init_generator(null=NOTHING, extra_code=None):
 init_generator = get_init_generator()
 
 
-def repr_generator(cls, funcname="__repr__"):
-    fields = get_fields(cls)
-
-    globs = {}
-    valid_names = [k for k, v in fields.items() if v.repr]
-
-    content = ", ".join(
-        f"{name}={{self.{name}!r}}"
-        for name in valid_names
-    )
-
-    globs["_recursive_repr"] = _RECURSIVE_REPR
-    recursion_func = "@_recursive_repr\n"
+def generic_repr_generator(field_names, funcname="__repr__", wrap_keys=False):
+    if wrap_keys:
+        content = ", ".join(
+            f"{{{name}}}={{self.{name}!r}}"
+            for name in field_names
+        )
+    else:
+        content = ", ".join(
+            f"{name}={{self.{name}!r}}"
+            for name in field_names
+        )
 
     # fmt: off
     code = (
-        f"{recursion_func}"
         f"def {funcname}(self):\n"
         f"    return f'{{type(self).__qualname__}}({content})'\n"
     )
     # fmt: on
-
-    return GeneratedCode(code, globs)
-
-
-@_simple_cache()
-def generic_repr_generator(argcount, *, funcname="__repr__"):
-    content = ", ".join(
-        f"{{{REPLACE_NAME}[{i}]}}={{self.{REPLACE_NAME}{i}!r}}"
-        for i in range(argcount)
-    )
-    code = (
-        f"def _make_{funcname}(*{REPLACE_NAME}):\n"
-        f"    def {funcname}(self):\n"
-        f"        return f'{{type(self).__qualname__}}({content})'\n"
-        f"    return {funcname}\n"
-    )
     globs = {}
 
     return GeneratedCode(code, globs)
 
 
-def eq_generator(cls, funcname="__eq__"):
-    class_comparison = "self.__class__ is other.__class__"
+def class_repr_generator(cls, funcname="__repr__"):
+    # For a regular class source, key and attrib names are the same
+    field_names = [k for k, v in get_fields(cls).items() if v.repr]
+    return generic_repr_generator(field_names, funcname=funcname, wrap_keys=False)
+
+
+@_simple_cache()
+def counter_repr_generator(argcount, *, funcname="__repr__"):
     field_names = [
-        name
-        for name, attrib in get_fields(cls).items()
-        if attrib.compare
+        f"{REPLACE_NAME}{i}"
+        for i in range(argcount)
     ]
 
+    # We need to add the '_make_' wrapper to put in the key names in the final
+    # function
+    raw = generic_repr_generator(field_names, funcname=funcname, wrap_keys=True)
+
+    args = ", ".join(field_names)
+
+    indented_source = "\n    ".join(raw.source_code.strip().split("\n"))
+    # fmt: off
+    code = (
+        f"def _make_{funcname}({args}):\n"
+        f"    {indented_source}\n"
+        f"    return {funcname}\n"
+    )
+    # fmt: on
+
+    return GeneratedCode(code, raw.globs)
+
+
+def generic_eq_generator(field_names, funcname="__eq__"):
+    class_comparison = "self.__class__ is other.__class__"
     if field_names:
         instance_comparison = "\n        and ".join(
             f"self.{name} == other.{name}" for name in field_names
@@ -608,45 +617,30 @@ def eq_generator(cls, funcname="__eq__"):
     return GeneratedCode(code, globs)
 
 
-@_simple_cache()
-def generic_eq_generator(argcount, *, funcname="__eq__"):
-    # This is a cached accelerated eq generator
-    # It returns uglier source, but the source can be cached
-    # and reused more easily.
-    class_comparison = "self.__class__ is other.__class__"
-
-    if argcount > 0:
-        instance_comparison = "\n            and ".join(
-            f"self.{REPLACE_NAME}{i} == other.{REPLACE_NAME}{i}"
-            for i in range(argcount)
-        )
-    else:
-        instance_comparison = "True"
-
-    # fmt: off
-    code = (
-        f"def {funcname}(self, other):\n"
-        f"    if self is other:\n"
-        f"        return True\n"
-        f"    return (\n"
-        f"        {instance_comparison}\n"
-        f"    ) if {class_comparison} else NotImplemented\n"
-    )
-    # fmt: on
-
-    globs = {}
-
-    return GeneratedCode(code, globs)
-
-
-def get_order_generator(cls, funcname, *, operator):
-    class_comparison = "self.__class__ is other.__class__"
+def class_eq_generator(cls, funcname="__eq__"):
     field_names = [
         name
         for name, attrib in get_fields(cls).items()
         if attrib.compare
     ]
 
+    return generic_eq_generator(field_names, funcname=funcname)
+
+
+@_simple_cache()
+def counter_eq_generator(argcount, *, funcname="__eq__"):
+    # This is a cached accelerated eq generator
+    # It returns uglier source, but the source can be cached
+    # and reused more easily.
+    field_names = [
+        f"{REPLACE_NAME}{i}" for i in range(argcount)
+    ]
+
+    return generic_eq_generator(field_names, funcname=funcname)
+
+
+def get_generic_order_generator(field_names, *, funcname, operator):
+    class_comparison = "self.__class__ is other.__class__"
     # Equal objects should be False for gt/lt comparisons
     eq_return = "True" if "=" in operator else "False"
 
@@ -674,7 +668,17 @@ def get_order_generator(cls, funcname, *, operator):
     )
     # fmt: on
     globs = {}
+
     return GeneratedCode(code, globs)
+
+
+def get_order_generator(cls, funcname, *, operator):
+    field_names = [
+        name
+        for name, attrib in get_fields(cls).items()
+        if attrib.compare
+    ]
+    return get_generic_order_generator(field_names, funcname=funcname, operator=operator)
 
 def lt_generator(cls, funcname="__lt__"):
     return get_order_generator(cls, funcname, operator="<")
@@ -793,20 +797,20 @@ def hash_generator(cls, funcname="__hash__"):
 init_maker = MethodMaker("__init__", init_generator)
 repr_maker = MethodMaker(
     "__repr__",
-    repr_generator,
-    generic_to_class_generator(
-        generic_repr_generator,
+    class_repr_generator,
+    cached_generator=generic_to_class_generator(
+        counter_repr_generator,
         get_repr_args,
         unwrap=True,
         cache=repr_cache,
-        decorator=_RECURSIVE_REPR,
-    )
+    ),
+    decorator=_RECURSIVE_REPR,
 )
 eq_maker = MethodMaker(
     "__eq__",
-    eq_generator,
-    generic_to_class_generator(
-        generic_eq_generator,
+    class_eq_generator,
+    cached_generator=generic_to_class_generator(
+        counter_eq_generator,
         get_compare_args,
         unwrap=False,
         cache=eq_cache,

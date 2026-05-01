@@ -30,8 +30,8 @@ def main():
         f.write("# This module is automatically generated from a script\n")
         f.write("# DO NOT EDIT BY HAND\n\n")
 
-        f.write(pre_generate_cache("_eq", dtbuild.generic_eq_generator, COUNT, "eq_cache"))
-        f.write(pre_generate_cache("_repr", dtbuild.generic_repr_generator, COUNT, "repr_cache", wrapped=True))
+        f.write(pre_generate_cache("_eq", dtbuild.counter_eq_generator, COUNT, "eq_cache"))
+        f.write(pre_generate_cache("_repr", dtbuild.counter_repr_generator, COUNT, "repr_cache", wrapped=True))
 
 if __name__ == "__main__":
     main()

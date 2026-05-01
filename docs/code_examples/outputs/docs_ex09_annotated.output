@@ -37,7 +37,6 @@ def __replace__(self, /, **changes):
     new_kwargs |= changes
     return self.__class__(**new_kwargs)
 
-@_recursive_repr
 def __repr__(self):
     return f'{type(self).__qualname__}(x={self.x!r}, a={self.a!r}, c={self.c!r}, e={self.e!r}, f={self.f!r})'
 
