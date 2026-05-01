@@ -3,7 +3,7 @@ from pathlib import Path
 import ducktools.classbuilder as dtbuild
 
 DEST = Path(dtbuild.__file__).parent / "_cached_methods.py"
-COUNT = 20
+COUNT = 11
 
 def pre_generate_cache(funcname, func, count, cache_name):
     methods_list = []
@@ -20,7 +20,7 @@ def pre_generate_cache(funcname, func, count, cache_name):
     methods = "\n".join(methods_list)
     cache_lines = "\n".join(cache_lines_list)
 
-    return f"{methods}\n{cache_name} = {{\n{cache_lines}\n}}\n"
+    return f"{methods}\n{cache_name} = {{\n{cache_lines}\n}}\n\n"
 
 
 def main():
@@ -30,6 +30,8 @@ def main():
 
         f.write(pre_generate_cache("_eq", dtbuild._counter_eq_generator, COUNT, "eq_cache"))
         f.write(pre_generate_cache("_repr", dtbuild._counter_repr_generator, COUNT, "repr_cache"))
+        f.write(pre_generate_cache("_replace", dtbuild._counter_replace_generator, COUNT, "replace_cache"))
+
 
 if __name__ == "__main__":
     main()

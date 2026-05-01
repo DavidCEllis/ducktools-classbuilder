@@ -405,6 +405,9 @@ def get_repr_args(cls):
     repr_arglist = tuple(k for k, v in get_fields(cls).items() if v.repr)
     return (repr_arglist,)
 
+def get_replace_args(cls):
+    return (tuple(k for k, v in get_fields(cls).items() if v.init), )
+
 
 def counter_to_class_generator(
     generic_generator,
@@ -570,7 +573,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
 init_generator = get_init_generator()
 
 
-def generic_repr_generator(field_names, funcname="__repr__"):
+def generic_repr_generator(field_names, *, funcname="__repr__"):
     content = ", ".join(
         f"{name}={{self.{name}!r}}"
         for name in field_names
@@ -603,7 +606,7 @@ def _counter_repr_generator(argcount, *, funcname="__repr__"):
     return generic_repr_generator(field_names, funcname=funcname)
 
 
-def generic_eq_generator(field_names, funcname="__eq__"):
+def generic_eq_generator(field_names, *, funcname="__eq__"):
     class_comparison = "self.__class__ is other.__class__"
     if field_names:
         instance_comparison = "\n        and ".join(
@@ -699,55 +702,38 @@ def class_lt_generator(cls, funcname="__lt__"):
     return get_class_order_generator(cls, "<", funcname=funcname)
 
 @_simple_cache()
-def _counter_lt_generator(argcount, funcname="__lt__"):
+def _counter_lt_generator(argcount, *, funcname="__lt__"):
     return _get_counter_order_generator(argcount, "<", funcname=funcname)
 
 def class_le_generator(cls, funcname="__le__"):
     return get_class_order_generator(cls, "<=", funcname=funcname)
 
 @_simple_cache()
-def _counter_le_generator(argcount, funcname="__le__"):
+def _counter_le_generator(argcount, *, funcname="__le__"):
     return _get_counter_order_generator(argcount, "<=", funcname=funcname)
 
 def class_gt_generator(cls, funcname="__gt__"):
     return get_class_order_generator(cls, ">", funcname=funcname)
 
 @_simple_cache()
-def _counter_gt_generator(argcount, funcname="__gt__"):
+def _counter_gt_generator(argcount, *, funcname="__gt__"):
     return _get_counter_order_generator(argcount, ">", funcname=funcname)
 
 def class_ge_generator(cls, funcname="__ge__"):
     return get_class_order_generator(cls, ">=", funcname=funcname)
 
 @_simple_cache()
-def _counter_ge_generator(argcount, funcname="__ge__"):
+def _counter_ge_generator(argcount, *, funcname="__ge__"):
     return _get_counter_order_generator(argcount, ">=", funcname=funcname)
 
 
-def _get_replace_generator(private_type=False):
-    def cls_replace_generator(cls, funcname="__replace__"):
-        # Generate the replace method for built classes
-        # unlike the dataclasses implementation this is generated
-        attribs = get_fields(cls)
-
-        # This is essentially the as_dict generator for prefabs
-        # except based on attrib.init instead of .serialize
-        if private_type:
-            vals = ", ".join(
-                f"'{name}': self.{name}"
-                if name != "type"
-                else f"'{name}': self._{name}"
-                for name, attrib in attribs.items()
-                if attrib.init
-            )
-        else:
-            vals = ", ".join(
-                f"'{name}': self.{name}"
-                for name, attrib in attribs.items()
-                if attrib.init
-            )
-        init_dict = f"{{{vals}}}"
-
+def generic_replace_generator(field_names, *, funcname="__replace__"):
+    if field_names:
+        vals = ",\n".join(
+            f"        '{name}': self.{name}"
+            for name in field_names
+        )
+        init_dict = f"{{\n{vals},\n    }}"
         # fmt: off
         code = (
             f"def {funcname}(self, /, **changes):\n"
@@ -756,13 +742,52 @@ def _get_replace_generator(private_type=False):
             f"    return self.__class__(**new_kwargs)\n"
         )
         # fmt: on
-        globs = {}
-        return GeneratedCode(code, globs)
+    else:
+        # There are no fields to keep, but may be init params
+        # to pass forward.
+        # This method is largely useless but exists for completeness
+        code = (
+            f"def {funcname}(self, /, **changes):\n"
+            f"    return self.__class__(**changes)\n"
+        )
 
-    return cls_replace_generator
+    globs = {}
+    return GeneratedCode(code, globs)
 
-replace_generator = _get_replace_generator()
-_field_replace_generator = _get_replace_generator(private_type=True)
+def class_replace_generator(cls, funcname="__replace__"):
+    field_names = [k for k, v in get_fields(cls).items() if v.init]
+    return generic_replace_generator(field_names, funcname=funcname)
+
+def _field_replace_generator(cls, funcname="__replace__"):
+    # A special replace generator for FIELD that replaces
+    # type with _type
+    vals = ", ".join(
+        f"'{name}': self.{name}"
+        if name != "type"
+        else f"'{name}': self._{name}"
+        for name, attrib in get_fields(cls).items()
+        if attrib.init
+    )
+    init_dict = f"{{{vals}}}"
+
+    # fmt: off
+    code = (
+        f"def {funcname}(self, /, **changes):\n"
+        f"    new_kwargs = {init_dict}\n"
+        f"    new_kwargs |= changes\n"
+        f"    return self.__class__(**new_kwargs)\n"
+    )
+    # fmt: on
+    globs = {}
+    return GeneratedCode(code, globs)
+
+@_simple_cache()
+def _counter_replace_generator(argcount, *, funcname="__replace__"):
+    field_names = [
+        f"{REPLACE_NAME}{i}_" for i in range(argcount)
+    ]
+    return generic_replace_generator(field_names, funcname=funcname)
+
 
 def frozen_setattr_generator(cls, funcname="__setattr__"):
     globs = {}
@@ -844,7 +869,7 @@ eq_maker = MethodMaker(
         _counter_eq_generator,
         get_compare_args,
         cache=eq_cache,
-    )
+    ),
 )
 lt_maker = MethodMaker(
     "__lt__",
@@ -852,7 +877,7 @@ lt_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_lt_generator,
         get_compare_args,
-    )
+    ),
 )
 le_maker = MethodMaker(
     "__le__",
@@ -860,7 +885,7 @@ le_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_le_generator,
         get_compare_args,
-    )
+    ),
 )
 gt_maker = MethodMaker(
     "__gt__",
@@ -868,7 +893,7 @@ gt_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_gt_generator,
         get_compare_args,
-    )
+    ),
 )
 ge_maker = MethodMaker(
     "__ge__",
@@ -876,9 +901,17 @@ ge_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_ge_generator,
         get_compare_args,
-    )
+    ),
 )
-replace_maker = MethodMaker("__replace__", replace_generator)
+replace_maker = MethodMaker(
+    "__replace__",
+    class_replace_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_replace_generator,
+        get_replace_args,
+        replace_strings=True,
+    ),
+)
 frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
 hash_maker = MethodMaker("__hash__", hash_generator)

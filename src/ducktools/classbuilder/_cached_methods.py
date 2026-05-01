@@ -123,195 +123,6 @@ def _eq_10(self, other):
         and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
     ) if self.__class__ is other.__class__ else NotImplemented
 
-def _eq_11(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
-def _eq_12(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-        and self._classbuilder_cache_names_11_ == other._classbuilder_cache_names_11_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
-def _eq_13(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-        and self._classbuilder_cache_names_11_ == other._classbuilder_cache_names_11_
-        and self._classbuilder_cache_names_12_ == other._classbuilder_cache_names_12_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
-def _eq_14(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-        and self._classbuilder_cache_names_11_ == other._classbuilder_cache_names_11_
-        and self._classbuilder_cache_names_12_ == other._classbuilder_cache_names_12_
-        and self._classbuilder_cache_names_13_ == other._classbuilder_cache_names_13_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
-def _eq_15(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-        and self._classbuilder_cache_names_11_ == other._classbuilder_cache_names_11_
-        and self._classbuilder_cache_names_12_ == other._classbuilder_cache_names_12_
-        and self._classbuilder_cache_names_13_ == other._classbuilder_cache_names_13_
-        and self._classbuilder_cache_names_14_ == other._classbuilder_cache_names_14_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
-def _eq_16(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-        and self._classbuilder_cache_names_11_ == other._classbuilder_cache_names_11_
-        and self._classbuilder_cache_names_12_ == other._classbuilder_cache_names_12_
-        and self._classbuilder_cache_names_13_ == other._classbuilder_cache_names_13_
-        and self._classbuilder_cache_names_14_ == other._classbuilder_cache_names_14_
-        and self._classbuilder_cache_names_15_ == other._classbuilder_cache_names_15_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
-def _eq_17(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-        and self._classbuilder_cache_names_11_ == other._classbuilder_cache_names_11_
-        and self._classbuilder_cache_names_12_ == other._classbuilder_cache_names_12_
-        and self._classbuilder_cache_names_13_ == other._classbuilder_cache_names_13_
-        and self._classbuilder_cache_names_14_ == other._classbuilder_cache_names_14_
-        and self._classbuilder_cache_names_15_ == other._classbuilder_cache_names_15_
-        and self._classbuilder_cache_names_16_ == other._classbuilder_cache_names_16_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
-def _eq_18(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-        and self._classbuilder_cache_names_11_ == other._classbuilder_cache_names_11_
-        and self._classbuilder_cache_names_12_ == other._classbuilder_cache_names_12_
-        and self._classbuilder_cache_names_13_ == other._classbuilder_cache_names_13_
-        and self._classbuilder_cache_names_14_ == other._classbuilder_cache_names_14_
-        and self._classbuilder_cache_names_15_ == other._classbuilder_cache_names_15_
-        and self._classbuilder_cache_names_16_ == other._classbuilder_cache_names_16_
-        and self._classbuilder_cache_names_17_ == other._classbuilder_cache_names_17_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
-def _eq_19(self, other):
-    if self is other:
-        return True
-    return (
-        self._classbuilder_cache_names_0_ == other._classbuilder_cache_names_0_
-        and self._classbuilder_cache_names_1_ == other._classbuilder_cache_names_1_
-        and self._classbuilder_cache_names_2_ == other._classbuilder_cache_names_2_
-        and self._classbuilder_cache_names_3_ == other._classbuilder_cache_names_3_
-        and self._classbuilder_cache_names_4_ == other._classbuilder_cache_names_4_
-        and self._classbuilder_cache_names_5_ == other._classbuilder_cache_names_5_
-        and self._classbuilder_cache_names_6_ == other._classbuilder_cache_names_6_
-        and self._classbuilder_cache_names_7_ == other._classbuilder_cache_names_7_
-        and self._classbuilder_cache_names_8_ == other._classbuilder_cache_names_8_
-        and self._classbuilder_cache_names_9_ == other._classbuilder_cache_names_9_
-        and self._classbuilder_cache_names_10_ == other._classbuilder_cache_names_10_
-        and self._classbuilder_cache_names_11_ == other._classbuilder_cache_names_11_
-        and self._classbuilder_cache_names_12_ == other._classbuilder_cache_names_12_
-        and self._classbuilder_cache_names_13_ == other._classbuilder_cache_names_13_
-        and self._classbuilder_cache_names_14_ == other._classbuilder_cache_names_14_
-        and self._classbuilder_cache_names_15_ == other._classbuilder_cache_names_15_
-        and self._classbuilder_cache_names_16_ == other._classbuilder_cache_names_16_
-        and self._classbuilder_cache_names_17_ == other._classbuilder_cache_names_17_
-        and self._classbuilder_cache_names_18_ == other._classbuilder_cache_names_18_
-    ) if self.__class__ is other.__class__ else NotImplemented
-
 eq_cache = {
     (0,): _eq_0,
     (1,): _eq_1,
@@ -324,16 +135,8 @@ eq_cache = {
     (8,): _eq_8,
     (9,): _eq_9,
     (10,): _eq_10,
-    (11,): _eq_11,
-    (12,): _eq_12,
-    (13,): _eq_13,
-    (14,): _eq_14,
-    (15,): _eq_15,
-    (16,): _eq_16,
-    (17,): _eq_17,
-    (18,): _eq_18,
-    (19,): _eq_19,
 }
+
 def _repr_0(self):
     return f'{type(self).__qualname__}()'
 
@@ -367,33 +170,6 @@ def _repr_9(self):
 def _repr_10(self):
     return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r})'
 
-def _repr_11(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r})'
-
-def _repr_12(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r}, _classbuilder_cache_names_11_={self._classbuilder_cache_names_11_!r})'
-
-def _repr_13(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r}, _classbuilder_cache_names_11_={self._classbuilder_cache_names_11_!r}, _classbuilder_cache_names_12_={self._classbuilder_cache_names_12_!r})'
-
-def _repr_14(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r}, _classbuilder_cache_names_11_={self._classbuilder_cache_names_11_!r}, _classbuilder_cache_names_12_={self._classbuilder_cache_names_12_!r}, _classbuilder_cache_names_13_={self._classbuilder_cache_names_13_!r})'
-
-def _repr_15(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r}, _classbuilder_cache_names_11_={self._classbuilder_cache_names_11_!r}, _classbuilder_cache_names_12_={self._classbuilder_cache_names_12_!r}, _classbuilder_cache_names_13_={self._classbuilder_cache_names_13_!r}, _classbuilder_cache_names_14_={self._classbuilder_cache_names_14_!r})'
-
-def _repr_16(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r}, _classbuilder_cache_names_11_={self._classbuilder_cache_names_11_!r}, _classbuilder_cache_names_12_={self._classbuilder_cache_names_12_!r}, _classbuilder_cache_names_13_={self._classbuilder_cache_names_13_!r}, _classbuilder_cache_names_14_={self._classbuilder_cache_names_14_!r}, _classbuilder_cache_names_15_={self._classbuilder_cache_names_15_!r})'
-
-def _repr_17(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r}, _classbuilder_cache_names_11_={self._classbuilder_cache_names_11_!r}, _classbuilder_cache_names_12_={self._classbuilder_cache_names_12_!r}, _classbuilder_cache_names_13_={self._classbuilder_cache_names_13_!r}, _classbuilder_cache_names_14_={self._classbuilder_cache_names_14_!r}, _classbuilder_cache_names_15_={self._classbuilder_cache_names_15_!r}, _classbuilder_cache_names_16_={self._classbuilder_cache_names_16_!r})'
-
-def _repr_18(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r}, _classbuilder_cache_names_11_={self._classbuilder_cache_names_11_!r}, _classbuilder_cache_names_12_={self._classbuilder_cache_names_12_!r}, _classbuilder_cache_names_13_={self._classbuilder_cache_names_13_!r}, _classbuilder_cache_names_14_={self._classbuilder_cache_names_14_!r}, _classbuilder_cache_names_15_={self._classbuilder_cache_names_15_!r}, _classbuilder_cache_names_16_={self._classbuilder_cache_names_16_!r}, _classbuilder_cache_names_17_={self._classbuilder_cache_names_17_!r})'
-
-def _repr_19(self):
-    return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r}, _classbuilder_cache_names_10_={self._classbuilder_cache_names_10_!r}, _classbuilder_cache_names_11_={self._classbuilder_cache_names_11_!r}, _classbuilder_cache_names_12_={self._classbuilder_cache_names_12_!r}, _classbuilder_cache_names_13_={self._classbuilder_cache_names_13_!r}, _classbuilder_cache_names_14_={self._classbuilder_cache_names_14_!r}, _classbuilder_cache_names_15_={self._classbuilder_cache_names_15_!r}, _classbuilder_cache_names_16_={self._classbuilder_cache_names_16_!r}, _classbuilder_cache_names_17_={self._classbuilder_cache_names_17_!r}, _classbuilder_cache_names_18_={self._classbuilder_cache_names_18_!r})'
-
 repr_cache = {
     (0,): _repr_0,
     (1,): _repr_1,
@@ -406,13 +182,137 @@ repr_cache = {
     (8,): _repr_8,
     (9,): _repr_9,
     (10,): _repr_10,
-    (11,): _repr_11,
-    (12,): _repr_12,
-    (13,): _repr_13,
-    (14,): _repr_14,
-    (15,): _repr_15,
-    (16,): _repr_16,
-    (17,): _repr_17,
-    (18,): _repr_18,
-    (19,): _repr_19,
 }
+
+def _replace_0(self, /, **changes):
+    return self.__class__(**changes)
+
+def _replace_1(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_2(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_3(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+        '_classbuilder_cache_names_2_': self._classbuilder_cache_names_2_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_4(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+        '_classbuilder_cache_names_2_': self._classbuilder_cache_names_2_,
+        '_classbuilder_cache_names_3_': self._classbuilder_cache_names_3_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_5(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+        '_classbuilder_cache_names_2_': self._classbuilder_cache_names_2_,
+        '_classbuilder_cache_names_3_': self._classbuilder_cache_names_3_,
+        '_classbuilder_cache_names_4_': self._classbuilder_cache_names_4_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_6(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+        '_classbuilder_cache_names_2_': self._classbuilder_cache_names_2_,
+        '_classbuilder_cache_names_3_': self._classbuilder_cache_names_3_,
+        '_classbuilder_cache_names_4_': self._classbuilder_cache_names_4_,
+        '_classbuilder_cache_names_5_': self._classbuilder_cache_names_5_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_7(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+        '_classbuilder_cache_names_2_': self._classbuilder_cache_names_2_,
+        '_classbuilder_cache_names_3_': self._classbuilder_cache_names_3_,
+        '_classbuilder_cache_names_4_': self._classbuilder_cache_names_4_,
+        '_classbuilder_cache_names_5_': self._classbuilder_cache_names_5_,
+        '_classbuilder_cache_names_6_': self._classbuilder_cache_names_6_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_8(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+        '_classbuilder_cache_names_2_': self._classbuilder_cache_names_2_,
+        '_classbuilder_cache_names_3_': self._classbuilder_cache_names_3_,
+        '_classbuilder_cache_names_4_': self._classbuilder_cache_names_4_,
+        '_classbuilder_cache_names_5_': self._classbuilder_cache_names_5_,
+        '_classbuilder_cache_names_6_': self._classbuilder_cache_names_6_,
+        '_classbuilder_cache_names_7_': self._classbuilder_cache_names_7_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_9(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+        '_classbuilder_cache_names_2_': self._classbuilder_cache_names_2_,
+        '_classbuilder_cache_names_3_': self._classbuilder_cache_names_3_,
+        '_classbuilder_cache_names_4_': self._classbuilder_cache_names_4_,
+        '_classbuilder_cache_names_5_': self._classbuilder_cache_names_5_,
+        '_classbuilder_cache_names_6_': self._classbuilder_cache_names_6_,
+        '_classbuilder_cache_names_7_': self._classbuilder_cache_names_7_,
+        '_classbuilder_cache_names_8_': self._classbuilder_cache_names_8_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+def _replace_10(self, /, **changes):
+    new_kwargs = {
+        '_classbuilder_cache_names_0_': self._classbuilder_cache_names_0_,
+        '_classbuilder_cache_names_1_': self._classbuilder_cache_names_1_,
+        '_classbuilder_cache_names_2_': self._classbuilder_cache_names_2_,
+        '_classbuilder_cache_names_3_': self._classbuilder_cache_names_3_,
+        '_classbuilder_cache_names_4_': self._classbuilder_cache_names_4_,
+        '_classbuilder_cache_names_5_': self._classbuilder_cache_names_5_,
+        '_classbuilder_cache_names_6_': self._classbuilder_cache_names_6_,
+        '_classbuilder_cache_names_7_': self._classbuilder_cache_names_7_,
+        '_classbuilder_cache_names_8_': self._classbuilder_cache_names_8_,
+        '_classbuilder_cache_names_9_': self._classbuilder_cache_names_9_,
+    }
+    new_kwargs |= changes
+    return self.__class__(**new_kwargs)
+
+replace_cache = {
+    (0,): _replace_0,
+    (1,): _replace_1,
+    (2,): _replace_2,
+    (3,): _replace_3,
+    (4,): _replace_4,
+    (5,): _replace_5,
+    (6,): _replace_6,
+    (7,): _replace_7,
+    (8,): _replace_8,
+    (9,): _replace_9,
+    (10,): _replace_10,
+}
+
