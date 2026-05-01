@@ -33,7 +33,13 @@ def __init__(self, x, b='Not In Repr', c=None, f=42, *, e):
     self.f = f
 
 def __replace__(self, /, **changes):
-    new_kwargs = {'x': self.x, 'b': self.b, 'c': self.c, 'e': self.e, 'f': self.f}
+    new_kwargs = {
+        'x': self.x,
+        'b': self.b,
+        'c': self.c,
+        'e': self.e,
+        'f': self.f,
+    }
     new_kwargs |= changes
     return self.__class__(**new_kwargs)
 

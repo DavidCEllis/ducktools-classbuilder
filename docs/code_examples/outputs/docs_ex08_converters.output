@@ -13,7 +13,10 @@ def __init__(self, unconverted, converted):
     self.converted = converted
 
 def __replace__(self, /, **changes):
-    new_kwargs = {'unconverted': self.unconverted, 'converted': self.converted}
+    new_kwargs = {
+        'unconverted': self.unconverted,
+        'converted': self.converted,
+    }
     new_kwargs |= changes
     return self.__class__(**new_kwargs)
 

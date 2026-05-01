@@ -99,6 +99,8 @@ Source:
         )
 
     def __eq__(self, other):
+        if self is other:
+            return True
         return (
             self.the_answer == other.the_answer
             and self.the_question == other.the_question
@@ -106,22 +108,38 @@ Source:
         ) if self.__class__ is other.__class__ else NotImplemented
 
     def __ge__(self, other):
+        if self is other:
+            return True
         if self.__class__ is other.__class__:
-            return (self.the_answer, self.the_question, self.python_path) >= (other.the_answer, other.the_question, other.python_path)
+            if self.the_answer != other.the_answer:
+                return self.the_answer >= other.the_answer
+            if self.the_question != other.the_question:
+                return self.the_question >= other.the_question
+            if self.python_path != other.python_path:
+                return self.python_path >= other.python_path
+            return True
         return NotImplemented
 
     def __gt__(self, other):
+        if self is other:
+            return False
         if self.__class__ is other.__class__:
-            return (self.the_answer, self.the_question, self.python_path) > (other.the_answer, other.the_question, other.python_path)
+            if self.the_answer != other.the_answer:
+                return self.the_answer > other.the_answer
+            if self.the_question != other.the_question:
+                return self.the_question > other.the_question
+            if self.python_path != other.python_path:
+                return self.python_path > other.python_path
+            return False
         return NotImplemented
 
     def __hash__(self):
         return hash((self.the_answer, self.the_question, self.python_path))
 
     def __init__(self, the_answer=42, the_question='What do you get if you multiply six by nine?', python_path=_python_path_default):
-        self.the_answer = the_answer
-        self.the_question = the_question
-        self.python_path = python_path
+        __object_setattr(self, 'the_answer', the_answer)
+        __object_setattr(self, 'the_question', the_question)
+        __object_setattr(self, 'python_path', python_path)
 
     def __iter__(self):
         yield self.the_answer
@@ -129,21 +147,40 @@ Source:
         yield self.python_path
 
     def __le__(self, other):
+        if self is other:
+            return True
         if self.__class__ is other.__class__:
-            return (self.the_answer, self.the_question, self.python_path) <= (other.the_answer, other.the_question, other.python_path)
+            if self.the_answer != other.the_answer:
+                return self.the_answer <= other.the_answer
+            if self.the_question != other.the_question:
+                return self.the_question <= other.the_question
+            if self.python_path != other.python_path:
+                return self.python_path <= other.python_path
+            return True
         return NotImplemented
 
     def __lt__(self, other):
+        if self is other:
+            return False
         if self.__class__ is other.__class__:
-            return (self.the_answer, self.the_question, self.python_path) < (other.the_answer, other.the_question, other.python_path)
+            if self.the_answer != other.the_answer:
+                return self.the_answer < other.the_answer
+            if self.the_question != other.the_question:
+                return self.the_question < other.the_question
+            if self.python_path != other.python_path:
+                return self.python_path < other.python_path
+            return False
         return NotImplemented
 
     def __replace__(self, /, **changes):
-        new_kwargs = {'the_answer': self.the_answer, 'the_question': self.the_question, 'python_path': self.python_path}
+        new_kwargs = {
+            'the_answer': self.the_answer,
+            'the_question': self.the_question,
+            'python_path': self.python_path,
+        }
         new_kwargs |= changes
         return self.__class__(**new_kwargs)
 
-    @_recursive_repr
     def __repr__(self):
         return f'{type(self).__qualname__}(the_answer={self.the_answer!r}, the_question={self.the_question!r}, python_path={self.python_path!r})'
 
@@ -161,9 +198,8 @@ Source:
 
 
 Globals:
-    __init__: {'_python_path_default': PosixPath('/usr/bin/python')}
-    __repr__: {'_recursive_repr': <function recursive_repr.<locals>.decorating_function at 0x7367f9cddf30>}
-    __setattr__: {'__field_names': {'the_question', 'the_answer', 'python_path'}, '__setattr_func': <slot wrapper '__setattr__' of 'object' objects>}
+    __init__: {'_python_path_default': PosixPath('/usr/bin/python4'), '__object_setattr': <slot wrapper '__setattr__' of 'object' objects>}
+    __setattr__: {'__field_names': {'the_question', 'python_path', 'the_answer'}, '__setattr_func': <slot wrapper '__setattr__' of 'object' objects>}
 
 Annotations:
     __init__: {'the_answer': <class 'int'>, 'the_question': <class 'str'>, 'python_path': <class 'pathlib.Path'>, 'return': None}
