@@ -56,11 +56,13 @@ from .annotations import apply_annotations, get_ns_annotations, is_classvar, res
 from ._version import __version__, __version_tuple__  # noqa: F401
 
 try:
-    from ._cached_methods import eq_cache, repr_cache
-except Exception:  # pragma: nocover
+    from ._cached_methods import eq_cache, replace_cache, repr_cache
+except ImportError:  # pragma: nocover
     # Needed for generating cached methods after deletion
     eq_cache = {}
+    replace_cache = {}
     repr_cache = {}
+
 
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
@@ -911,6 +913,7 @@ replace_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_replace_generator,
         get_replace_args,
+        cache=replace_cache,
         replace_strings=True,
     ),
 )
