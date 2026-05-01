@@ -53,7 +53,6 @@ def as_dict_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 init_maker: MethodMaker
 prefab_init_maker: MethodMaker
 repr_maker: MethodMaker
-recursive_repr_maker: MethodMaker
 eq_maker: MethodMaker
 iter_maker: MethodMaker
 asdict_maker: MethodMaker
@@ -157,7 +156,6 @@ def _make_prefab(
     frozen: bool = ...,
     replace: bool = ...,
     dict_method: bool = ...,
-    recursive_repr: bool = ...,
     gatherer: GathererProtocol[Attribute] = ...,
     gathered_fields: Callable[[type], tuple[dict[str, Attribute], dict[str, typing.Any]]] | None = ...,
     ignore_annotations: bool = ...,
@@ -182,7 +180,6 @@ class Prefab(metaclass=SlotMakerMeta):
         frozen: bool = ...,
         replace: bool = ...,
         dict_method: bool = ...,
-        recursive_repr: bool = ...,
         gatherer: GathererProtocol[Attribute] = ...,
     ) -> None: ...
 
@@ -201,7 +198,6 @@ class Prefab(metaclass=SlotMakerMeta):
 #     kw_only: bool = ...,
 #     frozen: bool = ...,
 #     dict_method: bool = ...,
-#     recursive_repr: bool = ...,
 # ) -> Callable[[type[_T]], type[_T]]: ...
 
 # @dataclass_transform(field_specifiers=(Attribute, attribute))
@@ -217,7 +213,6 @@ class Prefab(metaclass=SlotMakerMeta):
 #     kw_only: bool = ...,
 #     frozen: bool = ...,
 #     dict_method: bool = ...,
-#     recursive_repr: bool = ...,
 # ) -> type[_T]: ...
 
 # As mypy crashes, and the only difference is the return type
@@ -236,7 +231,6 @@ def prefab(
     frozen: bool = ...,
     replace: bool = ...,
     dict_method: bool = ...,
-    recursive_repr: bool = ...,
     gatherer: GathererProtocol[Attribute] = ...,
     ignore_annotations: bool = ...,
 ) -> typing.Any: ...
@@ -257,7 +251,6 @@ def build_prefab(
     frozen: bool = ...,
     replace: bool = ...,
     dict_method: bool = ...,
-    recursive_repr: bool = ...,
     slots: bool = ...,
 ) -> type: ...
 

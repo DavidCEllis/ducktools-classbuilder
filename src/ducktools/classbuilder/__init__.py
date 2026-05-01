@@ -594,7 +594,7 @@ def class_repr_generator(cls, funcname="__repr__"):
 
 
 @_simple_cache()
-def counter_repr_generator(argcount, *, funcname="__repr__"):
+def _counter_repr_generator(argcount, *, funcname="__repr__"):
     field_names = [
         f"{REPLACE_NAME}{i}_"
         for i in range(argcount)
@@ -638,7 +638,7 @@ def class_eq_generator(cls, funcname="__eq__"):
 
 
 @_simple_cache()
-def counter_eq_generator(argcount, *, funcname="__eq__"):
+def _counter_eq_generator(argcount, *, funcname="__eq__"):
     # This is a cached accelerated eq generator
     # It returns uglier source, but the source can be cached
     # and reused more easily.
@@ -689,7 +689,7 @@ def get_class_order_generator(cls, operator, *, funcname):
     ]
     return get_generic_order_generator(field_names, operator, funcname=funcname)
 
-def get_counter_order_generator(argcount, operator, *, funcname):
+def _get_counter_order_generator(argcount, operator, *, funcname):
     field_names = [
         f"{REPLACE_NAME}{i}_" for i in range(argcount)
     ]
@@ -699,29 +699,29 @@ def class_lt_generator(cls, funcname="__lt__"):
     return get_class_order_generator(cls, "<", funcname=funcname)
 
 @_simple_cache()
-def counter_lt_generator(argcount, funcname="__lt__"):
-    return get_counter_order_generator(argcount, "<", funcname=funcname)
+def _counter_lt_generator(argcount, funcname="__lt__"):
+    return _get_counter_order_generator(argcount, "<", funcname=funcname)
 
 def class_le_generator(cls, funcname="__le__"):
     return get_class_order_generator(cls, "<=", funcname=funcname)
 
 @_simple_cache()
-def counter_le_generator(argcount, funcname="__le__"):
-    return get_counter_order_generator(argcount, "<=", funcname=funcname)
+def _counter_le_generator(argcount, funcname="__le__"):
+    return _get_counter_order_generator(argcount, "<=", funcname=funcname)
 
 def class_gt_generator(cls, funcname="__gt__"):
     return get_class_order_generator(cls, ">", funcname=funcname)
 
 @_simple_cache()
-def counter_gt_generator(argcount, funcname="__gt__"):
-    return get_counter_order_generator(argcount, ">", funcname=funcname)
+def _counter_gt_generator(argcount, funcname="__gt__"):
+    return _get_counter_order_generator(argcount, ">", funcname=funcname)
 
 def class_ge_generator(cls, funcname="__ge__"):
     return get_class_order_generator(cls, ">=", funcname=funcname)
 
 @_simple_cache()
-def counter_ge_generator(argcount, funcname="__ge__"):
-    return get_counter_order_generator(argcount, ">=", funcname=funcname)
+def _counter_ge_generator(argcount, funcname="__ge__"):
+    return _get_counter_order_generator(argcount, ">=", funcname=funcname)
 
 
 def _get_replace_generator(private_type=False):
@@ -830,7 +830,7 @@ repr_maker = MethodMaker(
     "__repr__",
     class_repr_generator,
     cached_generator=counter_to_class_generator(
-        counter_repr_generator,
+        _counter_repr_generator,
         get_repr_args,
         cache=repr_cache,
         replace_strings=True,
@@ -841,7 +841,7 @@ eq_maker = MethodMaker(
     "__eq__",
     class_eq_generator,
     cached_generator=counter_to_class_generator(
-        counter_eq_generator,
+        _counter_eq_generator,
         get_compare_args,
         cache=eq_cache,
     )
@@ -850,7 +850,7 @@ lt_maker = MethodMaker(
     "__lt__",
     class_lt_generator,
     cached_generator=counter_to_class_generator(
-        counter_lt_generator,
+        _counter_lt_generator,
         get_compare_args,
     )
 )
@@ -858,7 +858,7 @@ le_maker = MethodMaker(
     "__le__",
     class_le_generator,
     cached_generator=counter_to_class_generator(
-        counter_le_generator,
+        _counter_le_generator,
         get_compare_args,
     )
 )
@@ -866,7 +866,7 @@ gt_maker = MethodMaker(
     "__gt__",
     class_gt_generator,
     cached_generator=counter_to_class_generator(
-        counter_gt_generator,
+        _counter_gt_generator,
         get_compare_args,
     )
 )
@@ -874,7 +874,7 @@ ge_maker = MethodMaker(
     "__ge__",
     class_ge_generator,
     cached_generator=counter_to_class_generator(
-        counter_ge_generator,
+        _counter_ge_generator,
         get_compare_args,
     )
 )
