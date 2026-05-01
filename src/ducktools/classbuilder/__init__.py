@@ -409,10 +409,10 @@ def get_repr_args(cls):
 def generic_to_class_generator(
     generic_generator,
     argument_getter,
-    unwrap=False,
     cache=None,
     default_fixer=None,
     method_check=None,
+    replace_strings=False,
 ):
     # This takes a generic source generator and converts it into a function
     # generator with cached methods backing it
@@ -434,18 +434,46 @@ def generic_to_class_generator(
         gen = generic_generator(*exec_args, funcname=funcname)
         raw_func = source_exec(*exec_args, funcname=funcname)
 
-        # Patch up the method
-        # Call with args if needed to patch string names
-        if unwrap:
-            raw_func = raw_func(*argnames)
-
         arg_fixes = {
-            f"{REPLACE_NAME}{i}": arg for i, arg in enumerate(argnames)
+            f"{REPLACE_NAME}{i}_": arg for i, arg in enumerate(argnames)
         }
 
-        # Patch co_names
+        # Get existing attribute names and strings
         co_names = raw_func.__code__.co_names
-        new_co_names = tuple(arg_fixes.get(name, name) for name in co_names)
+        co_consts = raw_func.__code__.co_consts
+
+        # Skip patching if there are no field names to fix
+        if arg_fixes:
+            # Patch the attribute names (eg self.placeholder -> self.field_name)
+            new_co_names = tuple(arg_fixes.get(name, name) for name in co_names)
+
+            # Patch strings
+            if replace_strings:
+                new_co_const_list = []
+
+                # Placeholders should be in order and only seen once
+                # So if they are replaced, move to the next placeholder
+                # and only compare one placeholder each time
+                fix_pairs = list(reversed(arg_fixes.items()))
+                placeholder, value = fix_pairs.pop()
+                for const in co_consts:
+                    if placeholder and isinstance(const, str):
+                        new_const = const.replace(placeholder, value)
+                        if new_const != const:
+                            new_co_const_list.append(new_const)
+                            try:
+                                placeholder, value = fix_pairs.pop()
+                            except IndexError:
+                                # All placeholders have been replaced
+                                placeholder = None
+                            continue
+                    new_co_const_list.append(const)
+                new_co_consts = tuple(new_co_const_list)
+            else:
+                new_co_consts = co_consts
+        else:
+            new_co_names = co_names
+            new_co_consts = co_consts
 
         if default_fixer:
             defaults, kwdefaults = default_fixer(cls)
@@ -453,7 +481,10 @@ def generic_to_class_generator(
             defaults, kwdefaults = raw_func.__defaults__, raw_func.__kwdefaults__
 
         method = _FunctionType(
-            raw_func.__code__.replace(co_names=new_co_names),
+            raw_func.__code__.replace(
+                co_names=new_co_names,
+                co_consts=new_co_consts,
+            ),
             gen.globs,
             name=funcname,
             argdefs=defaults,
@@ -539,17 +570,11 @@ def get_init_generator(null=NOTHING, extra_code=None):
 init_generator = get_init_generator()
 
 
-def generic_repr_generator(field_names, funcname="__repr__", wrap_keys=False):
-    if wrap_keys:
-        content = ", ".join(
-            f"{{{name}}}={{self.{name}!r}}"
-            for name in field_names
-        )
-    else:
-        content = ", ".join(
-            f"{name}={{self.{name}!r}}"
-            for name in field_names
-        )
+def generic_repr_generator(field_names, funcname="__repr__"):
+    content = ", ".join(
+        f"{name}={{self.{name}!r}}"
+        for name in field_names
+    )
 
     # fmt: off
     code = (
@@ -565,32 +590,17 @@ def generic_repr_generator(field_names, funcname="__repr__", wrap_keys=False):
 def class_repr_generator(cls, funcname="__repr__"):
     # For a regular class source, key and attrib names are the same
     field_names = [k for k, v in get_fields(cls).items() if v.repr]
-    return generic_repr_generator(field_names, funcname=funcname, wrap_keys=False)
+    return generic_repr_generator(field_names, funcname=funcname)
 
 
 @_simple_cache()
 def counter_repr_generator(argcount, *, funcname="__repr__"):
     field_names = [
-        f"{REPLACE_NAME}{i}"
+        f"{REPLACE_NAME}{i}_"
         for i in range(argcount)
     ]
 
-    # We need to add the '_make_' wrapper to put in the key names in the final
-    # function
-    raw = generic_repr_generator(field_names, funcname=funcname, wrap_keys=True)
-
-    args = ", ".join(field_names)
-
-    indented_source = "\n    ".join(raw.source_code.strip().split("\n"))
-    # fmt: off
-    code = (
-        f"def _make_{funcname}({args}):\n"
-        f"    {indented_source}\n"
-        f"    return {funcname}\n"
-    )
-    # fmt: on
-
-    return GeneratedCode(code, raw.globs)
+    return generic_repr_generator(field_names, funcname=funcname)
 
 
 def generic_eq_generator(field_names, funcname="__eq__"):
@@ -633,7 +643,7 @@ def counter_eq_generator(argcount, *, funcname="__eq__"):
     # It returns uglier source, but the source can be cached
     # and reused more easily.
     field_names = [
-        f"{REPLACE_NAME}{i}" for i in range(argcount)
+        f"{REPLACE_NAME}{i}_" for i in range(argcount)
     ]
 
     return generic_eq_generator(field_names, funcname=funcname)
@@ -801,8 +811,8 @@ repr_maker = MethodMaker(
     cached_generator=generic_to_class_generator(
         counter_repr_generator,
         get_repr_args,
-        unwrap=True,
         cache=repr_cache,
+        replace_strings=True,
     ),
     decorator=_RECURSIVE_REPR,
 )
@@ -812,7 +822,6 @@ eq_maker = MethodMaker(
     cached_generator=generic_to_class_generator(
         counter_eq_generator,
         get_compare_args,
-        unwrap=False,
         cache=eq_cache,
     )
 )
