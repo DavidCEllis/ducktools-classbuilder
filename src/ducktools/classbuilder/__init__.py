@@ -413,6 +413,35 @@ def get_replace_args(cls):
     return (tuple(k for k, v in get_fields(cls).items() if v.init), )
 
 
+def _fix_consts(consts, active_pair, pairs):
+    # Placeholders should be in order and only seen once
+    # So if they are replaced, move to the next placeholder
+    # and only compare one placeholder each time
+
+    new_consts = []
+    for const in consts:
+        if active_pair:
+            if isinstance(const, str):
+                new_const = const.replace(*active_pair)
+                if new_const != const:
+                    try:
+                        active_pair = pairs.pop()
+                    except IndexError:
+                        # All placeholders have been replaced
+                        active_pair = None
+            elif isinstance(const, tuple):
+                new_const = _fix_consts(const, active_pair, pairs)
+            else:
+                new_const = const
+        else:
+            new_const = const
+
+        # Append the new values
+        new_consts.append(new_const)
+
+    return tuple(new_consts)
+
+
 def counter_to_class_generator(
     generic_generator,
     argument_getter,
@@ -456,26 +485,9 @@ def counter_to_class_generator(
 
             # Patch strings
             if replace_strings:
-                new_co_const_list = []
-
-                # Placeholders should be in order and only seen once
-                # So if they are replaced, move to the next placeholder
-                # and only compare one placeholder each time
                 fix_pairs = list(reversed(arg_fixes.items()))
-                placeholder, value = fix_pairs.pop()
-                for const in co_consts:
-                    if placeholder and isinstance(const, str):
-                        new_const = const.replace(placeholder, value)
-                        if new_const != const:
-                            new_co_const_list.append(new_const)
-                            try:
-                                placeholder, value = fix_pairs.pop()
-                            except IndexError:
-                                # All placeholders have been replaced
-                                placeholder = None
-                            continue
-                    new_co_const_list.append(const)
-                new_co_consts = tuple(new_co_const_list)
+                active_pair = fix_pairs.pop()
+                new_co_consts = _fix_consts(co_consts, active_pair, fix_pairs)
             else:
                 new_co_consts = co_consts
         else:
@@ -495,9 +507,9 @@ def counter_to_class_generator(
             gen.globs,
             name=funcname,
             argdefs=defaults,
-            kwdefaults=kwdefaults,
             closure=raw_func.__closure__,
         )
+        method.__kwdefaults__ = kwdefaults  # Argument to FunctionType was only added in 3.13
 
         # Remove the module reference to avoid retrieving incorrect code
         method.__module__ = None
