@@ -214,17 +214,17 @@ Annotations:
 
 ```
 $ python --version
-Python 3.14.3
+Python 3.14.4
 
 $ python -Ximporttime -c "import dataclasses"
 import time: self [us] | cumulative | imported package
 ...
-import time:       323 |       7758 | dataclasses
+import time:       331 |       7574 | dataclasses
 
 $ python -Ximporttime -c "import ducktools.classbuilder.prefab"
 import time: self [us] | cumulative | imported package
 ...
-import time:       198 |        776 | ducktools.classbuilder.prefab
+import time:       337 |       1219 | ducktools.classbuilder.prefab
 ```
 
 ### Faster Class Construction ###
@@ -232,27 +232,29 @@ import time:       198 |        776 | ducktools.classbuilder.prefab
 ```
 ~/src/ducktools-classbuilder/perf$ python perf_profile.py --test-all
 
-Python Version: 3.14.3 (main, Feb  4 2026, 00:00:00) [GCC 15.2.1 20260123 (Red Hat 15.2.1-7)]
-Classbuilder version: 0.12.4
-Platform: Linux-6.18.13-200.fc43.x86_64-x86_64-with-glibc2.42
+Python Version: 3.14.4 (main, Apr  8 2026, 00:00:00) [GCC 15.2.1 20260123 (Red Hat 15.2.1-7)]
+Classbuilder version: 0.14.0
+Platform: Linux-6.19.14-200.fc43.x86_64-x86_64-with-glibc2.42
 Time for 100 imports of 100 classes defined with 5 basic attributes
 | Method | Total Time (seconds) |
 | --- | --- |
 | standard classes | 0.05 |
 | namedtuple | 0.24 |
 | NamedTuple | 0.50 |
-| dataclasses | 1.65 |
-| attrs 25.4.0 | 2.37 |
-| pydantic 2.12.5 | 1.91 |
-| msgspec 0.20.0 | 0.09 |
-| prefab 0.12.4 | 0.18 |
-| prefab_eval 0.12.4 | 1.03 |
+| dataclasses | 1.66 |
+| attrs 26.1.0 | 2.43 |
+| pydantic 2.13.3 | 1.87 |
+| msgspec 0.21.1 | 0.10 |
+| prefab 0.13.2.dev13+g9cd8f8ff3 | 0.20 |
+| prefab_eval 0.13.2.dev13+g9cd8f8ff3 | 0.64 |
+
 ```
 
 This class construction difference is due to `prefab` deferring constructing the methods
 such as `__init__`, `__eq__` and `__repr__` until they are actually used. If a method is
-not used, it is not constructed. That said, even with `prefab_eval` constructing all of
-the methods, it is still faster than dataclasses.
+not used, it is not constructed. Even when methods are constructed, methods that would
+share the same internal code may have that code reused instead of generating the method
+from scratch.
 
 ### Partial init functions using `__prefab_post_init__` ###
 
