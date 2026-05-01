@@ -37,7 +37,6 @@ __lazy_modules__ = [
 
 import os
 import sys
-import reprlib
 
 try:
     # Use the internal C module if it is available
@@ -75,8 +74,11 @@ REPLACE_NAME = "_classbuilder_cache_names_"
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = os.environ.get("PYTEST_VERSION") is not None
 
-# Create the instance here so instances are identical
-_RECURSIVE_REPR = reprlib.recursive_repr()
+
+def _recursive_repr(func):
+    # defer the reprlib import
+    import reprlib
+    return reprlib.recursive_repr()(func)
 
 
 def get_fields(cls, *, local=False):
@@ -860,7 +862,7 @@ repr_maker = MethodMaker(
         cache=repr_cache,
         replace_strings=True,
     ),
-    decorator=_RECURSIVE_REPR,
+    decorator=_recursive_repr,
 )
 eq_maker = MethodMaker(
     "__eq__",
