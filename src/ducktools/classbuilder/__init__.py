@@ -731,11 +731,14 @@ def _counter_ge_generator(argcount, *, funcname="__ge__"):
     return _get_counter_order_generator(argcount, ">=", funcname=funcname)
 
 
-def generic_replace_generator(field_names, *, funcname="__replace__"):
-    if field_names:
+def generic_replace_generator(field_pairs, *, funcname="__replace__"):
+    # This takes pairs of the init param name and the attribute
+    # Needed to handle the replace method for Fields where the
+    # param is `type` but the field name is `_type`
+    if field_pairs:
         vals = ",\n".join(
-            f"        '{name}': self.{name}"
-            for name in field_names
+            f"        '{param}': self.{attrib}"
+            for param, attrib in field_pairs
         )
         init_dict = f"{{\n{vals},\n    }}"
         # fmt: off
@@ -759,38 +762,25 @@ def generic_replace_generator(field_names, *, funcname="__replace__"):
     return GeneratedCode(code, globs)
 
 def class_replace_generator(cls, funcname="__replace__"):
-    field_names = [k for k, v in get_fields(cls).items() if v.init]
-    return generic_replace_generator(field_names, funcname=funcname)
+    field_pairs = [(k, k) for k, v in get_fields(cls).items() if v.init]
+    return generic_replace_generator(field_pairs, funcname=funcname)
 
 def _field_replace_generator(cls, funcname="__replace__"):
     # A special replace generator for FIELD that replaces
     # type with _type
-    vals = ", ".join(
-        f"'{name}': self.{name}"
-        if name != "type"
-        else f"'{name}': self._{name}"
-        for name, attrib in get_fields(cls).items()
-        if attrib.init
-    )
-    init_dict = f"{{{vals}}}"
-
-    # fmt: off
-    code = (
-        f"def {funcname}(self, /, **changes):\n"
-        f"    new_kwargs = {init_dict}\n"
-        f"    new_kwargs |= changes\n"
-        f"    return self.__class__(**new_kwargs)\n"
-    )
-    # fmt: on
-    globs = {}
-    return GeneratedCode(code, globs)
+    field_pairs = [
+        (k, k if k != "type" else f"_{k}")
+        for k, v in get_fields(cls).items()
+        if v.init
+    ]
+    return generic_replace_generator(field_pairs, funcname=funcname)
 
 @_simple_cache()
 def _counter_replace_generator(argcount, *, funcname="__replace__"):
-    field_names = [
-        f"{REPLACE_NAME}{i}_" for i in range(argcount)
+    field_pairs = [
+        (f"{REPLACE_NAME}{i}_", f"{REPLACE_NAME}{i}_") for i in range(argcount)
     ]
-    return generic_replace_generator(field_names, funcname=funcname)
+    return generic_replace_generator(field_pairs, funcname=funcname)
 
 
 def frozen_setattr_generator(cls, funcname="__setattr__"):
