@@ -406,7 +406,7 @@ def get_repr_args(cls):
     return (repr_arglist,)
 
 
-def generic_to_class_generator(
+def counter_to_class_generator(
     generic_generator,
     argument_getter,
     cache=None,
@@ -414,7 +414,7 @@ def generic_to_class_generator(
     method_check=None,
     replace_strings=False,
 ):
-    # This takes a generic source generator and converts it into a function
+    # This takes a counting source generator and converts it into a function
     # generator with cached methods backing it
     @_simple_cache(cache)
     def source_exec(*args, funcname):
@@ -829,7 +829,7 @@ init_maker = MethodMaker("__init__", init_generator)
 repr_maker = MethodMaker(
     "__repr__",
     class_repr_generator,
-    cached_generator=generic_to_class_generator(
+    cached_generator=counter_to_class_generator(
         counter_repr_generator,
         get_repr_args,
         cache=repr_cache,
@@ -840,7 +840,7 @@ repr_maker = MethodMaker(
 eq_maker = MethodMaker(
     "__eq__",
     class_eq_generator,
-    cached_generator=generic_to_class_generator(
+    cached_generator=counter_to_class_generator(
         counter_eq_generator,
         get_compare_args,
         cache=eq_cache,
@@ -849,7 +849,7 @@ eq_maker = MethodMaker(
 lt_maker = MethodMaker(
     "__lt__",
     class_lt_generator,
-    cached_generator=generic_to_class_generator(
+    cached_generator=counter_to_class_generator(
         counter_lt_generator,
         get_compare_args,
     )
@@ -857,7 +857,7 @@ lt_maker = MethodMaker(
 le_maker = MethodMaker(
     "__le__",
     class_le_generator,
-    cached_generator=generic_to_class_generator(
+    cached_generator=counter_to_class_generator(
         counter_le_generator,
         get_compare_args,
     )
@@ -865,7 +865,7 @@ le_maker = MethodMaker(
 gt_maker = MethodMaker(
     "__gt__",
     class_gt_generator,
-    cached_generator=generic_to_class_generator(
+    cached_generator=counter_to_class_generator(
         counter_gt_generator,
         get_compare_args,
     )
@@ -873,7 +873,7 @@ gt_maker = MethodMaker(
 ge_maker = MethodMaker(
     "__ge__",
     class_ge_generator,
-    cached_generator=generic_to_class_generator(
+    cached_generator=counter_to_class_generator(
         counter_ge_generator,
         get_compare_args,
     )
