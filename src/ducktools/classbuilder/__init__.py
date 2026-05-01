@@ -649,7 +649,7 @@ def counter_eq_generator(argcount, *, funcname="__eq__"):
     return generic_eq_generator(field_names, funcname=funcname)
 
 
-def get_generic_order_generator(field_names, *, funcname, operator):
+def get_generic_order_generator(field_names, operator, *, funcname):
     class_comparison = "self.__class__ is other.__class__"
     # Equal objects should be False for gt/lt comparisons
     eq_return = "True" if "=" in operator else "False"
@@ -681,26 +681,47 @@ def get_generic_order_generator(field_names, *, funcname, operator):
 
     return GeneratedCode(code, globs)
 
-
-def get_order_generator(cls, funcname, *, operator):
+def get_class_order_generator(cls, operator, *, funcname):
     field_names = [
         name
         for name, attrib in get_fields(cls).items()
         if attrib.compare
     ]
-    return get_generic_order_generator(field_names, funcname=funcname, operator=operator)
+    return get_generic_order_generator(field_names, operator, funcname=funcname)
 
-def lt_generator(cls, funcname="__lt__"):
-    return get_order_generator(cls, funcname, operator="<")
+def get_counter_order_generator(argcount, operator, *, funcname):
+    field_names = [
+        f"{REPLACE_NAME}{i}_" for i in range(argcount)
+    ]
+    return get_generic_order_generator(field_names, operator, funcname=funcname)
 
-def le_generator(cls, funcname="__le__"):
-    return get_order_generator(cls, funcname, operator="<=")
+def class_lt_generator(cls, funcname="__lt__"):
+    return get_class_order_generator(cls, "<", funcname=funcname)
 
-def gt_generator(cls, funcname="__gt__"):
-    return get_order_generator(cls, funcname, operator=">")
+@_simple_cache()
+def counter_lt_generator(argcount, funcname="__lt__"):
+    return get_counter_order_generator(argcount, "<", funcname=funcname)
 
-def ge_generator(cls, funcname="__ge__"):
-    return get_order_generator(cls, funcname, operator=">=")
+def class_le_generator(cls, funcname="__le__"):
+    return get_class_order_generator(cls, "<=", funcname=funcname)
+
+@_simple_cache()
+def counter_le_generator(argcount, funcname="__le__"):
+    return get_counter_order_generator(argcount, "<=", funcname=funcname)
+
+def class_gt_generator(cls, funcname="__gt__"):
+    return get_class_order_generator(cls, ">", funcname=funcname)
+
+@_simple_cache()
+def counter_gt_generator(argcount, funcname="__gt__"):
+    return get_counter_order_generator(argcount, ">", funcname=funcname)
+
+def class_ge_generator(cls, funcname="__ge__"):
+    return get_class_order_generator(cls, ">=", funcname=funcname)
+
+@_simple_cache()
+def counter_ge_generator(argcount, funcname="__ge__"):
+    return get_counter_order_generator(argcount, ">=", funcname=funcname)
 
 
 def _get_replace_generator(private_type=False):
@@ -825,10 +846,38 @@ eq_maker = MethodMaker(
         cache=eq_cache,
     )
 )
-lt_maker = MethodMaker("__lt__", lt_generator)
-le_maker = MethodMaker("__le__", le_generator)
-gt_maker = MethodMaker("__gt__", gt_generator)
-ge_maker = MethodMaker("__ge__", ge_generator)
+lt_maker = MethodMaker(
+    "__lt__",
+    class_lt_generator,
+    cached_generator=generic_to_class_generator(
+        counter_lt_generator,
+        get_compare_args,
+    )
+)
+le_maker = MethodMaker(
+    "__le__",
+    class_le_generator,
+    cached_generator=generic_to_class_generator(
+        counter_le_generator,
+        get_compare_args,
+    )
+)
+gt_maker = MethodMaker(
+    "__gt__",
+    class_gt_generator,
+    cached_generator=generic_to_class_generator(
+        counter_gt_generator,
+        get_compare_args,
+    )
+)
+ge_maker = MethodMaker(
+    "__ge__",
+    class_ge_generator,
+    cached_generator=generic_to_class_generator(
+        counter_ge_generator,
+        get_compare_args,
+    )
+)
 replace_maker = MethodMaker("__replace__", replace_generator)
 frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
