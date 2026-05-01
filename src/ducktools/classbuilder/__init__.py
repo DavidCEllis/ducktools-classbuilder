@@ -993,6 +993,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, f
             methods=methods,
             flags=flags,
             fix_signature=fix_signature,
+            field_getter=field_getter,
         )
 
     # Get from the class dict to avoid getting an inherited internals dict
