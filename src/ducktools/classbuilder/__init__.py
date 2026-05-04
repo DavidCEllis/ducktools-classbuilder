@@ -226,7 +226,7 @@ class _NothingType:
         # Instances with the same custom name
         # should be the same object
         inst = cls._registry.get(custom)
-        if not inst:
+        if inst is None:
             inst = super().__new__(cls)
             inst.custom = custom
             cls._registry[custom] = inst
