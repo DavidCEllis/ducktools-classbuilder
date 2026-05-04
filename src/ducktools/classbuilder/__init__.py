@@ -220,6 +220,8 @@ def build_completed(cls):
 class _NothingType:
     # Repeated calls to the same nothing type should
     # return the same object
+    custom: str | None
+
     _registry = {}  # type: ignore
 
     def __new__(cls, custom=None):
@@ -512,7 +514,7 @@ def counter_to_class_generator(
         method.__kwdefaults__ = kwdefaults  # Argument to FunctionType was only added in 3.13
 
         # Remove the module reference to avoid retrieving incorrect code
-        method.__module__ = None
+        method.__module__ = None  # type: ignore
 
         return gen, method
 
@@ -1284,6 +1286,7 @@ class GatheredFields:
     def __eq__(self, other):
         if type(self) is type(other):
             return self.fields == other.fields and self.modifications == other.modifications
+        return NotImplemented
 
     def __repr__(self):
         return f"{type(self).__name__}(fields={self.fields!r}, modifications={self.modifications!r})"
