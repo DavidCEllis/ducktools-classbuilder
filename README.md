@@ -607,6 +607,7 @@ specific feature, you can create or add it yourself.
 ## Credit
 
 Heavily inspired by [David Beazley's Cluegen](https://github.com/dabeaz/cluegen)
+and [Dataklasses](https://github.com/dabeaz/dataklasses)
 
 [^1]: I'd like to discourage people from directly using
     `pip install ducktools-classbuilder`. I feel like it encourages the bad practice of
