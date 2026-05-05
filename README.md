@@ -456,8 +456,8 @@ of the `dataclass` concept.
   - When given a gatherer, this metaclass will create `__slots__` automatically.
 
 > [!TIP]
-> For more information on using these tools to create your own implementations
-> using the builder see
+> For more information on using these tools to create your own implementations using the
+> builder see
 > [the tutorial](https://ducktools-classbuilder.readthedocs.io/en/latest/tutorial.html)
 > for a full tutorial and
 > [extension_examples](https://ducktools-classbuilder.readthedocs.io/en/latest/extension_examples.html)
@@ -592,7 +592,7 @@ DataCoords: TypeError('Object of type DataCoords is not JSON serializable')
 BuilderCoords: {"x": 0.0, "y": 0.0}
 ```
 
-## Will you add \<feature\> to `classbuilder.prefab`?
+## Will you add \<feature> to `classbuilder.prefab`?
 
 No. Not unless it's something I need or find interesting.
 
@@ -609,7 +609,7 @@ specific feature, you can create or add it yourself.
 Heavily inspired by [David Beazley's Cluegen](https://github.com/dabeaz/cluegen)
 
 [^1]: I'd like to discourage people from directly using
-`pip install ducktools-classbuilder`. I feel like it encourages the bad practice of
-installing packages into the main runtime folder instead of a virtualenv.
+    `pip install ducktools-classbuilder`. I feel like it encourages the bad practice of
+    installing packages into the main runtime folder instead of a virtualenv.
 
 [^2]: or `@attrs.define`.
