@@ -448,8 +448,6 @@ def counter_to_class_generator(
     generic_generator,
     argument_getter,
     cache=None,
-    default_fixer=None,
-    method_check=None,
     replace_strings=False,
 ):
     # This takes a counting source generator and converts it into a function
@@ -461,9 +459,6 @@ def counter_to_class_generator(
         return method
 
     def method_generator(cls, funcname):
-        if method_check and not method_check(cls):
-            return None
-
         args = argument_getter(cls)
         argnames = args[0]
         argcount = len(args[0])
@@ -496,11 +491,6 @@ def counter_to_class_generator(
             new_co_names = co_names
             new_co_consts = co_consts
 
-        if default_fixer:
-            defaults, kwdefaults = default_fixer(cls)
-        else:
-            defaults, kwdefaults = raw_func.__defaults__, raw_func.__kwdefaults__
-
         method = _FunctionType(
             raw_func.__code__.replace(
                 co_names=new_co_names,
@@ -508,10 +498,10 @@ def counter_to_class_generator(
             ),
             gen.globs,
             name=funcname,
-            argdefs=defaults,
+            argdefs=raw_func.__defaults__,
             closure=raw_func.__closure__,
         )
-        method.__kwdefaults__ = kwdefaults  # Argument to FunctionType was only added in 3.13
+        method.__kwdefaults__ = raw_func.__kwdefaults__  # Argument to FunctionType was only added in 3.13
 
         # Remove the module reference to avoid retrieving incorrect code
         method.__module__ = None  # type: ignore
