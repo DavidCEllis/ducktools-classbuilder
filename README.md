@@ -232,22 +232,26 @@ import time:       337 |       1219 | ducktools.classbuilder.prefab
 ```
 ~/src/ducktools-classbuilder/perf$ python perf_profile.py --test-all
 
-Python Version: 3.14.4 (main, Apr  8 2026, 00:00:00) [GCC 15.2.1 20260123 (Red Hat 15.2.1-7)]
-Classbuilder version: 0.14.0
+Python Version: 3.14.4 (main, Apr 16 2026, 00:00:00) [GCC 15.2.1 20260123 (Red Hat 15.2.1-7)]
+Classbuilder version: 0.13.2.dev23+g50378bf23
 Platform: Linux-6.19.14-200.fc43.x86_64-x86_64-with-glibc2.42
 Time for 100 imports of 100 classes defined with 5 basic attributes
 | Method | Total Time (seconds) |
 | --- | --- |
 | standard classes | 0.05 |
 | namedtuple | 0.24 |
-| NamedTuple | 0.50 |
-| dataclasses | 1.66 |
-| attrs 26.1.0 | 2.43 |
-| pydantic 2.13.3 | 1.87 |
+| NamedTuple | 0.51 |
+| dataclasses | 1.67 |
+| attrs 26.1.0 | 2.41 |
+| pydantic 2.13.3 | 1.86 |
 | msgspec 0.21.1 | 0.10 |
-| prefab 0.13.2.dev13+g9cd8f8ff3 | 0.20 |
-| prefab_eval 0.13.2.dev13+g9cd8f8ff3 | 0.64 |
-
+| dabeaz/cluegen | 0.08 |
+| dabeaz/cluegen_eval | 0.80 |
+| dabeaz/dataklasses | 0.10 |
+| dabeaz/dataklasses_eval | 0.10 |
+| slotclass 0.13.2.dev23+g50378bf23 | 0.11 |
+| prefab 0.13.2.dev23+g50378bf23 | 0.19 |
+| prefab_eval 0.13.2.dev23+g50378bf23 | 0.65 |
 ```
 
 This class construction difference is due to `prefab` deferring constructing the methods
