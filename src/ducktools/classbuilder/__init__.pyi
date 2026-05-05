@@ -128,8 +128,6 @@ def counter_to_class_generator(
     generic_generator: _ArgcountCodegenType,
     argument_getter: Callable[[type], tuple],
     cache: None | dict[str, types.FunctionType] = ...,
-    default_fixer: None | Callable[[type], tuple[tuple[typing.Any], dict[str, typing.Any]]] = ...,
-    method_check: None | Callable[[type], bool] = ...,
     replace_strings: bool = ...,
 ) -> _CachedFunctionBuilder: ...
 
