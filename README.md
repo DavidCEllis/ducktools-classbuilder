@@ -1,20 +1,22 @@
-# Ducktools: Class Builder #
+# Ducktools: Class Builder
 
 `ducktools-classbuilder` is both an alternate implementation of the dataclasses concept
 along with a toolkit for creating your own customised implementation.
 
-Available from PyPI as [ducktools-classbuilder](https://pypi.org/project/ducktools-classbuilder/).
+Available from PyPI as
+[ducktools-classbuilder](https://pypi.org/project/ducktools-classbuilder/).
 
 Installation[^1]:
-  * With [uv](https://docs.astral.sh/uv/)
-    * `uv add ducktools-classbuilder` to add to an existing project
-    * `uv add ducktools-classbuilder --script scriptname.py` to add to
-      [script dependencies](https://packaging.python.org/en/latest/specifications/inline-script-metadata/#inline-script-metadata)
-    * `uv run --with ducktools-classbuilder python` to try in the Python repl
-  * With [poetry](https://python-poetry.org)
-    * `poetry add ducktools-classbuilder` to add to an existing project
 
-## Usage ##
+- With [uv](https://docs.astral.sh/uv/)
+  - `uv add ducktools-classbuilder` to add to an existing project
+  - `uv add ducktools-classbuilder --script scriptname.py` to add to
+    [script dependencies](https://packaging.python.org/en/latest/specifications/inline-script-metadata/#inline-script-metadata)
+  - `uv run --with ducktools-classbuilder python` to try in the Python repl
+- With [poetry](https://python-poetry.org)
+  - `poetry add ducktools-classbuilder` to add to an existing project
+
+## Usage
 
 Create classes using type annotations:
 
@@ -58,15 +60,16 @@ class Book:
 As with `dataclasses` or `attrs`, `ducktools-classbuilder` will handle writing the
 boilerplate `__init__`, `__eq__` and `__repr__` functions for you.
 
-### The base class `Prefab` implementation ###
+### The base class `Prefab` implementation
 
 Alongside the `@prefab` decorator there is also a `Prefab` base class that can be used.
 
 The main differences in behaviour are that `Prefab` will generate `__slots__` by default
-using a metaclass, and any options given to `Prefab` will automatically be set on subclasses.
+using a metaclass, and any options given to `Prefab` will automatically be set on
+subclasses.
 
-Unlike attrs' `@define` or dataclasses' `@dataclass`, `@prefab` does not and will not support
-`__slots__` (this is explained in a section below).
+Unlike attrs' `@define` or dataclasses' `@dataclass`, `@prefab` does not and will not
+support `__slots__` (this is explained in a section below).
 
 ```python
 from pathlib import Path
@@ -84,7 +87,8 @@ ex = Slotted()
 print(ex)
 ```
 
-The generated code for the methods can be viewed using the `print_generated_code` helper function.
+The generated code for the methods can be viewed using the `print_generated_code` helper
+function.
 
 <details>
 
@@ -99,6 +103,8 @@ Source:
         )
 
     def __eq__(self, other):
+        if self is other:
+            return True
         return (
             self.the_answer == other.the_answer
             and self.the_question == other.the_question
@@ -106,22 +112,38 @@ Source:
         ) if self.__class__ is other.__class__ else NotImplemented
 
     def __ge__(self, other):
+        if self is other:
+            return True
         if self.__class__ is other.__class__:
-            return (self.the_answer, self.the_question, self.python_path) >= (other.the_answer, other.the_question, other.python_path)
+            if self.the_answer != other.the_answer:
+                return self.the_answer >= other.the_answer
+            if self.the_question != other.the_question:
+                return self.the_question >= other.the_question
+            if self.python_path != other.python_path:
+                return self.python_path >= other.python_path
+            return True
         return NotImplemented
 
     def __gt__(self, other):
+        if self is other:
+            return False
         if self.__class__ is other.__class__:
-            return (self.the_answer, self.the_question, self.python_path) > (other.the_answer, other.the_question, other.python_path)
+            if self.the_answer != other.the_answer:
+                return self.the_answer > other.the_answer
+            if self.the_question != other.the_question:
+                return self.the_question > other.the_question
+            if self.python_path != other.python_path:
+                return self.python_path > other.python_path
+            return False
         return NotImplemented
 
     def __hash__(self):
         return hash((self.the_answer, self.the_question, self.python_path))
 
     def __init__(self, the_answer=42, the_question='What do you get if you multiply six by nine?', python_path=_python_path_default):
-        self.the_answer = the_answer
-        self.the_question = the_question
-        self.python_path = python_path
+        __object_setattr(self, 'the_answer', the_answer)
+        __object_setattr(self, 'the_question', the_question)
+        __object_setattr(self, 'python_path', python_path)
 
     def __iter__(self):
         yield self.the_answer
@@ -129,21 +151,40 @@ Source:
         yield self.python_path
 
     def __le__(self, other):
+        if self is other:
+            return True
         if self.__class__ is other.__class__:
-            return (self.the_answer, self.the_question, self.python_path) <= (other.the_answer, other.the_question, other.python_path)
+            if self.the_answer != other.the_answer:
+                return self.the_answer <= other.the_answer
+            if self.the_question != other.the_question:
+                return self.the_question <= other.the_question
+            if self.python_path != other.python_path:
+                return self.python_path <= other.python_path
+            return True
         return NotImplemented
 
     def __lt__(self, other):
+        if self is other:
+            return False
         if self.__class__ is other.__class__:
-            return (self.the_answer, self.the_question, self.python_path) < (other.the_answer, other.the_question, other.python_path)
+            if self.the_answer != other.the_answer:
+                return self.the_answer < other.the_answer
+            if self.the_question != other.the_question:
+                return self.the_question < other.the_question
+            if self.python_path != other.python_path:
+                return self.python_path < other.python_path
+            return False
         return NotImplemented
 
     def __replace__(self, /, **changes):
-        new_kwargs = {'the_answer': self.the_answer, 'the_question': self.the_question, 'python_path': self.python_path}
+        new_kwargs = {
+            'the_answer': self.the_answer,
+            'the_question': self.the_question,
+            'python_path': self.python_path,
+        }
         new_kwargs |= changes
         return self.__class__(**new_kwargs)
 
-    @_recursive_repr
     def __repr__(self):
         return f'{type(self).__qualname__}(the_answer={self.the_answer!r}, the_question={self.the_question!r}, python_path={self.python_path!r})'
 
@@ -161,9 +202,8 @@ Source:
 
 
 Globals:
-    __init__: {'_python_path_default': PosixPath('/usr/bin/python')}
-    __repr__: {'_recursive_repr': <function recursive_repr.<locals>.decorating_function at 0x7367f9cddf30>}
-    __setattr__: {'__field_names': {'the_question', 'the_answer', 'python_path'}, '__setattr_func': <slot wrapper '__setattr__' of 'object' objects>}
+    __init__: {'_python_path_default': PosixPath('/usr/bin/python4'), '__object_setattr': <slot wrapper '__setattr__' of 'object' objects>}
+    __setattr__: {'__field_names': {'the_question', 'python_path', 'the_answer'}, '__setattr_func': <slot wrapper '__setattr__' of 'object' objects>}
 
 Annotations:
     __init__: {'the_answer': <class 'int'>, 'the_question': <class 'str'>, 'python_path': <class 'pathlib.Path'>, 'return': None}
@@ -172,64 +212,74 @@ Annotations:
 
 </details>
 
-## Why use this instead of dataclasses? ##
+## Why use this instead of dataclasses?
 
-### Faster Import ###
+### Faster Import
 
 ```
 $ python --version
-Python 3.14.3
+Python 3.14.4
 
 $ python -Ximporttime -c "import dataclasses"
 import time: self [us] | cumulative | imported package
 ...
-import time:       323 |       7758 | dataclasses
+import time:       331 |       7574 | dataclasses
 
 $ python -Ximporttime -c "import ducktools.classbuilder.prefab"
 import time: self [us] | cumulative | imported package
 ...
-import time:       198 |        776 | ducktools.classbuilder.prefab
+import time:       337 |       1219 | ducktools.classbuilder.prefab
 ```
 
-### Faster Class Construction ###
+### Faster Class Construction
 
 ```
 ~/src/ducktools-classbuilder/perf$ python perf_profile.py --test-all
 
-Python Version: 3.14.3 (main, Feb  4 2026, 00:00:00) [GCC 15.2.1 20260123 (Red Hat 15.2.1-7)]
-Classbuilder version: 0.12.4
-Platform: Linux-6.18.13-200.fc43.x86_64-x86_64-with-glibc2.42
+Python Version: 3.14.4 (main, Apr 16 2026, 00:00:00) [GCC 15.2.1 20260123 (Red Hat 15.2.1-7)]
+Classbuilder version: 0.13.2.dev23+g50378bf23
+Platform: Linux-6.19.14-200.fc43.x86_64-x86_64-with-glibc2.42
 Time for 100 imports of 100 classes defined with 5 basic attributes
 | Method | Total Time (seconds) |
 | --- | --- |
 | standard classes | 0.05 |
 | namedtuple | 0.24 |
-| NamedTuple | 0.50 |
-| dataclasses | 1.65 |
-| attrs 25.4.0 | 2.37 |
-| pydantic 2.12.5 | 1.91 |
-| msgspec 0.20.0 | 0.09 |
-| prefab 0.12.4 | 0.18 |
-| prefab_eval 0.12.4 | 1.03 |
+| NamedTuple | 0.51 |
+| dataclasses | 1.67 |
+| attrs 26.1.0 | 2.41 |
+| pydantic 2.13.3 | 1.86 |
+| msgspec 0.21.1 | 0.10 |
+| dabeaz/cluegen | 0.08 |
+| dabeaz/cluegen_eval | 0.80 |
+| dabeaz/dataklasses | 0.10 |
+| dabeaz/dataklasses_eval | 0.10 |
+| slotclass 0.13.2.dev23+g50378bf23 | 0.11 |
+| prefab 0.13.2.dev23+g50378bf23 | 0.19 |
+| prefab_eval 0.13.2.dev23+g50378bf23 | 0.65 |
 ```
 
 This class construction difference is due to `prefab` deferring constructing the methods
 such as `__init__`, `__eq__` and `__repr__` until they are actually used. If a method is
-not used, it is not constructed. That said, even with `prefab_eval` constructing all of
-the methods, it is still faster than dataclasses.
+not used, it is not constructed. Even when methods are constructed, methods that would
+share the same internal code may have that code reused instead of generating the method
+from scratch.
 
-### Partial init functions using `__prefab_post_init__` ###
+### Partial init functions using `__prefab_post_init__`
 
-`@prefab` and the `Prefab` base class support `__prefab_pre_init__` and `__prefab_post_init__`
-methods.
+`@prefab` and the `Prefab` base class support `__prefab_pre_init__` and
+`__prefab_post_init__` methods.
 
-Both of these methods will take any field names as arguments. Those passed to `__prefab_pre_init__` will still be set inside the main `__init__` body, while those passed to `__prefab_post_init__` will not.
+Both of these methods will take any field names as arguments. Those passed to
+`__prefab_pre_init__` will still be set inside the main `__init__` body, while those
+passed to `__prefab_post_init__` will not.
 
 `__prefab_pre_init__` is intended as a place to perform validation checks.
 
-`__prefab_post_init__` can be seen as a partial `__init__` function, only handling fields that require extra processing.
+`__prefab_post_init__` can be seen as a partial `__init__` function, only handling fields
+that require extra processing.
 
-Here is an example using `__prefab_post_init__` that converts a string or Path object into a path object:
+Here is an example using `__prefab_post_init__` that converts a string or Path object into
+a path object:
 
 ```python
 from pathlib import Path
@@ -272,17 +322,18 @@ in generated source code.
 
 #### InitParam in post init
 
-This `__prefab_post_init__` is also how adding extra arguments to `__init__` is supported in
-prefabs.
+This `__prefab_post_init__` is also how adding extra arguments to `__init__` is supported
+in prefabs.
 
 These are the equivalent to `InitVar` in dataclasses.
 
 **Unlike `dataclasses` these are **not** declared as class annotations**. Instead the
-`InitParam[T]` annotations are used directly on the `__prefab_post_init__` function declaration.
-Default values are taken from the default value in the `__prefab_post_init__` function.
+`InitParam[T]` annotations are used directly on the `__prefab_post_init__` function
+declaration. Default values are taken from the default value in the `__prefab_post_init__`
+function.
 
-Unlike `dataclasses`, init only variables declared in this way are *always* keyword only in the
-actual `__init__` function.
+Unlike `dataclasses`, init only variables declared in this way are *always* keyword only
+in the actual `__init__` function.
 
 ```python
 import inspect
@@ -299,6 +350,7 @@ print(Example())
 ```
 
 Output:
+
 ```python
 (a: int = 6, *, multiplier: int = 7) -> None
 Example(a=42)
@@ -306,129 +358,137 @@ Example(a=42)
 
 Note that the type of the InitParam has been unwrapped for the annotation at runtime.
 
-### Other Differences ###
+### Other Differences
 
-`Prefab` and `@prefab` support many standard dataclass features along with
-some extra features and some intentional differences in design.
+`Prefab` and `@prefab` support many standard dataclass features along with some extra
+features and some intentional differences in design.
 
-* Slotted classes using the base `Prefab` class work with `functools.cached_property`
-* There is an optional `iter` argument that will make the class iterable
-* The `frozen` argument will make the dataclass a 'write once' object
-  * This is to make the partial `__prefab_post_init__` function more natural
-    to write for frozen classes
-* `dict_method=True` will generate an `as_dict` method that gives a dictionary of
+- Slotted classes using the base `Prefab` class work with `functools.cached_property`
+- There is an optional `iter` argument that will make the class iterable
+- The `frozen` argument will make the dataclass a 'write once' object
+  - This is to make the partial `__prefab_post_init__` function more natural to write for
+    frozen classes
+- `dict_method=True` will generate an `as_dict` method that gives a dictionary of
   attributes that have `serialize=True` (the default)
-* `ignore_annotations` can be used to only use the presence of `attribute` values
-  to decide how the class is constructed
-  * This is intended for cases where evaluating the annotations may trigger imports
-    which could be slow and unnecessary for the function of class generation
-* `replace=False` can be used to avoid defining the `__replace__` method
-  * The `__replace__` method itself is generated and as such is a little faster than
-    the one used by dataclasses
-* `attribute` has additional options over dataclasses' `Field`
-  * `iter=True` will include the attribute in the iterable if `__iter__` is generated
-  * `serialize=True` decides if the attribute is include in `as_dict`
-  * `exclude_field` is short for `repr=False`, `compare=False`, `iter=False`, `serialize=False`
-  * `private` is short for `exclude_field=True` and `init=False` and requires a default or factory
-  * `doc` will add this string as the value in slotted classes, which appears in `help()`
-* `build_prefab` can be used to dynamically create classes and *does* support a slots argument
-  * Unlike dataclasses, this does not create the class twice in order to provide slots
-* Class attribute values are obtained through `__dict__.get(...)` and not `getattr` and default values are not retained on the class
-  * This makes the behaviour more consistent between slotted and unslotted classes
-  * This does mean that descriptors are not supported as attributes as they are for
-    unslotted dataclasses. If a descriptor is provided, the descriptor itself will
-    become the default value (dataclasses will take whatever `.__get__` returns).
+- `ignore_annotations` can be used to only use the presence of `attribute` values to
+  decide how the class is constructed
+  - This is intended for cases where evaluating the annotations may trigger imports which
+    could be slow and unnecessary for the function of class generation
+- `replace=False` can be used to avoid defining the `__replace__` method
+  - The `__replace__` method itself is generated and as such is a little faster than the
+    one used by dataclasses
+- `attribute` has additional options over dataclasses' `Field`
+  - `iter=True` will include the attribute in the iterable if `__iter__` is generated
+  - `serialize=True` decides if the attribute is include in `as_dict`
+  - `exclude_field` is short for `repr=False`, `compare=False`, `iter=False`,
+    `serialize=False`
+  - `private` is short for `exclude_field=True` and `init=False` and requires a default or
+    factory
+  - `doc` will add this string as the value in slotted classes, which appears in `help()`
+- `build_prefab` can be used to dynamically create classes and *does* support a slots
+  argument
+  - Unlike dataclasses, this does not create the class twice in order to provide slots
+- Class attribute values are obtained through `__dict__.get(...)` and not `getattr` and
+  default values are not retained on the class
+  - This makes the behaviour more consistent between slotted and unslotted classes
+  - This does mean that descriptors are not supported as attributes as they are for
+    unslotted dataclasses. If a descriptor is provided, the descriptor itself will become
+    the default value (dataclasses will take whatever `.__get__` returns).
 
 There are also some intentionally missing features:
 
-* `as_dict` and the generated `.as_dict` method **do not** recurse or deep copy
-  * I think dataclasses' behaviour here is generally undesirable
-  * For serializing nested structures, it's better to use something like `cattrs`
-* `unsafe_hash` is not provided
-* `weakref_slot` is not available as an argument
-  * `__weakref__` can be added to slots by declaring it as if it were an attribute
-* There is no safety check for mutable defaults
-  * You should still use `default_factory` as you would for dataclasses, not doing so
-    is still incorrect
-  * `dataclasses` uses hashability as a proxy for mutability, but technically this is
+- `as_dict` and the generated `.as_dict` method **do not** recurse or deep copy
+  - I think dataclasses' behaviour here is generally undesirable
+  - For serializing nested structures, it's better to use something like `cattrs`
+- `unsafe_hash` is not provided
+- `weakref_slot` is not available as an argument
+  - `__weakref__` can be added to slots by declaring it as if it were an attribute
+- There is no safety check for mutable defaults
+  - You should still use `default_factory` as you would for dataclasses, not doing so is
+    still incorrect
+  - `dataclasses` uses hashability as a proxy for mutability, but technically this is
     inaccurate as you can be unhashable but immutable and mutable but hashable
-  * This may change in a future version, but I haven't felt the need to add this check so far
-* In Python 3.14 Annotations are gathered as `VALUE` if possible and `DeferredAnnotation` if this fails
-  * `VALUE` annotations are used as they are faster
-    * Forward references cause up to a 60% performance penalty on construction time
-    * This means in most cases, `STRING` annotations from `__init__` will be based on the `type_repr` of `VALUE` annotations
-  * If `VALUE` fails, `reannotate` is used to get deferred annotations that are evaluated on retrieval
-  * This means the annotations for the generated `__init__` should work as expected
-  * The `.type` attribute on `Field` or `Attribute` instances will attempt to resolve forward references
-    on retrieval.
+  - This may change in a future version, but I haven't felt the need to add this check so
+    far
+- In Python 3.14 Annotations are gathered as `VALUE` if possible and `DeferredAnnotation`
+  if this fails
+  - `VALUE` annotations are used as they are faster
+    - Forward references cause up to a 60% performance penalty on construction time
+    - This means in most cases, `STRING` annotations from `__init__` will be based on the
+      `type_repr` of `VALUE` annotations
+  - If `VALUE` fails, `reannotate` is used to get deferred annotations that are evaluated
+    on retrieval
+  - This means the annotations for the generated `__init__` should work as expected
+  - The `.type` attribute on `Field` or `Attribute` instances will attempt to resolve
+    forward references on retrieval.
 
-## Core ##
+## Core
 
-The main `ducktools.classbuilder` module provides tools for creating a customized version of the `dataclass` concept.
+The main `ducktools.classbuilder` module provides tools for creating a customized version
+of the `dataclass` concept.
 
-* `MethodMaker`
-  * This tool takes a function that generates source code and converts it into a descriptor
-    that will execute the source code and attach the generated method to a class on demand.
-  * This is what you use if you need to write a customized `__init__` method or add some other
-    generated method.
-* `Field`
-  * This defines a basic dataclass-like field with some basic arguments
-  * This class itself is a dataclass-like of sorts
-    (unfortunately it does not play well with `@dataclass_transform` and hence, typing)
-  * Additional arguments can be added by subclassing and using annotations
-    * See `ducktools.classbuilder.prefab.Attribute` for an example of this
-* Gatherers
-  * These collect field information and return both the gathered fields and any modifications
-    that will need to be made to the class when built to support them.
-  * This is what you would use if, for instance you wanted to use `Annotated[...]` to define
-    how fields should act instead of arguments. The full documentation includes an example
-    implementing this for a simple dataclass-like.
-* `builder`
-  * This is the main tool used for constructing decorators and base classes to provide
+- `MethodMaker`
+  - This tool takes a function that generates source code and converts it into a
+    descriptor that will execute the source code and attach the generated method to a
+    class on demand.
+  - This is what you use if you need to write a customized `__init__` method or add some
+    other generated method.
+- `Field`
+  - This defines a basic dataclass-like field with some basic arguments
+  - This class itself is a dataclass-like of sorts (unfortunately it does not play well
+    with `@dataclass_transform` and hence, typing)
+  - Additional arguments can be added by subclassing and using annotations
+    - See `ducktools.classbuilder.prefab.Attribute` for an example of this
+- Gatherers
+  - These collect field information and return both the gathered fields and any
+    modifications that will need to be made to the class when built to support them.
+  - This is what you would use if, for instance you wanted to use `Annotated[...]` to
+    define how fields should act instead of arguments. The full documentation includes an
+    example implementing this for a simple dataclass-like.
+- `builder`
+  - This is the main tool used for constructing decorators and base classes to provide
     generated methods.
-  * Other than the required changes to a class for `__slots__` that are done by `SlotMakerMeta`
-    this is where all class mutations should be applied.
-  * Once you have a gatherer and a set of `MethodMaker`s run this to add the methods to the class
-* `SlotMakerMeta`
-  * When given a gatherer, this metaclass will create `__slots__` automatically.
+  - Other than the required changes to a class for `__slots__` that are done by
+    `SlotMakerMeta` this is where all class mutations should be applied.
+  - Once you have a gatherer and a set of `MethodMaker`s run this to add the methods to
+    the class
+- `SlotMakerMeta`
+  - When given a gatherer, this metaclass will create `__slots__` automatically.
 
 > [!TIP]
-> For more information on using these tools to create your own implementations
-> using the builder see
+> For more information on using these tools to create your own implementations using the
+> builder see
 > [the tutorial](https://ducktools-classbuilder.readthedocs.io/en/latest/tutorial.html)
 > for a full tutorial and
 > [extension_examples](https://ducktools-classbuilder.readthedocs.io/en/latest/extension_examples.html)
 > for other customizations.
 
-## What is the issue with generating `__slots__` with a decorator ##
+## What is the issue with generating `__slots__` with a decorator
 
-If you want to use `__slots__` in order to save memory you have to declare
-them when the class is originally created as you can't add them later.
+If you want to use `__slots__` in order to save memory you have to declare them when the
+class is originally created as you can't add them later.
 
-When you use `@dataclass(slots=True)`[^2] with `dataclasses`, the function
-has to make a new class and attempt to copy over everything from the original.
+When you use `@dataclass(slots=True)`[^2] with `dataclasses`, the function has to make a
+new class and attempt to copy over everything from the original.
 
-This is because decorators operate on classes *after they have been created*
-while slots need to be declared beforehand.
-While you can change the value of `__slots__` after a class has been created,
-this will have no effect on the internal structure of the class.
+This is because decorators operate on classes *after they have been created* while slots
+need to be declared beforehand. While you can change the value of `__slots__` after a
+class has been created, this will have no effect on the internal structure of the class.
 
-By using a metaclass or by declaring fields using `__slots__` however,
-the fields can be set *before* the class is constructed, so the class
-will work correctly without needing to be rebuilt.
+By using a metaclass or by declaring fields using `__slots__` however, the fields can be
+set *before* the class is constructed, so the class will work correctly without needing to
+be rebuilt.
 
-For example these two classes would be roughly equivalent, except that
-`@dataclass` has had to recreate the class from scratch while `Prefab`
-has created `__slots__` and added the methods on to the original class.
-This means that any references stored to the original class *before*
-`@dataclass` has rebuilt the class will not be pointing towards the
-correct class.
+For example these two classes would be roughly equivalent, except that `@dataclass` has
+had to recreate the class from scratch while `Prefab` has created `__slots__` and added
+the methods on to the original class. This means that any references stored to the
+original class *before* `@dataclass` has rebuilt the class will not be pointing towards
+the correct class.
 
-Here's a demonstration of the issue using a registry for serialization
-functions.
+Here's a demonstration of the issue using a registry for serialization functions.
 
-> This example requires Python 3.10 or later as earlier versions of
-> `dataclasses` did not support the `slots` argument.
+> This example requires Python 3.10 or later as earlier versions of `dataclasses` did not
+> support the `slots` argument.
 
 ```python
 import json
@@ -516,7 +576,8 @@ for obj in objs:
 ```
 
 Output (Python 3.12):
-```
+
+```python
 DataCoords.__slots__ = ('x', 'y')
 BuilderCoords.__slots__ = {'x': None, 'y': 'y coordinate'}
 
@@ -531,24 +592,25 @@ DataCoords: TypeError('Object of type DataCoords is not JSON serializable')
 BuilderCoords: {"x": 0.0, "y": 0.0}
 ```
 
-## Will you add \<feature\> to `classbuilder.prefab`? ##
+## Will you add \<feature> to `classbuilder.prefab`?
 
 No. Not unless it's something I need or find interesting.
 
-The original version of `prefab_classes` was intended to have every feature
-anybody could possibly require, but this is no longer the case with this
-rebuilt version.
+The original version of `prefab_classes` was intended to have every feature anybody could
+possibly require, but this is no longer the case with this rebuilt version.
 
 I will fix bugs (assuming they're not actually intended behaviour).
 
-However the whole goal of this module is if you want to have a class generator
-with a specific feature, you can create or add it yourself.
+However the whole goal of this module is if you want to have a class generator with a
+specific feature, you can create or add it yourself.
 
-## Credit ##
+## Credit
 
 Heavily inspired by [David Beazley's Cluegen](https://github.com/dabeaz/cluegen)
+and [Dataklasses](https://github.com/dabeaz/dataklasses)
 
-[^1]: I'd like to discourage people from directly using `pip install ducktools-classbuilder`.
-      I feel like it encourages the bad practice of installing packages into the main runtime folder instead of a virtualenv.
+[^1]: I'd like to discourage people from directly using
+    `pip install ducktools-classbuilder`. I feel like it encourages the bad practice of
+    installing packages into the main runtime folder instead of a virtualenv.
 
 [^2]: or `@attrs.define`.

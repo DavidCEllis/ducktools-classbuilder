@@ -41,11 +41,13 @@ import sys
 try:
     # Use the internal C module if it is available
     from _types import (  # type: ignore
+        FunctionType as _FunctionType,
         MemberDescriptorType as _MemberDescriptorType,
         MappingProxyType as _MappingProxyType
     )
 except ImportError:  # pragma: nocover
     from types import (
+        FunctionType as _FunctionType,
         MemberDescriptorType as _MemberDescriptorType,
         MappingProxyType as _MappingProxyType,
     )
@@ -53,14 +55,32 @@ except ImportError:  # pragma: nocover
 from .annotations import apply_annotations, get_ns_annotations, is_classvar, resolve_type
 from ._version import __version__, __version_tuple__  # noqa: F401
 
+try:
+    from ._cached_methods import eq_cache, replace_cache, repr_cache
+except ImportError:  # pragma: nocover
+    # Needed for generating cached methods after deletion
+    eq_cache = {}
+    replace_cache = {}
+    repr_cache = {}
+
+
 # Change this name if you make heavy modifications
 INTERNALS_DICT = "__classbuilder_internals__"
 META_GATHERER_NAME = "__classbuilder_meta_gatherer__"
 GATHERED_DATA = "__classbuilder_gathered_fields__"
 
+# Special Cache name
+REPLACE_NAME = "_classbuilder_cache_names_"
+
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = os.environ.get("PYTEST_VERSION") is not None
+
+
+def _recursive_repr(func):
+    # defer the reprlib import
+    import reprlib
+    return reprlib.recursive_repr()(func)
 
 
 def get_fields(cls, *, local=False):
@@ -158,6 +178,63 @@ def print_generated_code(cls):
         print(textwrap.indent("\n".join(annotation_list), "    "))
 
 
+class _CacheStats:
+    __slots__ = ("hits", "misses")
+    def __init__(self):
+        self.hits = 0
+        self.misses = 0
+
+    @property
+    def hit_percent(self):
+        # If there are no cache hits, return 100%
+        if (self.hits + self.misses) > 0:
+            return (self.hits / (self.hits + self.misses)) * 100
+        return 100
+
+    def __repr__(self):
+        return f"<CacheStats; hits: {self.hits}, misses: {self.misses}; {self.hit_percent:.1f}% cache hits>"
+
+
+def _simple_cache(*, cache_seed=None):
+    # Don't cache keyword arguments
+    seed = {} if cache_seed is None else dict(cache_seed)
+    stats = _CacheStats()
+
+    def clear_cache(new_cache=None):
+        # Clear out cached functions and reset the stat counter
+        # This is needed for testing and pre-generating methods
+        nonlocal seed, stats
+        seed = {} if new_cache is None else dict(new_cache)
+        stats = _CacheStats()
+
+    def get_stats():
+        return stats
+
+    def wrapper(func):
+        def new_func(*args, **kwargs):
+            try:
+                result = seed[args]
+                stats.hits += 1
+            except KeyError:
+                result = func(*args, **kwargs)
+                seed[args] = result
+                stats.misses += 1
+            return result
+        new_func.get_stats = get_stats  # type: ignore
+        new_func.clear_cache = clear_cache  # type: ignore
+
+        return new_func
+    return wrapper
+
+
+def _exec_and_retrieve(source, globs):
+    # Exec and retrieve a generated method
+    # Returns the name of the method and the method as a tuple
+    local_vars = {}
+    exec(source, globs, local_vars)
+    return local_vars.popitem()
+
+
 def build_completed(cls):
     """
     Utility function to determine if a class has completed the construction
@@ -177,13 +254,15 @@ def build_completed(cls):
 class _NothingType:
     # Repeated calls to the same nothing type should
     # return the same object
+    custom: str | None
+
     _registry = {}  # type: ignore
 
     def __new__(cls, custom=None):
         # Instances with the same custom name
         # should be the same object
         inst = cls._registry.get(custom)
-        if not inst:
+        if inst is None:
             inst = super().__new__(cls)
             inst.custom = custom
             cls._registry[custom] = inst
@@ -246,6 +325,10 @@ class GeneratedCode:
             )
         return NotImplemented
 
+    def generate(self):
+        _, method = _exec_and_retrieve(self.source_code, self.globs)
+        return method
+
 
 class MethodMaker:
     """
@@ -255,20 +338,23 @@ class MethodMaker:
     This is used to convert a code generator that returns code and a globals
     dictionary into a descriptor to assign on a generated class.
     """
-    def __init__(self, funcname, code_generator):
+    def __init__(self, funcname, code_generator, cached_generator=None, decorator=None):
         """
         :param funcname: name of the generated function eg `__init__`
         :param code_generator: code generator function to operate on a class.
+        :param cached_generator: a method generator that includes an internal cache
+        :param decorator: a decorator to apply directly to method after it has been created
         """
+
         self.funcname = funcname
         self.code_generator = code_generator
+        self.cached_generator = cached_generator
+        self.decorator = decorator
 
     def __repr__(self):
         return f"<MethodMaker for {self.funcname!r} method>"
 
     def __get__(self, inst, cls):
-        local_vars = {}
-
         # This can be called via super().funcname(...) in which case the class
         # may not be the correct one. If this is the correct class
         # it should have this descriptor in the class dict under
@@ -288,20 +374,25 @@ class MethodMaker:
                     f"Could not find {self!r} in class {cls.__name__!r} MRO."
                 )
 
-        gen = self.code_generator(gen_cls, self.funcname)
-        exec(gen.source_code, gen.globs, local_vars)
-        method = local_vars.get(self.funcname)
+        if self.cached_generator:
+            gen, method = self.cached_generator(gen_cls, self.funcname)
+        else:
+            gen = self.code_generator(gen_cls, self.funcname)
+            method = gen.generate()
 
+        # Patch up the method name and annotations
         try:
-            method.__qualname__ = f"{gen_cls.__qualname__}.{self.funcname}"
+            method.__qualname__ = f"{cls.__qualname__}.{self.funcname}"
         except AttributeError:
             # This might be a property or some other special
             # descriptor. Don't try to rename.
             pass
 
-        # Apply annotations
-        if gen.annotations is not None:
+        if gen.annotations:
             apply_annotations(method, gen.annotations)
+
+        if self.decorator:
+            method = self.decorator(method)
 
         # Replace this descriptor on the class with the generated function
         setattr(gen_cls, self.funcname, method)
@@ -343,8 +434,122 @@ class _SignatureMaker:
 signature_maker = _SignatureMaker()
 
 
+# Argument getters for the generic cached methods
+# The first argument should always be the list of argument names
+# Other arguments can be boolean flags to pass to the cached methods
+def get_compare_args(cls):
+    return (tuple(k for k, v in get_fields(cls).items() if v.compare),)
+
+
+def get_repr_args(cls):
+    repr_arglist = tuple(k for k, v in get_fields(cls).items() if v.repr)
+    return (repr_arglist,)
+
+def get_replace_args(cls):
+    return (tuple(k for k, v in get_fields(cls).items() if v.init), )
+
+
+def _fix_consts(consts, active_pair, pairs):
+    # Placeholders should be in order and only seen once
+    # So if they are replaced, move to the next placeholder
+    # and only compare one placeholder each time
+
+    new_consts = []
+    for const in consts:
+        if active_pair:
+            if isinstance(const, str):
+                new_const = const.replace(*active_pair)
+                if new_const != const:
+                    try:
+                        active_pair = pairs.pop()
+                    except IndexError:
+                        # All placeholders have been replaced
+                        active_pair = None
+            elif isinstance(const, tuple):
+                new_const = _fix_consts(const, active_pair, pairs)
+            else:
+                new_const = const
+        else:
+            new_const = const
+
+        # Append the new values
+        new_consts.append(new_const)
+
+    return tuple(new_consts)
+
+
+def counter_to_class_generator(
+    generic_generator,
+    argument_getter,
+    cache=None,
+    replace_strings=False,
+):
+    # This takes a counting source generator and converts it into a function
+    # generator with cached methods backing it
+    @_simple_cache(cache_seed=cache)
+    def source_exec(*args, funcname):
+        gen = generic_generator(*args, funcname=funcname)
+        method = gen.generate()
+        return method
+
+    def method_generator(cls, funcname):
+        args = argument_getter(cls)
+        argnames = args[0]
+        argcount = len(args[0])
+        exec_args = (argcount, *args[1:])
+
+        gen = generic_generator(*exec_args, funcname=funcname)
+        raw_func = source_exec(*exec_args, funcname=funcname)
+
+        arg_fixes = {
+            f"{REPLACE_NAME}{i}_": arg for i, arg in enumerate(argnames)
+        }
+
+        # Get existing attribute names and strings
+        co_names = raw_func.__code__.co_names
+        co_consts = raw_func.__code__.co_consts
+
+        # Skip patching if there are no field names to fix
+        if arg_fixes:
+            # Patch the attribute names (eg self.placeholder -> self.field_name)
+            new_co_names = tuple(arg_fixes.get(name, name) for name in co_names)
+
+            # Patch strings
+            if replace_strings:
+                fix_pairs = list(reversed(arg_fixes.items()))
+                active_pair = fix_pairs.pop()
+                new_co_consts = _fix_consts(co_consts, active_pair, fix_pairs)
+            else:
+                new_co_consts = co_consts
+        else:
+            new_co_names = co_names
+            new_co_consts = co_consts
+
+        method = _FunctionType(
+            raw_func.__code__.replace(
+                co_names=new_co_names,
+                co_consts=new_co_consts,
+            ),
+            gen.globs,
+            name=funcname,
+            argdefs=raw_func.__defaults__,
+            closure=raw_func.__closure__,
+        )
+        method.__kwdefaults__ = raw_func.__kwdefaults__  # Argument to FunctionType was only added in 3.13
+
+        # Remove the module reference to avoid retrieving incorrect code
+        method.__module__ = None  # type: ignore
+
+        return gen, method
+
+    method_generator.get_stats = source_exec.get_stats  # type: ignore
+    method_generator.clear_cache = source_exec.clear_cache  # type: ignore
+
+    return method_generator
+
+
 def get_init_generator(null=NOTHING, extra_code=None):
-    def cls_init_maker(cls, funcname="__init__"):
+    def cls_init_generator(cls, funcname="__init__"):
         fields = get_fields(cls)
 
         arglist = []
@@ -407,84 +612,47 @@ def get_init_generator(null=NOTHING, extra_code=None):
 
         return GeneratedCode(code, globs)
 
-    return cls_init_maker
+    return cls_init_generator
 
 
 init_generator = get_init_generator()
 
 
-def get_repr_generator(recursion_safe=False, eval_safe=False):
-    """
+def generic_repr_generator(field_names, *, funcname="__repr__"):
+    content = ", ".join(
+        f"{name}={{self.{name}!r}}"
+        for name in field_names
+    )
 
-    :param recursion_safe: use reprlib.recursive_repr
-    :param eval_safe: if the repr is known not to eval correctly,
-                      generate a repr which will intentionally
-                      not evaluate.
-    :return:
-    """
-    def cls_repr_generator(cls, funcname="__repr__"):
-        fields = get_fields(cls)
+    # fmt: off
+    code = (
+        f"def {funcname}(self):\n"
+        f"    return f'{{type(self).__qualname__}}({content})'\n"
+    )
+    # fmt: on
+    globs = {}
 
-        globs = {}
-        will_eval = True
-        valid_names = []
-
-        for name, fld in fields.items():
-            if fld.repr:
-                valid_names.append(name)
-
-            if will_eval and (fld.init ^ fld.repr):
-                will_eval = False
-
-        content = ", ".join(
-            f"{name}={{self.{name}!r}}"
-            for name in valid_names
-        )
-
-        if recursion_safe:
-            import reprlib
-            globs["_recursive_repr"] = reprlib.recursive_repr()
-            recursion_func = "@_recursive_repr\n"
-        else:
-            recursion_func = ""
-
-        # fmt: off
-        if eval_safe and will_eval is False:
-            if content:
-                code = (
-                    f"{recursion_func}"
-                    f"def {funcname}(self):\n"
-                    f"    return f'<generated class {{type(self).__qualname__}}; {content}>'\n"
-                )
-            else:
-                code = (
-                    f"{recursion_func}"
-                    f"def {funcname}(self):\n"
-                    f"    return f'<generated class {{type(self).__qualname__}}>'\n"
-                )
-        else:
-            code = (
-                f"{recursion_func}"
-                f"def {funcname}(self):\n"
-                f"    return f'{{type(self).__qualname__}}({content})'\n"
-            )
-        # fmt: on
-
-        return GeneratedCode(code, globs)
-    return cls_repr_generator
+    return GeneratedCode(code, globs)
 
 
-repr_generator = get_repr_generator()
+def class_repr_generator(cls, funcname="__repr__"):
+    # For a regular class source, key and attrib names are the same
+    field_names = [k for k, v in get_fields(cls).items() if v.repr]
+    return generic_repr_generator(field_names, funcname=funcname)
 
 
-def eq_generator(cls, funcname="__eq__"):
-    class_comparison = "self.__class__ is other.__class__"
+@_simple_cache()
+def _counter_repr_generator(argcount, *, funcname="__repr__"):
     field_names = [
-        name
-        for name, attrib in get_fields(cls).items()
-        if attrib.compare
+        f"{REPLACE_NAME}{i}_"
+        for i in range(argcount)
     ]
 
+    return generic_repr_generator(field_names, funcname=funcname)
+
+
+def generic_eq_generator(field_names, *, funcname="__eq__"):
+    class_comparison = "self.__class__ is other.__class__"
     if field_names:
         instance_comparison = "\n        and ".join(
             f"self.{name} == other.{name}" for name in field_names
@@ -507,14 +675,30 @@ def eq_generator(cls, funcname="__eq__"):
     return GeneratedCode(code, globs)
 
 
-def get_order_generator(cls, funcname, *, operator):
-    class_comparison = "self.__class__ is other.__class__"
+def class_eq_generator(cls, funcname="__eq__"):
     field_names = [
         name
         for name, attrib in get_fields(cls).items()
         if attrib.compare
     ]
 
+    return generic_eq_generator(field_names, funcname=funcname)
+
+
+@_simple_cache()
+def _counter_eq_generator(argcount, *, funcname="__eq__"):
+    # This is a cached accelerated eq generator
+    # It returns uglier source, but the source can be cached
+    # and reused more easily.
+    field_names = [
+        f"{REPLACE_NAME}{i}_" for i in range(argcount)
+    ]
+
+    return generic_eq_generator(field_names, funcname=funcname)
+
+
+def get_generic_order_generator(field_names, operator, *, funcname):
+    class_comparison = "self.__class__ is other.__class__"
     # Equal objects should be False for gt/lt comparisons
     eq_return = "True" if "=" in operator else "False"
 
@@ -542,45 +726,62 @@ def get_order_generator(cls, funcname, *, operator):
     )
     # fmt: on
     globs = {}
+
     return GeneratedCode(code, globs)
 
-def lt_generator(cls, funcname="__lt__"):
-    return get_order_generator(cls, funcname, operator="<")
+def get_class_order_generator(cls, operator, *, funcname):
+    field_names = [
+        name
+        for name, attrib in get_fields(cls).items()
+        if attrib.compare
+    ]
+    return get_generic_order_generator(field_names, operator, funcname=funcname)
 
-def le_generator(cls, funcname="__le__"):
-    return get_order_generator(cls, funcname, operator="<=")
+def _get_counter_order_generator(argcount, operator, *, funcname):
+    field_names = [
+        f"{REPLACE_NAME}{i}_" for i in range(argcount)
+    ]
+    return get_generic_order_generator(field_names, operator, funcname=funcname)
 
-def gt_generator(cls, funcname="__gt__"):
-    return get_order_generator(cls, funcname, operator=">")
+def class_lt_generator(cls, funcname="__lt__"):
+    return get_class_order_generator(cls, "<", funcname=funcname)
 
-def ge_generator(cls, funcname="__ge__"):
-    return get_order_generator(cls, funcname, operator=">=")
+@_simple_cache()
+def _counter_lt_generator(argcount, *, funcname="__lt__"):
+    return _get_counter_order_generator(argcount, "<", funcname=funcname)
+
+def class_le_generator(cls, funcname="__le__"):
+    return get_class_order_generator(cls, "<=", funcname=funcname)
+
+@_simple_cache()
+def _counter_le_generator(argcount, *, funcname="__le__"):
+    return _get_counter_order_generator(argcount, "<=", funcname=funcname)
+
+def class_gt_generator(cls, funcname="__gt__"):
+    return get_class_order_generator(cls, ">", funcname=funcname)
+
+@_simple_cache()
+def _counter_gt_generator(argcount, *, funcname="__gt__"):
+    return _get_counter_order_generator(argcount, ">", funcname=funcname)
+
+def class_ge_generator(cls, funcname="__ge__"):
+    return get_class_order_generator(cls, ">=", funcname=funcname)
+
+@_simple_cache()
+def _counter_ge_generator(argcount, *, funcname="__ge__"):
+    return _get_counter_order_generator(argcount, ">=", funcname=funcname)
 
 
-def _get_replace_generator(private_type=False):
-    def cls_replace_generator(cls, funcname="__replace__"):
-        # Generate the replace method for built classes
-        # unlike the dataclasses implementation this is generated
-        attribs = get_fields(cls)
-
-        # This is essentially the as_dict generator for prefabs
-        # except based on attrib.init instead of .serialize
-        if private_type:
-            vals = ", ".join(
-                f"'{name}': self.{name}"
-                if name != "type"
-                else f"'{name}': self._{name}"
-                for name, attrib in attribs.items()
-                if attrib.init
-            )
-        else:
-            vals = ", ".join(
-                f"'{name}': self.{name}"
-                for name, attrib in attribs.items()
-                if attrib.init
-            )
-        init_dict = f"{{{vals}}}"
-
+def generic_replace_generator(field_pairs, *, funcname="__replace__"):
+    # This takes pairs of the init param name and the attribute
+    # Needed to handle the replace method for Fields where the
+    # param is `type` but the field name is `_type`
+    if field_pairs:
+        vals = ",\n".join(
+            f"        '{param}': self.{attrib}"
+            for param, attrib in field_pairs
+        )
+        init_dict = f"{{\n{vals},\n    }}"
         # fmt: off
         code = (
             f"def {funcname}(self, /, **changes):\n"
@@ -589,13 +790,39 @@ def _get_replace_generator(private_type=False):
             f"    return self.__class__(**new_kwargs)\n"
         )
         # fmt: on
-        globs = {}
-        return GeneratedCode(code, globs)
+    else:
+        # There are no fields to keep, but may be init params
+        # to pass forward.
+        # This method is largely useless but exists for completeness
+        code = (
+            f"def {funcname}(self, /, **changes):\n"
+            f"    return self.__class__(**changes)\n"
+        )
 
-    return cls_replace_generator
+    globs = {}
+    return GeneratedCode(code, globs)
 
-replace_generator = _get_replace_generator()
-_field_replace_generator = _get_replace_generator(private_type=True)
+def class_replace_generator(cls, funcname="__replace__"):
+    field_pairs = [(k, k) for k, v in get_fields(cls).items() if v.init]
+    return generic_replace_generator(field_pairs, funcname=funcname)
+
+def _field_replace_generator(cls, funcname="__replace__"):
+    # A special replace generator for FIELD that replaces
+    # type with _type
+    field_pairs = [
+        (k, k if k != "type" else f"_{k}")
+        for k, v in get_fields(cls).items()
+        if v.init
+    ]
+    return generic_replace_generator(field_pairs, funcname=funcname)
+
+@_simple_cache()
+def _counter_replace_generator(argcount, *, funcname="__replace__"):
+    field_pairs = [
+        (f"{REPLACE_NAME}{i}_", f"{REPLACE_NAME}{i}_") for i in range(argcount)
+    ]
+    return generic_replace_generator(field_pairs, funcname=funcname)
+
 
 def frozen_setattr_generator(cls, funcname="__setattr__"):
     globs = {}
@@ -659,13 +886,68 @@ def hash_generator(cls, funcname="__hash__"):
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
 init_maker = MethodMaker("__init__", init_generator)
-repr_maker = MethodMaker("__repr__", repr_generator)
-eq_maker = MethodMaker("__eq__", eq_generator)
-lt_maker = MethodMaker("__lt__", lt_generator)
-le_maker = MethodMaker("__le__", le_generator)
-gt_maker = MethodMaker("__gt__", gt_generator)
-ge_maker = MethodMaker("__ge__", ge_generator)
-replace_maker = MethodMaker("__replace__", replace_generator)
+repr_maker = MethodMaker(
+    "__repr__",
+    class_repr_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_repr_generator,
+        get_repr_args,
+        cache=repr_cache,
+        replace_strings=True,
+    ),
+    decorator=_recursive_repr,
+)
+eq_maker = MethodMaker(
+    "__eq__",
+    class_eq_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_eq_generator,
+        get_compare_args,
+        cache=eq_cache,
+    ),
+)
+lt_maker = MethodMaker(
+    "__lt__",
+    class_lt_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_lt_generator,
+        get_compare_args,
+    ),
+)
+le_maker = MethodMaker(
+    "__le__",
+    class_le_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_le_generator,
+        get_compare_args,
+    ),
+)
+gt_maker = MethodMaker(
+    "__gt__",
+    class_gt_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_gt_generator,
+        get_compare_args,
+    ),
+)
+ge_maker = MethodMaker(
+    "__ge__",
+    class_ge_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_ge_generator,
+        get_compare_args,
+    ),
+)
+replace_maker = MethodMaker(
+    "__replace__",
+    class_replace_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_replace_generator,
+        get_replace_args,
+        cache=replace_cache,
+        replace_strings=True,
+    ),
+)
 frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
 frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
 hash_maker = MethodMaker("__hash__", hash_generator)
@@ -745,6 +1027,7 @@ def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, f
             methods=methods,
             flags=flags,
             fix_signature=fix_signature,
+            field_getter=field_getter,
         )
 
     # Get from the class dict to avoid getting an inherited internals dict
@@ -1030,6 +1313,7 @@ class GatheredFields:
     def __eq__(self, other):
         if type(self) is type(other):
             return self.fields == other.fields and self.modifications == other.modifications
+        return NotImplemented
 
     def __repr__(self):
         return f"{type(self).__name__}(fields={self.fields!r}, modifications={self.modifications!r})"

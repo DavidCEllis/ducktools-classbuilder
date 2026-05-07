@@ -1,4 +1,4 @@
-<generated class X; x='Value of x', a='Not In __init__ signature', c=[], e='Value of e', f=42> 
+X(x='Value of x', a='Not In __init__ signature', c=[], e='Value of e', f=42) 
 
 {'x': Attribute(default=<NOTHING Sentinel>, default_factory=<NOTHING Sentinel>, type=<class 'str'>, doc=None, init=True, repr=True, compare=True, kw_only=False, iter=True, serialize=True, metadata={}),
  'a': Attribute(default='Not In __init__ signature', default_factory=<NOTHING Sentinel>, type=<class 'int'>, doc=None, init=False, repr=True, compare=True, kw_only=False, iter=True, serialize=True, metadata={}),
@@ -9,7 +9,7 @@
  'f': Attribute(default=42, default_factory=<NOTHING Sentinel>, type=ForwardRef('unknown'), doc=None, init=True, repr=True, compare=False, kw_only=False, iter=True, serialize=False, metadata={})}
 
 
-<generated class Y; x='Value of x', a='Not In __init__ signature', c=[], e='Value of e', f=42> 
+Y(x='Value of x', a='Not In __init__ signature', c=[], e='Value of e', f=42) 
 
 Slots: {'x': None, 'a': None, 'b': None, 'c': None, 'd': None, 'e': None, 'f': None}
 
@@ -33,10 +33,16 @@ def __init__(self, x, b='Not In Repr', c=None, f=42, *, e):
     self.f = f
 
 def __replace__(self, /, **changes):
-    new_kwargs = {'x': self.x, 'b': self.b, 'c': self.c, 'e': self.e, 'f': self.f}
+    new_kwargs = {
+        'x': self.x,
+        'b': self.b,
+        'c': self.c,
+        'e': self.e,
+        'f': self.f,
+    }
     new_kwargs |= changes
     return self.__class__(**new_kwargs)
 
 def __repr__(self):
-    return f'<generated class {type(self).__qualname__}; x={self.x!r}, a={self.a!r}, c={self.c!r}, e={self.e!r}, f={self.f!r}>'
+    return f'{type(self).__qualname__}(x={self.x!r}, a={self.a!r}, c={self.c!r}, e={self.e!r}, f={self.f!r})'
 

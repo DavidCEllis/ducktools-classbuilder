@@ -44,7 +44,7 @@ def test_repr():
 
 
 def test_repr_exclude():
-    expected_repr = "<generated class CoordinateNoXRepr; y=2>"
+    expected_repr = "CoordinateNoXRepr(y=2)"
     assert repr(CoordinateNoXRepr(1, 2)) == expected_repr
 
 

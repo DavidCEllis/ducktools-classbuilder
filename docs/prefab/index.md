@@ -7,7 +7,6 @@ Including:
 * Declaration by type hints, slots or `attribute(...)` assignment on the class
 * `__prefab_pre_init__` and `__prefab_post_init__` detection to allow for validation/conversion
 * Optional `as_dict` method generation to convert to a dictionary
-* Optional recursive `__repr__` handling (off by default)
 
 ## Usage ##
 
