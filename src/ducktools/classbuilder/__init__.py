@@ -195,11 +195,22 @@ class _CacheStats:
         return f"<CacheStats; hits: {self.hits}, misses: {self.misses}; {self.hit_percent:.1f}% cache hits>"
 
 
-def _simple_cache(seed=None):
+def _simple_cache(*, cache_seed=None):
     # Don't cache keyword arguments
-    seed = {} if seed is None else seed
-    def wrapper(func):
+    seed = {} if cache_seed is None else dict(cache_seed)
+    stats = _CacheStats()
+
+    def clear_cache(new_cache=None):
+        # Clear out cached functions and reset the stat counter
+        # This is needed for testing and pre-generating methods
+        nonlocal seed, stats
+        seed = {} if new_cache is None else dict(new_cache)
         stats = _CacheStats()
+
+    def get_stats():
+        return stats
+
+    def wrapper(func):
         def new_func(*args, **kwargs):
             try:
                 result = seed[args]
@@ -209,7 +220,9 @@ def _simple_cache(seed=None):
                 seed[args] = result
                 stats.misses += 1
             return result
-        new_func.stats = stats  # type: ignore
+        new_func.get_stats = get_stats  # type: ignore
+        new_func.clear_cache = clear_cache  # type: ignore
+
         return new_func
     return wrapper
 
@@ -473,7 +486,7 @@ def counter_to_class_generator(
 ):
     # This takes a counting source generator and converts it into a function
     # generator with cached methods backing it
-    @_simple_cache(cache)
+    @_simple_cache(cache_seed=cache)
     def source_exec(*args, funcname):
         gen = generic_generator(*args, funcname=funcname)
         method = gen.generate()
@@ -529,7 +542,8 @@ def counter_to_class_generator(
 
         return gen, method
 
-    method_generator.stats = source_exec.stats  # type: ignore
+    method_generator.get_stats = source_exec.get_stats  # type: ignore
+    method_generator.clear_cache = source_exec.clear_cache  # type: ignore
 
     return method_generator
 
