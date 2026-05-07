@@ -178,17 +178,38 @@ def print_generated_code(cls):
         print(textwrap.indent("\n".join(annotation_list), "    "))
 
 
+class _CacheStats:
+    __slots__ = ("hits", "misses")
+    def __init__(self):
+        self.hits = 0
+        self.misses = 0
+
+    @property
+    def hit_percent(self):
+        # If there are no cache hits, return 100%
+        if (self.hits + self.misses) > 0:
+            return (self.hits / (self.hits + self.misses)) * 100
+        return 100
+
+    def __repr__(self):
+        return f"<CacheStats; hits: {self.hits}, misses: {self.misses}; {self.hit_percent:.1f}% cache hits>"
+
+
 def _simple_cache(seed=None):
     # Don't cache keyword arguments
     seed = {} if seed is None else seed
     def wrapper(func):
+        stats = _CacheStats()
         def new_func(*args, **kwargs):
             try:
                 result = seed[args]
+                stats.hits += 1
             except KeyError:
                 result = func(*args, **kwargs)
                 seed[args] = result
+                stats.misses += 1
             return result
+        new_func.stats = stats  # type: ignore
         return new_func
     return wrapper
 
@@ -507,6 +528,8 @@ def counter_to_class_generator(
         method.__module__ = None  # type: ignore
 
         return gen, method
+
+    method_generator.stats = source_exec.stats  # type: ignore
 
     return method_generator
 
