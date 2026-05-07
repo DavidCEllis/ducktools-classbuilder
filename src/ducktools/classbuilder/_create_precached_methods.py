@@ -60,9 +60,9 @@ def generate_all_caches():
     cache_lines.append("# This module is automatically generated from a script\n")
     cache_lines.append("# DO NOT EDIT BY HAND\n\n")
 
-    cache_lines.append(pre_generate_cache("_eq", dtbuild._counter_eq_generator, COUNT, "eq_cache"))
-    cache_lines.append(pre_generate_cache("_repr", dtbuild._counter_repr_generator, COUNT, "repr_cache"))
-    cache_lines.append(pre_generate_cache("_replace", dtbuild._counter_replace_generator, COUNT, "replace_cache"))
+    cache_lines.append(pre_generate_cache("_eq", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
+    cache_lines.append(pre_generate_cache("_repr", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
+    cache_lines.append(pre_generate_cache("_replace", dtbuild._counter_replace_generator, COUNT, "replace_cache"))  # type: ignore
     return "".join(cache_lines)
 
 
