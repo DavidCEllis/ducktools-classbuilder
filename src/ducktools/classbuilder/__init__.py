@@ -36,6 +36,7 @@ __lazy_modules__ = [
 ]
 
 import os
+from string.templatelib import convert
 import sys
 
 try:
@@ -56,12 +57,13 @@ from .annotations import apply_annotations, get_ns_annotations, is_classvar, res
 from ._version import __version__, __version_tuple__  # noqa: F401
 
 try:
-    from ._cached_methods import eq_cache, replace_cache, repr_cache
+    from ._cached_methods import eq_cache, replace_cache, repr_cache, delattr_cache
 except ImportError:  # pragma: nocover
     # Needed for generating cached methods after deletion
     eq_cache = {}
     replace_cache = {}
     repr_cache = {}
+    delattr_cache = {}
 
 
 # Change this name if you make heavy modifications
@@ -478,13 +480,13 @@ def _fix_consts(consts, active_pair, pairs):
     return tuple(new_consts)
 
 
-def counter_to_class_generator(
+def convert_to_class_generator(
     generic_generator,
     argument_getter,
     cache=None,
     replace_strings=False,
 ):
-    # This takes a counting source generator and converts it into a function
+    # This takes a counting or no argument source generator and converts it into a function
     # generator with cached methods backing it
     @_simple_cache(cache_seed=cache)
     def source_exec(*args, funcname):
@@ -494,9 +496,13 @@ def counter_to_class_generator(
 
     def method_generator(cls, funcname):
         args = argument_getter(cls)
-        argnames = args[0]
-        argcount = len(args[0])
-        exec_args = (argcount, *args[1:])
+        if len(args) > 0:
+            argnames = args[0]
+            argcount = len(args[0])
+            exec_args = (argcount, *args[1:])
+        else:
+            argnames = []
+            exec_args = ()
 
         gen = generic_generator(*exec_args, funcname=funcname)
         raw_func = source_exec(*exec_args, funcname=funcname)
@@ -857,11 +863,11 @@ def frozen_setattr_generator(cls, funcname="__setattr__"):
     return GeneratedCode(code, globs)
 
 
-def frozen_delattr_generator(cls, funcname="__delattr__"):
+@_simple_cache()
+def generic_frozen_delattr_generator(*, funcname="__delattr__"):
     body = (
         '    raise TypeError(\n'
-        '        f"{type(self).__name__!r} object "\n'
-        '        f"does not support attribute deletion"\n'
+        '        f"{type(self).__name__!r} object does not support attribute deletion"\n'
         '    )\n'
     )
     code = f"def {funcname}(self, name):\n{body}"
@@ -869,18 +875,33 @@ def frozen_delattr_generator(cls, funcname="__delattr__"):
     return GeneratedCode(code, globs)
 
 
-def hash_generator(cls, funcname="__hash__"):
-    fields = get_fields(cls)
-    vals = ", ".join(
-        f"self.{name}"
-        for name, attrib in fields.items()
-        if attrib.compare
-    )
-    if len(fields) == 1:
+def frozen_delattr_generator(cls, funcname="__delattr__"):
+    return generic_frozen_delattr_generator(funcname=funcname)
+
+
+def generic_hash_generator(field_names, *, funcname="__hash__"):
+    vals = ", ".join(f"self.{name}" for name in field_names)
+    if len(field_names) == 1:
+        # Needs a trailing comma for only 1 argument
+        # to make a tuple
         vals += ","
+
     code = f"def {funcname}(self):\n    return hash(({vals}))\n"
     globs = {}
     return GeneratedCode(code, globs)
+
+
+@_simple_cache()
+def _counter_hash_generator(argcount, *, funcname="__hash__"):
+    field_names = [
+        f"{REPLACE_NAME}{i}_" for i in range(argcount)
+    ]
+    return generic_hash_generator(field_names, funcname=funcname)
+
+
+def hash_generator(cls, funcname="__hash__"):
+    field_names = [name for name, attrib in get_fields(cls).items() if attrib.compare]
+    return generic_hash_generator(field_names, funcname=funcname)
 
 
 # As only the __get__ method refers to the class we can use the same
@@ -889,7 +910,7 @@ init_maker = MethodMaker("__init__", init_generator)
 repr_maker = MethodMaker(
     "__repr__",
     class_repr_generator,
-    cached_generator=counter_to_class_generator(
+    cached_generator=convert_to_class_generator(
         _counter_repr_generator,
         get_repr_args,
         cache=repr_cache,
@@ -900,7 +921,7 @@ repr_maker = MethodMaker(
 eq_maker = MethodMaker(
     "__eq__",
     class_eq_generator,
-    cached_generator=counter_to_class_generator(
+    cached_generator=convert_to_class_generator(
         _counter_eq_generator,
         get_compare_args,
         cache=eq_cache,
@@ -909,7 +930,7 @@ eq_maker = MethodMaker(
 lt_maker = MethodMaker(
     "__lt__",
     class_lt_generator,
-    cached_generator=counter_to_class_generator(
+    cached_generator=convert_to_class_generator(
         _counter_lt_generator,
         get_compare_args,
     ),
@@ -917,7 +938,7 @@ lt_maker = MethodMaker(
 le_maker = MethodMaker(
     "__le__",
     class_le_generator,
-    cached_generator=counter_to_class_generator(
+    cached_generator=convert_to_class_generator(
         _counter_le_generator,
         get_compare_args,
     ),
@@ -925,7 +946,7 @@ le_maker = MethodMaker(
 gt_maker = MethodMaker(
     "__gt__",
     class_gt_generator,
-    cached_generator=counter_to_class_generator(
+    cached_generator=convert_to_class_generator(
         _counter_gt_generator,
         get_compare_args,
     ),
@@ -933,7 +954,7 @@ gt_maker = MethodMaker(
 ge_maker = MethodMaker(
     "__ge__",
     class_ge_generator,
-    cached_generator=counter_to_class_generator(
+    cached_generator=convert_to_class_generator(
         _counter_ge_generator,
         get_compare_args,
     ),
@@ -941,7 +962,7 @@ ge_maker = MethodMaker(
 replace_maker = MethodMaker(
     "__replace__",
     class_replace_generator,
-    cached_generator=counter_to_class_generator(
+    cached_generator=convert_to_class_generator(
         _counter_replace_generator,
         get_replace_args,
         cache=replace_cache,
@@ -949,8 +970,23 @@ replace_maker = MethodMaker(
     ),
 )
 frozen_setattr_maker = MethodMaker("__setattr__", frozen_setattr_generator)
-frozen_delattr_maker = MethodMaker("__delattr__", frozen_delattr_generator)
-hash_maker = MethodMaker("__hash__", hash_generator)
+frozen_delattr_maker = MethodMaker(
+    "__delattr__",
+    frozen_delattr_generator,
+    cached_generator=convert_to_class_generator(
+        generic_frozen_delattr_generator,
+        lambda cls: (),
+        cache=delattr_cache,
+    )
+)
+hash_maker = MethodMaker(
+    "__hash__",
+    hash_generator,
+    cached_generator=convert_to_class_generator(
+        _counter_hash_generator,
+        get_compare_args,
+    )
+)
 default_methods = frozenset({init_maker, repr_maker, eq_maker})
 
 # Special `__init__` maker for 'Field' subclasses - needs its own NOTHING option

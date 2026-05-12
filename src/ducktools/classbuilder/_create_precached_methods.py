@@ -31,7 +31,29 @@ DEST = Path(dtbuild.__file__).parent / "_cached_methods.py"
 COUNT = 11
 
 
-def pre_generate_cache(funcname, func, count, cache_name):
+def pre_generate_non_counter_cache(funcname, func, cache_name):
+    methods_list = []
+    cache_lines_list = []
+
+    try:
+        # Clear the cache of potentially differently named functions
+        func.clear_cache()
+    except AttributeError:  # pragma: no cover
+        pass
+
+    methods_list.append(
+        func(funcname=funcname).source_code
+    )
+
+    cache_lines_list.append(f"    (): {funcname},")
+
+    methods = "\n".join(methods_list)
+    cache_lines = "\n".join(cache_lines_list)
+
+    return f"{methods}\n{cache_name} = {{\n{cache_lines}\n}}\n\n"
+
+
+def pre_generate_counter_cache(funcname, func, count, cache_name):
     methods_list = []
     cache_lines_list = []
 
@@ -60,9 +82,11 @@ def generate_all_caches():
     cache_lines.append("# This module is automatically generated from a script\n")
     cache_lines.append("# DO NOT EDIT BY HAND\n\n")
 
-    cache_lines.append(pre_generate_cache("_eq", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
-    cache_lines.append(pre_generate_cache("_repr", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
-    cache_lines.append(pre_generate_cache("_replace", dtbuild._counter_replace_generator, COUNT, "replace_cache"))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("_eq", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("_repr", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("_replace", dtbuild._counter_replace_generator, COUNT, "replace_cache"))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("_hash", dtbuild._counter_hash_generator, COUNT, "hash_cache"))  # type: ignore
+    cache_lines.append(pre_generate_non_counter_cache("_delattr", dtbuild.generic_frozen_delattr_generator, "delattr_cache"))
     return "".join(cache_lines)
 
 
