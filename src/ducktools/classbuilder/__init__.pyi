@@ -5,7 +5,7 @@ import typing_extensions
 
 __lazy_modules__: list[str]
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from types import MappingProxyType
 
 if sys.version_info >= (3, 14):
@@ -32,7 +32,7 @@ REPLACE_NAME: str
 
 @typing.type_check_only
 class GetFieldsProtocol(typing.Protocol):
-    def __call__(self, cls: type, *, local: bool = ...) -> dict[str, Field]: ...
+    def __call__(self, cls: type, *, local: bool = ...) -> Mapping[str, Field]: ...
 
 def get_fields(cls: type, *, local: bool = ...) -> dict[str, Field]: ...
 
