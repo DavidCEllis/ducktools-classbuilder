@@ -108,14 +108,10 @@ def get_attributes(cls, *, local=False):
     :param cls: class built with _make_prefab
     :return: dict[str, Attribute] of all gathered attributes
     """
-    attributes = get_fields(cls, local=local)
-
-    if any(type(obj) is Field for obj in attributes.values()):
-        attributes = {
-            k: Attribute.from_field(v) if type(v) is Field else v
-            for k, v in attributes.items()
-        }
-
+    attributes = {
+        k: v if isinstance(v, Attribute) else Attribute.from_field(v)
+        for k, v in get_fields(cls, local=local).items()
+    }
     return attributes
 
 
