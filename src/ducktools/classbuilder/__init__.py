@@ -36,7 +36,6 @@ __lazy_modules__ = [
 ]
 
 import os
-from string.templatelib import convert
 import sys
 
 try:
