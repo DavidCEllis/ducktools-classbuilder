@@ -35,7 +35,7 @@ jobs:
         pytest tests/ --cov=src/ --cov-report=term-missing
 
   test-stubs:
-    name: Test stubs with MyPy
+    name: Test stubs with mypy
     runs-on: ubuntu-latest
 
     steps:
