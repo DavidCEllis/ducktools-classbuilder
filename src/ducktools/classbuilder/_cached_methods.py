@@ -316,3 +316,59 @@ replace_cache = {
     (10,): _replace_10,
 }
 
+def _hash_0(self):
+    return hash(())
+
+def _hash_1(self):
+    return hash((self._classbuilder_cache_names_0_,))
+
+def _hash_2(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_))
+
+def _hash_3(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_, self._classbuilder_cache_names_2_))
+
+def _hash_4(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_, self._classbuilder_cache_names_2_, self._classbuilder_cache_names_3_))
+
+def _hash_5(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_, self._classbuilder_cache_names_2_, self._classbuilder_cache_names_3_, self._classbuilder_cache_names_4_))
+
+def _hash_6(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_, self._classbuilder_cache_names_2_, self._classbuilder_cache_names_3_, self._classbuilder_cache_names_4_, self._classbuilder_cache_names_5_))
+
+def _hash_7(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_, self._classbuilder_cache_names_2_, self._classbuilder_cache_names_3_, self._classbuilder_cache_names_4_, self._classbuilder_cache_names_5_, self._classbuilder_cache_names_6_))
+
+def _hash_8(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_, self._classbuilder_cache_names_2_, self._classbuilder_cache_names_3_, self._classbuilder_cache_names_4_, self._classbuilder_cache_names_5_, self._classbuilder_cache_names_6_, self._classbuilder_cache_names_7_))
+
+def _hash_9(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_, self._classbuilder_cache_names_2_, self._classbuilder_cache_names_3_, self._classbuilder_cache_names_4_, self._classbuilder_cache_names_5_, self._classbuilder_cache_names_6_, self._classbuilder_cache_names_7_, self._classbuilder_cache_names_8_))
+
+def _hash_10(self):
+    return hash((self._classbuilder_cache_names_0_, self._classbuilder_cache_names_1_, self._classbuilder_cache_names_2_, self._classbuilder_cache_names_3_, self._classbuilder_cache_names_4_, self._classbuilder_cache_names_5_, self._classbuilder_cache_names_6_, self._classbuilder_cache_names_7_, self._classbuilder_cache_names_8_, self._classbuilder_cache_names_9_))
+
+hash_cache = {
+    (0,): _hash_0,
+    (1,): _hash_1,
+    (2,): _hash_2,
+    (3,): _hash_3,
+    (4,): _hash_4,
+    (5,): _hash_5,
+    (6,): _hash_6,
+    (7,): _hash_7,
+    (8,): _hash_8,
+    (9,): _hash_9,
+    (10,): _hash_10,
+}
+
+def _delattr(self, name):
+    raise TypeError(
+        f"{type(self).__name__!r} object does not support attribute deletion"
+    )
+
+delattr_cache = {
+    (): _delattr,
+}
+
