@@ -8,5 +8,3 @@ updates:
     groups:
       ci-actions:
         patterns: ["*"]
-    cooldown:
-      default-days: 7
