@@ -228,7 +228,8 @@ class SlotMakerMeta(type):
 
 
 # Only technically frozen under testing but we should *act* like they are frozen
-@typing.dataclass_transform(field_specifiers=(Field,), frozen_default=True)
+# Field is its own field specifier
+@typing.dataclass_transform(field_specifiers=(Field,), frozen_default=True)  # noqa: F821
 class Field(metaclass=SlotMakerMeta):
     default: _NothingType | typing.Any
     default_factory: _NothingType | typing.Any
