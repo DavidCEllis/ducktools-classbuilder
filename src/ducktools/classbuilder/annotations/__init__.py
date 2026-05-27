@@ -101,17 +101,19 @@ def replace_generic_with_arg(hint):
     """
     Replace a generic type with its first argument
 
-    EG: InitVar[str] -> str
+    e.g. InitVar[str] -> str
 
     :param hint: Type annotation
     :return: The annotation with the generic replaced by its first
              argument
     """
     if isinstance(hint, str):
-        r = hint.partition("[")[2]
-        l = r.rpartition("]")[0]
-        if l:
-            return l.split(",")[0].strip()
+        # Attempt to extract the inside of the first '[]' pair if it exists
+        right_of_bracket = hint.partition("[")[2]
+        inner_generics = right_of_bracket.rpartition("]")[0]
+        if inner_generics:
+            # Extract the first item before any commas
+            return inner_generics.split(",")[0].strip()
         else:
             return hint
 
