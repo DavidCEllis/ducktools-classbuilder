@@ -403,7 +403,6 @@ class Attribute(Field, ignore_annotations=True):
     metadata: dict = Field(default=FIELD_NOTHING, default_factory=dict)  # type: ignore
 
 
-# noinspection PyShadowingBuiltins
 def attribute(
     *,
     default=NOTHING,
@@ -455,17 +454,18 @@ def attribute(
         iter = False
         serialize = False
 
+    # Despite defining __init__ in the stub file apparently some checkers ignore this
     return Attribute(
-        default=default,
-        default_factory=default_factory,
-        init=init,
-        repr=repr,
-        compare=compare,
+        default=default,  # type: ignore
+        default_factory=default_factory,  # type: ignore
+        init=init,  # type: ignore
+        repr=repr,  # type: ignore
+        compare=compare,  # type: ignore
         iter=iter,
-        kw_only=kw_only,
+        kw_only=kw_only,  # type: ignore
         serialize=serialize,
-        doc=doc,
-        type=type,
+        doc=doc,  # type: ignore
+        type=type,  # type: ignore
         metadata=metadata,
     )
 
@@ -795,7 +795,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
 
         _make_prefab(
             cls,
-            **flags
+            **flags  # type: ignore
         )
 
 
@@ -925,7 +925,7 @@ def build_prefab(
         elif isinstance(attrib, Field):
             fields[name] = Attribute.from_field(attrib)
         else:
-            fields[name] = Attribute(default=attrib)
+            fields[name] = Attribute(default=attrib)  # type: ignore
 
         if attrib.type is not NOTHING:
             class_annotations[name] = attrib.type
