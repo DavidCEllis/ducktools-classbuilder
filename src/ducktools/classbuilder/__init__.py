@@ -520,8 +520,8 @@ def _fix_consts(consts, active_pair, pairs):
     return tuple(new_consts)
 
 
-def get_counter_field_names(field_count):
-    return [f"{REPLACE_NAME}{i}_" for i in range(field_count)]
+def get_counter_field_names(argcount):
+    return [f"{REPLACE_NAME}{i}_" for i in range(argcount)]
 
 
 def counter_to_class_generator(
