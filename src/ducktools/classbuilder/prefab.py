@@ -58,6 +58,7 @@ from . import (
     ge_maker, gt_maker, le_maker, lt_maker,
     hash_maker,
     replace_maker,
+    counter_to_class_generator, get_counter_field_names,
 
     # Gatherer
     make_unified_gatherer,
@@ -340,44 +341,72 @@ def init_generator(cls, funcname="__init__"):
     return GeneratedCode(code, globs, annotations)
 
 
-def iter_generator(cls, funcname="__iter__"):
-    fields = get_attributes(cls)
+def get_iter_args(cls):
+    return (tuple(k for k, v in get_attributes(cls).items() if v.iter),)
 
-    valid_fields = (
-        name for name, attrib in fields.items()
-        if attrib.iter
-    )
 
-    values = "\n".join(f"    yield self.{name}" for name in valid_fields)
+def generic_iter_generator(field_names, *, funcname="__iter__"):
+    values = "\n".join(f"    yield self.{name}" for name in field_names)
 
     # if values is an empty string
     if not values:
         values = "    yield from ()"
 
     code = f"def {funcname}(self):\n{values}\n"
-    globs = {}
-    return GeneratedCode(code, globs)
+
+    return GeneratedCode(code)
 
 
-def as_dict_generator(cls, funcname="as_dict"):
-    fields = get_attributes(cls)
+def _counter_iter_generator(argcount, *, funcname="__iter__"):
+    field_names = get_counter_field_names(argcount)
+    return generic_iter_generator(field_names, funcname=funcname)
 
-    vals = ", ".join(
-        f"'{name}': self.{name}"
-        for name, attrib in fields.items()
-        if attrib.serialize
-    )
+
+def class_iter_generator(cls, funcname="__iter__"):
+    field_names = [k for k, v in get_attributes(cls).items() if v.iter]
+    return generic_iter_generator(field_names, funcname=funcname)
+
+
+def get_as_dict_args(cls):
+    return (tuple(k for k, v in get_attributes(cls).items() if v.serialize),)
+
+
+def generic_as_dict_generator(field_names, *, funcname="as_dict"):
+    vals = ", ".join(f"'{name}': self.{name}" for name in field_names)
     out_dict = f"{{{vals}}}"
     code = f"def {funcname}(self):\n    return {out_dict}\n"
+    return GeneratedCode(code)
 
-    globs = {}
-    return GeneratedCode(code, globs)
+
+def _counter_as_dict_generator(argcount, *, funcname="as_dict"):
+    field_names = get_counter_field_names(argcount)
+    return generic_as_dict_generator(field_names, funcname=funcname)
+
+
+def class_as_dict_generator(cls, funcname="as_dict"):
+    field_names = [k for k, v in get_attributes(cls).items() if v.serialize]
+    return generic_as_dict_generator(field_names, funcname=funcname)
 
 
 init_maker = MethodMaker("__init__", init_generator)
 prefab_init_maker = MethodMaker(PREFAB_INIT_FUNC, init_generator)
-iter_maker = MethodMaker("__iter__", iter_generator)
-asdict_maker = MethodMaker("as_dict", as_dict_generator)
+iter_maker = MethodMaker(
+    "__iter__",
+    class_iter_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_iter_generator,
+        get_iter_args,
+    )
+)
+asdict_maker = MethodMaker(
+    "as_dict",
+    class_as_dict_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_as_dict_generator,
+        get_as_dict_args,
+        replace_strings=True,
+    )
+)
 
 
 # Updated field with additional attributes

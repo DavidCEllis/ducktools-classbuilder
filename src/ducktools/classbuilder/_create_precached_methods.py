@@ -31,62 +31,41 @@ DEST = Path(dtbuild.__file__).parent / "_cached_methods.py"
 COUNT = 11
 
 
-def pre_generate_non_counter_cache(funcname, func, cache_name):
-    methods_list = []
-    cache_lines_list = []
-
+def pre_generate_counter_cache(funcname, func, count, cache_name, extra_args=((),)):
     try:
         # Clear the cache of potentially differently named functions
         func.clear_cache()
     except AttributeError:  # pragma: no cover
         pass
 
-    methods_list.append(
-        func(funcname=funcname).source_code
-    )
+    source = [
+        f"\n{cache_name} = {{}}\n"
+    ]
 
-    cache_lines_list.append(f"    (): {funcname},")
+    for args in extra_args:
+        for i in range(count):
+            new_args = (i, *args)
+            method_src = func(*new_args, funcname=funcname).source_code
+            source.append(method_src)
+            source.append(f"{cache_name}[{new_args!r}] = {funcname}\n")
 
-    methods = "\n".join(methods_list)
-    cache_lines = "\n".join(cache_lines_list)
+    source.append(f"del {funcname}\n")
 
-    return f"{methods}\n{cache_name} = {{\n{cache_lines}\n}}\n\n"
-
-
-def pre_generate_counter_cache(funcname, func, count, cache_name):
-    methods_list = []
-    cache_lines_list = []
-
-    try:
-        # Clear the cache of potentially differently named functions
-        func.clear_cache()
-    except AttributeError:  # pragma: no cover
-        pass
-
-    for i in range(count):
-        name = f"{funcname}_{i}"
-        methods_list.append(
-            func(i, funcname=name).source_code
-        )
-
-        cache_lines_list.append(f"    ({i},): {name},")
-
-    methods = "\n".join(methods_list)
-    cache_lines = "\n".join(cache_lines_list)
-
-    return f"{methods}\n{cache_name} = {{\n{cache_lines}\n}}\n\n"
+    return "\n".join(source)
 
 
 def generate_all_caches():
     cache_lines = []
     cache_lines.append("# This module is automatically generated from a script\n")
-    cache_lines.append("# DO NOT EDIT BY HAND\n\n")
+    cache_lines.append("# These methods are not used directly and so may reference globals that don't exist\n")
+    cache_lines.append("# DO NOT EDIT BY HAND\n")
 
-    cache_lines.append(pre_generate_counter_cache("_eq", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
-    cache_lines.append(pre_generate_counter_cache("_repr", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
-    cache_lines.append(pre_generate_counter_cache("_replace", dtbuild._counter_replace_generator, COUNT, "replace_cache"))  # type: ignore
-    cache_lines.append(pre_generate_counter_cache("_hash", dtbuild._counter_hash_generator, COUNT, "hash_cache"))  # type: ignore
-    cache_lines.append(pre_generate_non_counter_cache("_delattr", dtbuild.generic_frozen_delattr_generator, "delattr_cache"))
+    cache_lines.append(pre_generate_counter_cache("__eq__", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("__repr__", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("__replace__", dtbuild._counter_replace_generator, COUNT, "replace_cache"))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("__hash__", dtbuild._counter_hash_generator, COUNT, "hash_cache"))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("__setattr__", dtbuild._counter_frozen_setattr_generator, 1, "setattr_cache", extra_args=[(True,), (False,)]))  # type: ignore
+    cache_lines.append(pre_generate_counter_cache("__delattr__", dtbuild._counter_frozen_delattr_generator, 1, "delattr_cache"))  # type: ignore
     return "".join(cache_lines)
 
 

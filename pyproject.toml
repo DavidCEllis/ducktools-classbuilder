@@ -13,11 +13,9 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -88,3 +86,6 @@ disable_error_code = ["annotation-unchecked"]
 [tool.uv]
 exclude-newer = "1 week"
 exclude-newer-package = { reannotate = "1 hour" }
+
+[tool.ruff]
+extend-exclude = ["src/ducktools/classbuilder/_cached_methods.py"]
