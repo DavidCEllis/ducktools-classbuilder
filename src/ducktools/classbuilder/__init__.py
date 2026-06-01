@@ -301,9 +301,9 @@ class GeneratedCode:
     """
     __slots__ = ("source_code", "globs", "annotations")
 
-    def __init__(self, source_code, globs, annotations=None):
+    def __init__(self, source_code, globs=None, annotations=None):
         self.source_code = source_code
-        self.globs = globs
+        self.globs = {} if globs is None else globs
         self.annotations = annotations
 
     def __repr__(self):
@@ -451,6 +451,22 @@ def get_replace_args(cls):
     return (tuple(k for k, v in get_fields(cls).items() if v.init), )
 
 
+# Globals getters for cached functions
+def get_empty_globals(cls):
+    return {}
+
+def get_frozen_setattr_globals(cls):
+    flags = get_flags(cls)
+    globs = {}
+    globs["__field_names"] = set(get_fields(cls))
+
+    # Better to be safe and use the method that works in both cases
+    # if somehow slotted has not been set.#
+    if flags.get("slotted", True):
+        globs["__setattr_func"] = object.__setattr__
+
+    return globs
+
 def _fix_consts(consts, active_pair, pairs):
     # Placeholders should be in order and only seen once
     # So if they are replaced, move to the next placeholder
@@ -483,6 +499,8 @@ def _fix_consts(consts, active_pair, pairs):
 def convert_to_class_generator(
     generic_generator,
     argument_getter,
+    globals_getter=get_empty_globals,
+    *,
     cache=None,
     replace_strings=False,
 ):
@@ -530,7 +548,7 @@ def convert_to_class_generator(
             new_co_names = co_names
             new_co_consts = co_consts
 
-        globs = {}
+        globs = globals_getter(cls)
 
         method = _FunctionType(
             raw_func.__code__.replace(
@@ -637,9 +655,8 @@ def generic_repr_generator(field_names, *, funcname="__repr__"):
         f"    return f'{{type(self).__qualname__}}({content})'\n"
     )
     # fmt: on
-    globs = {}
 
-    return GeneratedCode(code, globs)
+    return GeneratedCode(code)
 
 
 def class_repr_generator(cls, funcname="__repr__"):
@@ -676,9 +693,8 @@ def generic_eq_generator(field_names, *, funcname="__eq__"):
         f"    ) if {class_comparison} else NotImplemented\n"
     )
     # fmt: on
-    globs = {}
 
-    return GeneratedCode(code, globs)
+    return GeneratedCode(code)
 
 
 def class_eq_generator(cls, funcname="__eq__"):
@@ -730,9 +746,8 @@ def get_generic_order_generator(field_names, operator, *, funcname):
         f"    return NotImplemented\n"
     )
     # fmt: on
-    globs = {}
 
-    return GeneratedCode(code, globs)
+    return GeneratedCode(code)
 
 def get_class_order_generator(cls, operator, *, funcname):
     field_names = [
@@ -801,8 +816,7 @@ def generic_replace_generator(field_pairs, *, funcname="__replace__"):
             f"    return self.__class__(**changes)\n"
         )
 
-    globs = {}
-    return GeneratedCode(code, globs)
+    return GeneratedCode(code)
 
 def class_replace_generator(cls, funcname="__replace__"):
     field_pairs = [(k, k) for k, v in get_fields(cls).items() if v.init]
@@ -826,16 +840,10 @@ def _counter_replace_generator(argcount, *, funcname="__replace__"):
 
 
 def frozen_setattr_generator(cls, funcname="__setattr__"):
-    globs = {}
-    field_names = set(get_fields(cls))
-    flags = get_flags(cls)
+    globs = get_frozen_setattr_globals(cls)
 
-    globs["__field_names"] = field_names
-
-    # Better to be safe and use the method that works in both cases
-    # if somehow slotted has not been set.
-    if flags.get("slotted", True):
-        globs["__setattr_func"] = object.__setattr__
+    # If '__setattr_func' has been set, treat the class as slotted
+    if "__setattr_func" in globs:
         setattr_method = "__setattr_func(self, name, value)"
         hasattr_check = "hasattr(self, name)"
     else:
@@ -865,8 +873,7 @@ def generic_frozen_delattr_generator(*, funcname="__delattr__"):
         '    )\n'
     )
     code = f"def {funcname}(self, name):\n{body}"
-    globs = {}
-    return GeneratedCode(code, globs)
+    return GeneratedCode(code)
 
 
 def frozen_delattr_generator(cls, funcname="__delattr__"):
@@ -881,8 +888,7 @@ def generic_hash_generator(field_names, *, funcname="__hash__"):
         vals += ","
 
     code = f"def {funcname}(self):\n    return hash(({vals}))\n"
-    globs = {}
-    return GeneratedCode(code, globs)
+    return GeneratedCode(code)
 
 
 def _counter_hash_generator(argcount, *, funcname="__hash__"):

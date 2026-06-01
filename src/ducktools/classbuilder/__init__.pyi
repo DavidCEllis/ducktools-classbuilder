@@ -94,7 +94,7 @@ class GeneratedCode:
     def __init__(
         self,
         source_code: str,
-        globs: dict[str, typing.Any],
+        globs: dict[str, typing.Any] | None = ...,
         annotations: dict[str, typing.Any] | None = ...,
     ) -> None: ...
     def __repr__(self) -> str: ...
