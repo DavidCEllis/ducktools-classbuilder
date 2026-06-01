@@ -1,4 +1,3 @@
-# type: ignore
 # This module is automatically generated from a script
 # These methods are not used directly and so may reference globals that don't exist
 # DO NOT EDIT BY HAND

@@ -60,7 +60,6 @@ def pre_generate_counter_cache(funcname, func, count, cache_name, extra_args=(()
 
 def generate_all_caches():
     cache_lines = []
-    cache_lines.append("# type: ignore\n")
     cache_lines.append("# This module is automatically generated from a script\n")
     cache_lines.append("# These methods are not used directly and so may reference globals that don't exist\n")
     cache_lines.append("# DO NOT EDIT BY HAND\n\n")
