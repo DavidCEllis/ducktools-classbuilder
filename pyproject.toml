@@ -88,3 +88,6 @@ disable_error_code = ["annotation-unchecked"]
 [tool.uv]
 exclude-newer = "1 week"
 exclude-newer-package = { reannotate = "1 hour" }
+
+[tool.ruff]
+extend-exclude = ["src/ducktools/classbuilder/_cached_methods.py"]
