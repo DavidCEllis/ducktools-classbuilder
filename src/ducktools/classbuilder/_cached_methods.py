@@ -148,6 +148,8 @@ def __eq__(self, other):
 
 eq_cache[(10,)] = __eq__
 
+del __eq__
+
 repr_cache = {}
 
 def __repr__(self):
@@ -204,6 +206,8 @@ def __repr__(self):
     return f'{type(self).__qualname__}(_classbuilder_cache_names_0_={self._classbuilder_cache_names_0_!r}, _classbuilder_cache_names_1_={self._classbuilder_cache_names_1_!r}, _classbuilder_cache_names_2_={self._classbuilder_cache_names_2_!r}, _classbuilder_cache_names_3_={self._classbuilder_cache_names_3_!r}, _classbuilder_cache_names_4_={self._classbuilder_cache_names_4_!r}, _classbuilder_cache_names_5_={self._classbuilder_cache_names_5_!r}, _classbuilder_cache_names_6_={self._classbuilder_cache_names_6_!r}, _classbuilder_cache_names_7_={self._classbuilder_cache_names_7_!r}, _classbuilder_cache_names_8_={self._classbuilder_cache_names_8_!r}, _classbuilder_cache_names_9_={self._classbuilder_cache_names_9_!r})'
 
 repr_cache[(10,)] = __repr__
+
+del __repr__
 
 replace_cache = {}
 
@@ -347,6 +351,8 @@ def __replace__(self, /, **changes):
 
 replace_cache[(10,)] = __replace__
 
+del __replace__
+
 hash_cache = {}
 
 def __hash__(self):
@@ -404,6 +410,8 @@ def __hash__(self):
 
 hash_cache[(10,)] = __hash__
 
+del __hash__
+
 setattr_cache = {}
 
 def __setattr__(self, name, value):
@@ -426,6 +434,8 @@ def __setattr__(self, name, value):
 
 setattr_cache[(0, False)] = __setattr__
 
+del __setattr__
+
 delattr_cache = {}
 
 def __delattr__(self, name):
@@ -435,3 +445,4 @@ def __delattr__(self, name):
 
 delattr_cache[(0,)] = __delattr__
 
+del __delattr__

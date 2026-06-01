@@ -39,7 +39,7 @@ def pre_generate_counter_cache(funcname, func, count, cache_name, extra_args=(()
         pass
 
     source = [
-        f"{cache_name} = {{}}\n"
+        f"\n{cache_name} = {{}}\n"
     ]
 
     for args in extra_args:
@@ -49,7 +49,7 @@ def pre_generate_counter_cache(funcname, func, count, cache_name, extra_args=(()
             source.append(method_src)
             source.append(f"{cache_name}[{new_args!r}] = {funcname}\n")
 
-    source.append("")
+    source.append(f"del {funcname}\n")
 
     return "\n".join(source)
 
@@ -58,7 +58,7 @@ def generate_all_caches():
     cache_lines = []
     cache_lines.append("# This module is automatically generated from a script\n")
     cache_lines.append("# These methods are not used directly and so may reference globals that don't exist\n")
-    cache_lines.append("# DO NOT EDIT BY HAND\n\n")
+    cache_lines.append("# DO NOT EDIT BY HAND\n")
 
     cache_lines.append(pre_generate_counter_cache("__eq__", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
     cache_lines.append(pre_generate_counter_cache("__repr__", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
