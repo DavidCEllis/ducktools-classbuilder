@@ -520,6 +520,10 @@ def _fix_consts(consts, active_pair, pairs):
     return tuple(new_consts)
 
 
+def get_counter_field_names(field_count):
+    return [f"{REPLACE_NAME}{i}_" for i in range(field_count)]
+
+
 def counter_to_class_generator(
     counter_generator,
     argument_getter,
@@ -690,11 +694,7 @@ def class_repr_generator(cls, funcname="__repr__"):
 
 
 def _counter_repr_generator(argcount, *, funcname="__repr__"):
-    field_names = [
-        f"{REPLACE_NAME}{i}_"
-        for i in range(argcount)
-    ]
-
+    field_names = get_counter_field_names(argcount)
     return generic_repr_generator(field_names, funcname=funcname)
 
 
@@ -735,9 +735,7 @@ def _counter_eq_generator(argcount, *, funcname="__eq__"):
     # This is a cached accelerated eq generator
     # It returns uglier source, but the source can be cached
     # and reused more easily.
-    field_names = [
-        f"{REPLACE_NAME}{i}_" for i in range(argcount)
-    ]
+    field_names = get_counter_field_names(argcount)
 
     return generic_eq_generator(field_names, funcname=funcname)
 
@@ -782,9 +780,7 @@ def get_class_order_generator(cls, operator, *, funcname):
     return get_generic_order_generator(field_names, operator, funcname=funcname)
 
 def _get_counter_order_generator(argcount, operator, *, funcname):
-    field_names = [
-        f"{REPLACE_NAME}{i}_" for i in range(argcount)
-    ]
+    field_names = get_counter_field_names(argcount)
     return get_generic_order_generator(field_names, operator, funcname=funcname)
 
 def class_lt_generator(cls, funcname="__lt__"):
@@ -842,9 +838,11 @@ def generic_replace_generator(field_pairs, *, funcname="__replace__"):
 
     return GeneratedCode(code)
 
+
 def class_replace_generator(cls, funcname="__replace__"):
     field_pairs = [(k, k) for k, v in get_fields(cls).items() if v.init]
     return generic_replace_generator(field_pairs, funcname=funcname)
+
 
 def _field_replace_generator(cls, funcname="__replace__"):
     # A special replace generator for FIELD that replaces
@@ -856,10 +854,9 @@ def _field_replace_generator(cls, funcname="__replace__"):
     ]
     return generic_replace_generator(field_pairs, funcname=funcname)
 
+
 def _counter_replace_generator(argcount, *, funcname="__replace__"):
-    field_pairs = [
-        (f"{REPLACE_NAME}{i}_", f"{REPLACE_NAME}{i}_") for i in range(argcount)
-    ]
+    field_pairs = [(n, n) for n in get_counter_field_names(argcount)]
     return generic_replace_generator(field_pairs, funcname=funcname)
 
 
@@ -889,7 +886,7 @@ def _counter_frozen_setattr_generator(argcount, slotted, *, funcname="__setattr_
     return generic_frozen_setattr_generator(slotted, funcname=funcname)
 
 
-def frozen_setattr_generator(cls, funcname="__setattr__"):
+def class_frozen_setattr_generator(cls, funcname="__setattr__"):
     globs = get_frozen_setattr_globals(cls)
     slotted = "__setattr_func" in globs
     gen = generic_frozen_setattr_generator(slotted, funcname=funcname)
@@ -913,7 +910,7 @@ def _counter_frozen_delattr_generator(argcount, *, funcname="__delattr__"):
     return generic_frozen_delattr_generator(funcname=funcname)
 
 
-def frozen_delattr_generator(cls, funcname="__delattr__"):
+def class_frozen_delattr_generator(cls, funcname="__delattr__"):
     return generic_frozen_delattr_generator(funcname=funcname)
 
 
@@ -929,13 +926,11 @@ def generic_hash_generator(field_names, *, funcname="__hash__"):
 
 
 def _counter_hash_generator(argcount, *, funcname="__hash__"):
-    field_names = [
-        f"{REPLACE_NAME}{i}_" for i in range(argcount)
-    ]
+    field_names = get_counter_field_names(argcount)
     return generic_hash_generator(field_names, funcname=funcname)
 
 
-def hash_generator(cls, funcname="__hash__"):
+def class_hash_generator(cls, funcname="__hash__"):
     field_names = [name for name, attrib in get_fields(cls).items() if attrib.compare]
     return generic_hash_generator(field_names, funcname=funcname)
 
@@ -1007,7 +1002,7 @@ replace_maker = MethodMaker(
 )
 frozen_setattr_maker = MethodMaker(
     "__setattr__",
-    frozen_setattr_generator,
+    class_frozen_setattr_generator,
     cached_generator=counter_to_class_generator(
         _counter_frozen_setattr_generator,
         get_frozen_setattr_args,
@@ -1017,7 +1012,7 @@ frozen_setattr_maker = MethodMaker(
 )
 frozen_delattr_maker = MethodMaker(
     "__delattr__",
-    frozen_delattr_generator,
+    class_frozen_delattr_generator,
     cached_generator=counter_to_class_generator(
         _counter_frozen_delattr_generator,
         get_empty_args,
@@ -1026,7 +1021,7 @@ frozen_delattr_maker = MethodMaker(
 )
 hash_maker = MethodMaker(
     "__hash__",
-    hash_generator,
+    class_hash_generator,
     cached_generator=counter_to_class_generator(
         _counter_hash_generator,
         get_compare_args,
