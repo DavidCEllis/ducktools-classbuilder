@@ -159,6 +159,12 @@ class _SimpleCache:
     def __call__(self, *args, **kwargs) -> types.FunctionType: ...
 
 
+def _simple_cache(
+    *,
+    cache_seed: dict[tuple, types.FunctionType],
+) -> Callable[[types.FunctionType], _SimpleCache]: ...
+
+
 @typing.type_check_only
 class _CachedFunctionBuilder(typing.Protocol):
     cache: _SimpleCache
