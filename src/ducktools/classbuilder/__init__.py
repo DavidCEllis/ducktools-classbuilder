@@ -798,11 +798,13 @@ def _get_counter_order_generator(argcount, operator, *, funcname):
     field_names = get_counter_field_names(argcount)
     return get_generic_order_generator(field_names, operator, funcname=funcname)
 
+
 def class_lt_generator(cls, funcname="__lt__"):
     return get_class_order_generator(cls, "<", funcname=funcname)
 
 def _counter_lt_generator(argcount, *, funcname="__lt__"):
     return _get_counter_order_generator(argcount, "<", funcname=funcname)
+
 
 def class_le_generator(cls, funcname="__le__"):
     return get_class_order_generator(cls, "<=", funcname=funcname)
@@ -810,12 +812,13 @@ def class_le_generator(cls, funcname="__le__"):
 def _counter_le_generator(argcount, *, funcname="__le__"):
     return _get_counter_order_generator(argcount, "<=", funcname=funcname)
 
+
 def class_gt_generator(cls, funcname="__gt__"):
     return get_class_order_generator(cls, ">", funcname=funcname)
 
-
 def _counter_gt_generator(argcount, *, funcname="__gt__"):
     return _get_counter_order_generator(argcount, ">", funcname=funcname)
+
 
 def class_ge_generator(cls, funcname="__ge__"):
     return get_class_order_generator(cls, ">=", funcname=funcname)
