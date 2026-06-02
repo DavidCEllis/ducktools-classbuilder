@@ -188,55 +188,6 @@ def print_generated_code(cls):
         print(textwrap.indent("\n".join(annotation_list), "    "))
 
 
-class _CacheStats:
-    __slots__ = ("hits", "misses")
-    def __init__(self):
-        self.hits = 0
-        self.misses = 0
-
-    @property
-    def hit_percent(self):
-        # If there are no cache hits, return 100%
-        if (self.hits + self.misses) > 0:
-            return (self.hits / (self.hits + self.misses)) * 100
-        return 100
-
-    def __repr__(self):
-        return f"<CacheStats; hits: {self.hits}, misses: {self.misses}; {self.hit_percent:.1f}% cache hits>"
-
-
-def _simple_cache(*, cache_seed=None):
-    # Don't cache keyword arguments
-    seed = {} if cache_seed is None else dict(cache_seed)
-    stats = _CacheStats()
-
-    def clear_cache(new_cache=None):
-        # Clear out cached functions and reset the stat counter
-        # This is needed for testing and pre-generating methods
-        nonlocal seed, stats
-        seed = {} if new_cache is None else dict(new_cache)
-        stats = _CacheStats()
-
-    def get_stats():
-        return stats
-
-    def wrapper(func):
-        def new_func(*args, **kwargs):
-            try:
-                result = seed[args]
-                stats.hits += 1
-            except KeyError:
-                result = func(*args, **kwargs)
-                seed[args] = result
-                stats.misses += 1
-            return result
-        new_func.get_stats = get_stats  # type: ignore
-        new_func.clear_cache = clear_cache  # type: ignore
-
-        return new_func
-    return wrapper
-
-
 def _exec_and_retrieve(source, globs):
     # Exec and retrieve a generated method
     # Returns the name of the method and the method as a tuple
@@ -524,6 +475,71 @@ def get_counter_field_names(argcount):
     return [f"{REPLACE_NAME}{i}_" for i in range(argcount)]
 
 
+# Classes to handle cached methods
+class _CacheStats:
+    __slots__ = ("hits", "misses")
+    def __init__(self):
+        self.hits = 0
+        self.misses = 0
+
+    @property
+    def hit_percent(self):
+        # If there are no cache hits, return 100%
+        if (self.hits + self.misses) > 0:
+            return (self.hits / (self.hits + self.misses)) * 100
+        return 100
+
+    def __repr__(self):
+        return f"<CacheStats; hits: {self.hits}, misses: {self.misses}; {self.hit_percent:.1f}% cache hits>"
+
+
+class _SimpleCache:
+    """
+    A simple dictionary cache that only caches based on
+    positional arguments. Keyword arguments are ignored
+    for caching purposes.
+    """
+
+    __slots__ = ("_func", "_seed", "_stats")
+
+    def __init__(self, func, *, cache_seed=None):
+        self._func = func
+        self._seed = {} if cache_seed is None else dict(cache_seed)
+        self._stats = _CacheStats()
+
+    def __repr__(self):
+        return f"<{type(self).__name__} for {self._func}>"
+
+    @property
+    def stats(self):
+        return self._stats
+
+    @property
+    def state(self):
+        return _MappingProxyType(self._seed)
+
+    def clear(self, new_cache=None):
+        self._seed = {} if new_cache is None else dict(new_cache)
+        self._stats = _CacheStats()
+
+    def __call__(self, *args, **kwargs):
+        try:
+            result = self._seed[args]
+            self._stats.hits += 1
+        except KeyError:
+            result = self._func(*args, **kwargs)
+            self._seed[args] = result
+            self._stats.misses += 1
+
+        return result
+
+
+def _simple_cache(*, cache_seed):
+    def wrapper(func):
+        return _SimpleCache(func, cache_seed=cache_seed)
+    return wrapper
+
+
 def counter_to_class_generator(
     counter_generator,
     argument_getter,
@@ -595,8 +611,7 @@ def counter_to_class_generator(
 
         return method
 
-    method_generator.get_stats = source_exec.get_stats  # type: ignore
-    method_generator.clear_cache = source_exec.clear_cache  # type: ignore
+    method_generator.cache = source_exec  # type: ignore
 
     return method_generator
 

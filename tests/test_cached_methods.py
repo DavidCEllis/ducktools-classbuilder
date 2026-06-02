@@ -37,12 +37,12 @@ class TestCache:
 
     def reset_caches(self):
         # Restore the eq and repr caches to their initial state
-        eq_maker.cached_generator.clear_cache(_cached_methods.eq_cache)
-        repr_maker.cached_generator.clear_cache(_cached_methods.repr_cache)
+        eq_maker.cached_generator.cache.clear(_cached_methods.eq_cache)
+        repr_maker.cached_generator.cache.clear(_cached_methods.repr_cache)
 
     def get_eq_repr_stats(self):
-        eq_stats = eq_maker.cached_generator.get_stats()
-        repr_stats = repr_maker.cached_generator.get_stats()
+        eq_stats = eq_maker.cached_generator.cache.stats
+        repr_stats = repr_maker.cached_generator.cache.stats
         return eq_stats, repr_stats
 
     def test_cache_hit(self):
