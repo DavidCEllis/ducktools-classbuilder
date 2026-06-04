@@ -288,6 +288,8 @@ class GeneratedCode:
 
     def generate(self):
         _, method = _exec_and_retrieve(self.source_code, self.globs)
+        if self.annotations:
+            apply_annotations(method, self.annotations)
         return method
 
 
@@ -328,22 +330,21 @@ class MethodMaker:
                 if c.__dict__.get(self.funcname) is self:
                     gen_cls = c
                     break
-            else:  # pragma: no cover
+            else:
                 # This should only be reached if called with incorrect arguments
                 # manually
                 raise AttributeError(
                     f"Could not find {self!r} in class {cls.__name__!r} MRO."
                 )
 
+        method = None
         if self.cached_generator:
-            method = self.cached_generator(gen_cls, self.funcname)
-        else:
-            gen = self.code_generator(gen_cls, self.funcname)
-            method = gen.generate()
+            # If the class is not supported by the cached generator, this returns
+            # None to fall back to the standard generator.
+            method = self.cached_generator(gen_cls, funcname=self.funcname)
 
-            # Annotations are only supported in non-cached generators
-            if gen.annotations:
-                apply_annotations(method, gen.annotations)
+        if method is None:
+            method = self.code_generator(gen_cls, funcname=self.funcname).generate()
 
         # Patch up the method name and annotations
         try:
@@ -425,10 +426,6 @@ def get_frozen_setattr_args(cls):
 
 
 # Globals getters for cached functions
-def get_empty_globals(cls):
-    return {}
-
-
 def get_frozen_setattr_globals(cls):
     flags = get_flags(cls)
     globs = {}
@@ -543,7 +540,7 @@ def _simple_cache(*, cache_seed):
 def counter_to_class_generator(
     counter_generator,
     argument_getter,
-    globals_getter=get_empty_globals,
+    globals_getter=None,
     *,
     cache=None,
     replace_strings=False,
@@ -592,7 +589,7 @@ def counter_to_class_generator(
             new_co_names = co_names
             new_co_consts = co_consts
 
-        globs = globals_getter(cls)
+        globs = {} if globals_getter is None else globals_getter(cls)
 
         method = _FunctionType(
             raw_func.__code__.replace(
