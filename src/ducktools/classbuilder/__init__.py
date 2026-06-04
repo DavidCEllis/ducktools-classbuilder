@@ -408,17 +408,30 @@ def get_empty_args(cls):
 
 def get_init_args(cls):
     fields = get_fields(cls)
-    for f in fields.values():
+
+    # keyword arguments need to be sorted at the end
+    # in order to be correctly popped when used in the
+    # method.
+    field_args = []
+    kw_field_args = []
+
+    for name, f in fields.items():
         if f.default_factory is not NOTHING:
             return None
         if f.default and not f.init:
             return None
 
+        if f.init:
+            if f.kw_only:
+                kw_field_args.append(name)
+            else:
+                field_args.append(name)
+
     flags = get_flags(cls)
     slotted = flags.get("slotted", False)
     frozen = flags.get("frozen", False)
-
-    return (tuple(k for k, v in fields.items() if v.init), frozen, slotted)
+    field_names = (*field_args, *kw_field_args)
+    return (field_names, frozen, slotted)
 
 
 def get_compare_args(cls):
@@ -441,6 +454,18 @@ def get_frozen_setattr_args(cls):
 
 
 # Globals getters for cached functions
+def get_init_globals(cls):
+    flags = get_flags(cls)
+    globs = {}
+    frozen = flags.get("frozen", False)
+    slotted = flags.get("slotted", False)
+
+    if frozen and slotted:
+        globs["__object_setattr"] = object.__setattr__
+
+    return globs
+
+
 def get_frozen_setattr_globals(cls):
     flags = get_flags(cls)
     globs = {}
@@ -465,6 +490,7 @@ def get_init_parameters(cls):
     """
     fields = get_fields(cls)
     varnames = ["self"]
+    kw_varnames = []
     argcount = 1  # self counts as an arg
     kwonlyargcount = 0
     defaults = []
@@ -478,12 +504,13 @@ def get_init_parameters(cls):
         assert field.default_factory is NOTHING
 
         if field.init:
-            varnames.append(name)
             if field.kw_only:
+                kw_varnames.append(name)
                 kwonlyargcount += 1
                 if field.default is not NOTHING:
                     kwdefaults[name] = field.default
             else:
+                varnames.append(name)
                 argcount += 1
                 if field.default is not NOTHING:
                     defaults.append(field.default)
@@ -491,7 +518,9 @@ def get_init_parameters(cls):
             if field._type is not NOTHING:
                 annotations[name] = field._type
 
-    return tuple(varnames), argcount, kwonlyargcount, tuple(defaults), kwdefaults, annotations
+    varnames = (*varnames, *kw_varnames)
+
+    return varnames, argcount, kwonlyargcount, tuple(defaults), kwdefaults, annotations
 
 
 def _fix_consts(consts, active_pair, pairs):
@@ -813,7 +842,10 @@ def generic_init_generator(field_names, frozen, slotted, *, funcname="__init__")
     else:
         params = "self"
 
-    body = "\n".join(assignments)
+    if assignments:
+        body = "\n".join(assignments)
+    else:
+        body = "    pass"
 
     code = (
         f"def {funcname}({params}):\n"
@@ -1097,7 +1129,17 @@ def class_hash_generator(cls, funcname="__hash__"):
 
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
-init_maker = MethodMaker("__init__", class_init_generator)
+init_maker = MethodMaker(
+    "__init__",
+    class_init_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_init_generator,
+        get_init_args,
+        globals_getter=get_init_globals,
+        param_updater=get_init_parameters,
+        replace_strings=True,
+    ),
+)
 repr_maker = MethodMaker(
     "__repr__",
     class_repr_generator,
