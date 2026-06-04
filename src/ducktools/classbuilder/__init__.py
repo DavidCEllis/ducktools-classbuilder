@@ -406,6 +406,21 @@ def get_empty_args(cls):
     return ((),)
 
 
+def get_init_args(cls):
+    fields = get_fields(cls)
+    for f in fields.values():
+        if f.default_factory is not NOTHING:
+            return None
+        if f.default and not f.init:
+            return None
+
+    flags = get_flags(cls)
+    slotted = flags.get("slotted", False)
+    frozen = flags.get("frozen", False)
+
+    return (tuple(k for k, v in fields.items() if v.init), frozen, slotted)
+
+
 def get_compare_args(cls):
     return (tuple(k for k, v in get_fields(cls).items() if v.compare),)
 
@@ -437,6 +452,46 @@ def get_frozen_setattr_globals(cls):
         globs["__setattr_func"] = object.__setattr__
 
     return globs
+
+
+# Fix parameters in function signatures
+def get_init_parameters(cls):
+    """
+    This takes a class and returns new
+    co_varnames, co_argcount, co_kwonlyargcount, __defaults__ and __kwdefaults__, __annotations__
+
+    These can be used to patch a basic `__init__` function to have new parameters
+    and defaults.
+    """
+    fields = get_fields(cls)
+    varnames = ["self"]
+    argcount = 1  # self counts as an arg
+    kwonlyargcount = 0
+    defaults = []
+    kwdefaults = {}
+    annotations = {}
+
+    for name, field in fields.items():
+        # The actual checks for these are covered by get_init_args
+        # These are the conditions under which cached init is not supported
+        assert field.init or field.default is NOTHING
+        assert field.default_factory is NOTHING
+
+        if field.init:
+            varnames.append(name)
+            if field.kw_only:
+                kwonlyargcount += 1
+                if field.default is not NOTHING:
+                    kwdefaults[name] = field.default
+            else:
+                argcount += 1
+                if field.default is not NOTHING:
+                    defaults.append(field.default)
+
+            if field._type is not NOTHING:
+                annotations[name] = field._type
+
+    return tuple(varnames), argcount, kwonlyargcount, tuple(defaults), kwdefaults, annotations
 
 
 def _fix_consts(consts, active_pair, pairs):
@@ -544,6 +599,7 @@ def counter_to_class_generator(
     *,
     cache=None,
     replace_strings=False,
+    param_updater=None,
 ):
     # This takes a counting source generator and converts it into a function
     # generator with cached methods backing it
@@ -556,7 +612,12 @@ def counter_to_class_generator(
     def method_generator(cls, funcname):
         args = argument_getter(cls)
 
-        # The first argument should always be the number of 'fields'
+        if args is None:
+            # If the argument getter returns None
+            # the method is not cacheable
+            return None
+
+        # The first argument should always be a tuple of fields
         assert len(args) > 0
 
         fieldnames = args[0]
@@ -589,22 +650,38 @@ def counter_to_class_generator(
             new_co_names = co_names
             new_co_consts = co_consts
 
+        if param_updater:
+            varnames, argcount, kwonlyargcount, defaults, kwdefaults, annotations = param_updater(cls)
+        else:
+            varnames = raw_func.__code__.co_varnames
+            argcount = raw_func.__code__.co_argcount
+            kwonlyargcount = raw_func.__code__.co_kwonlyargcount
+            defaults = raw_func.__defaults__
+            kwdefaults = raw_func.__kwdefaults__
+            annotations = None
+
         globs = {} if globals_getter is None else globals_getter(cls)
 
         method = _FunctionType(
             raw_func.__code__.replace(
                 co_names=new_co_names,
                 co_consts=new_co_consts,
+                co_varnames=varnames,
+                co_argcount=argcount,
+                co_kwonlyargcount=kwonlyargcount,
             ),
             globs,
             name=funcname,
-            argdefs=raw_func.__defaults__,
+            argdefs=defaults,
             closure=raw_func.__closure__,
         )
-        method.__kwdefaults__ = raw_func.__kwdefaults__  # Argument to FunctionType was only added in 3.13
+        method.__kwdefaults__ = kwdefaults  # Argument to FunctionType was only added in 3.13
 
         # Remove the module reference to avoid retrieving incorrect code
         method.__module__ = None  # type: ignore
+
+        if annotations:
+            apply_annotations(method, annotations)
 
         return method
 
@@ -616,25 +693,48 @@ def counter_to_class_generator(
 def get_init_generator(null=NOTHING, extra_code=None):
     def cls_init_generator(cls, funcname="__init__"):
         fields = get_fields(cls)
+        flags = get_flags(cls)
+
+        frozen = flags.get("frozen", False)
+        slotted = flags.get("slotted", False)
 
         arglist = []
         kw_only_arglist = []
         assignments = []
         globs = {}
+        annotations = {}
+
+        if frozen and slotted:
+            globs["__object_setattr"] = object.__setattr__
 
         for k, v in fields.items():
             if v.init:
                 if v.default is not null:
                     globs[f"_{k}_default"] = v.default
                     arg = f"{k}=_{k}_default"
-                    assignment = f"self.{k} = {k}"
+                    if frozen and slotted:
+                        assignment = f"__object_setattr(self, {k!r}, {k})"
+                    elif frozen:
+                        assignment = f"self.__dict__[{k!r}] = {k}"
+                    else:
+                        assignment = f"self.{k} = {k}"
                 elif v.default_factory is not null:
                     globs[f"_{k}_factory"] = v.default_factory
                     arg = f"{k}=None"
-                    assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
+                    if frozen and slotted:
+                        assignment = f"__object_setattr(self, {k!r}, _{k}_factory() if {k} is None else {k})"
+                    elif frozen:
+                        assignment = f"self.__dict__[{k!r}] = _{k}_factory() if {k} is None else {k}"
+                    else:
+                        assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
                 else:
                     arg = f"{k}"
-                    assignment = f"self.{k} = {k}"
+                    if frozen and slotted:
+                        assignment = f"__object_setattr(self, {k!r}, {k})"
+                    elif frozen:
+                        assignment = f"self.__dict__[{k!r}] = {k}"
+                    else:
+                        assignment = f"self.{k} = {k}"
 
                 if v.kw_only:
                     kw_only_arglist.append(arg)
@@ -642,14 +742,27 @@ def get_init_generator(null=NOTHING, extra_code=None):
                     arglist.append(arg)
 
                 assignments.append(assignment)
+
+                if v._type is not NOTHING:
+                    annotations[k] = v._type
             else:
                 if v.default is not null:
                     globs[f"_{k}_default"] = v.default
-                    assignment = f"self.{k} = _{k}_default"
+                    if frozen and slotted:
+                        assignment = f"__object_setattr(self, {k!r}, _{k}_default)"
+                    elif frozen:
+                        assignment = f"self.__dict__[{k!r}] = _{k}_default"
+                    else:
+                        assignment = f"self.{k} = _{k}_default"
                     assignments.append(assignment)
                 elif v.default_factory is not null:
                     globs[f"_{k}_factory"] = v.default_factory
-                    assignment = f"self.{k} = _{k}_factory()"
+                    if frozen and slotted:
+                        assignment = f"__object_setattr(self, {k!r}, _{k}_factory())"
+                    elif frozen:
+                        assignment = f"self.__dict__[{k!r}] = _{k}_factory()"
+                    else:
+                        assignment = f"self.{k} = _{k}_factory()"
                     assignments.append(assignment)
 
         pos_args = ", ".join(arglist)
@@ -680,7 +793,39 @@ def get_init_generator(null=NOTHING, extra_code=None):
     return cls_init_generator
 
 
-init_generator = get_init_generator()
+class_init_generator = get_init_generator()
+
+def generic_init_generator(field_names, frozen, slotted, *, funcname="__init__"):
+    # Unlike the other generators, this only handles a subset of __init__ functions
+    # those without default_factories or non-init defaults
+
+    assignments = []
+    for f in field_names:
+        if frozen and slotted:
+            assignments.append(f"    __object_setattr(self, {f!r}, {f})")
+        elif frozen:
+            assignments.append(f"    self.__dict__[{f!r}] = {f}")
+        else:
+            assignments.append(f"    self.{f} = {f}")
+
+    if field_names:
+        params = "self, " + ", ".join(field_names)
+    else:
+        params = "self"
+
+    body = "\n".join(assignments)
+
+    code = (
+        f"def {funcname}({params}):\n"
+        f"{body}\n"
+    )
+
+    return GeneratedCode(code)
+
+
+def _counter_init_generator(argcount, frozen, slotted, *, funcname="__init__"):
+    field_names = get_counter_field_names(argcount)
+    return generic_init_generator(field_names, frozen, slotted, funcname=funcname)
 
 
 def generic_repr_generator(field_names, *, funcname="__repr__"):
@@ -952,7 +1097,7 @@ def class_hash_generator(cls, funcname="__hash__"):
 
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
-init_maker = MethodMaker("__init__", init_generator)
+init_maker = MethodMaker("__init__", class_init_generator)
 repr_maker = MethodMaker(
     "__repr__",
     class_repr_generator,

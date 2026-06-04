@@ -59,6 +59,7 @@ from . import (
     hash_maker,
     replace_maker,
     counter_to_class_generator, get_counter_field_names,
+    get_init_args,
 
     # Gatherer
     make_unified_gatherer,
@@ -339,6 +340,12 @@ def init_generator(cls, funcname="__init__"):
         annotations = None
 
     return GeneratedCode(code, globs, annotations)
+
+
+def get_prefab_init_args(cls):
+    if hasattr(cls, POST_INIT_FUNC):
+        return None
+    return get_init_args(cls)
 
 
 def get_iter_args(cls):
