@@ -1,11 +1,10 @@
 from ducktools.classbuilder import (
     default_methods,
-    get_fields,
     slotclass,
-    GeneratedCode,
-    MethodMaker,
     SlotFields,
 )
+from ducktools.classbuilder.functions import get_fields
+from ducktools.classbuilder.methods import GeneratedCode, MethodMaker
 
 
 def iter_generator(cls, funcname="__iter__"):

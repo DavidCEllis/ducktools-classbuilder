@@ -86,6 +86,11 @@ class GeneratedCode:
     __slots__ = ("source_code", "globs", "annotations")
 
     def __init__(self, source_code, globs=None, annotations=None):
+        """
+        :param source_code: The source code to provide to ``exec`` to generate the method
+        :param globs: A globals dictionary with any names needed within the function
+        :param annotations: Annotations dictionary for the function signature
+        """
         self.source_code = source_code
         self.globs = {} if globs is None else globs
         self.annotations = annotations

@@ -57,17 +57,29 @@ class GetFieldsProtocol(typing.Protocol):
 
 
 @typing.type_check_only
+class NoArgGathererProtocol(typing.Protocol):
+    def __call__(
+        self, cls_or_ns: _gatherer_argtype, *, cls_annotations: None | dict[str, typing.Any]
+    ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
+
+@typing.type_check_only
+class NoArgAnnotationGathererProtocol(typing.Protocol):
+    def __call__(
+        self, cls_or_ns: _gatherer_argtype, *, cls_annotations: None | dict[str, typing.Any]
+    ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
+
+@typing.type_check_only
 class GathererProtocol(typing.Protocol, typing.Generic[_FieldType]):
     def __call__(
         self,
-        cls: _gatherer_argtype,
+        cls_or_ns: _gatherer_argtype,
     ) -> tuple[dict[str, _FieldType], dict[str, typing.Any]]: ...
 
 @typing.type_check_only
 class AnnotationGathererProtocol(typing.Protocol, typing.Generic[_FieldType]):
     def __call__(
         self,
-        cls: _gatherer_argtype,
+        cls_or_ns: _gatherer_argtype,
         *,
         cls_annotations: None | dict[str, typing.Any],
     ) -> tuple[dict[str, _FieldType], dict[str, typing.Any]]: ...
@@ -83,7 +95,7 @@ def builder(
     cls: _TypeT,
     /,
     *,
-    gatherer: GathererProtocol[Field],
+    gatherer: GathererProtocol[Field] | NoArgGathererProtocol,
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
     fix_signature: bool = ...,
@@ -94,7 +106,7 @@ def builder(
     cls: None = None,
     /,
     *,
-    gatherer: GathererProtocol[Field],
+    gatherer: GathererProtocol[Field] | NoArgGathererProtocol,
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
     fix_signature: bool = ...,
@@ -175,18 +187,6 @@ class Field(metaclass=SlotMakerMeta):
 _ReturnsField = Callable[..., Field]
 
 # Gatherers
-@typing.type_check_only
-class NoArgGathererProtocol(typing.Protocol):
-    def __call__(
-        self, cls: _gatherer_argtype, *, cls_annotations: None | dict[str, typing.Any]
-    ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
-
-@typing.type_check_only
-class NoArgAnnotationGathererProtocol(typing.Protocol):
-    def __call__(
-        self, cls: _gatherer_argtype, *, cls_annotations: None | dict[str, typing.Any]
-    ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
-
 @typing.overload
 def make_slot_gatherer(
     field_type: _ReturnsField = ...,

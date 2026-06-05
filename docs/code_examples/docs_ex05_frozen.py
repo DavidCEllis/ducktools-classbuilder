@@ -2,8 +2,10 @@ from ducktools.classbuilder import (
     slotclass,
     SlotFields,
     default_methods,
-    frozen_setattr_maker,
+)
+from ducktools.classbuilder.methods import (
     frozen_delattr_maker,
+    frozen_setattr_maker
 )
 
 

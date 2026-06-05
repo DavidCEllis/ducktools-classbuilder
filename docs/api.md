@@ -22,24 +22,45 @@
 ```
 
 ```{eval-rst}
-.. autofunction:: ducktools.classbuilder::get_fields
-```
-
-```{eval-rst}
-.. autofunction:: ducktools.classbuilder::get_flags
-```
-
-```{eval-rst}
-.. autofunction:: ducktools.classbuilder::get_methods
-```
-
-```{eval-rst}
-.. autoclass:: ducktools.classbuilder::MethodMaker
-```
-
-```{eval-rst}
 .. autofunction:: ducktools.classbuilder::make_unified_gatherer
 ```
+
+## Internals retrieval functions ##
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.functions::build_completed
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.functions::get_fields
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.functions::get_flags
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.functions::get_methods
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.functions::get_generated_code
+```
+
+```{eval-rst}
+.. autofunction:: ducktools.classbuilder.functions::print_generated_code
+```
+
+## Method Generating Tools
+
+```{eval-rst}
+.. autoclass:: ducktools.classbuilder.methods::GeneratedCode
+```
+
+```{eval-rst}
+.. autoclass:: ducktools.classbuilder.methods::MethodMaker
+```
+
 
 ## Prefab Class and Attributes ##
 
@@ -79,4 +100,3 @@
 ```{eval-rst}
 .. autofunction:: ducktools.classbuilder.prefab::replace
 ```
-

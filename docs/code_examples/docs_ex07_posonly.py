@@ -1,13 +1,15 @@
 from ducktools.classbuilder import (
     builder,
-    eq_maker,
-    get_fields,
     slot_gatherer,
     Field,
-    GeneratedCode,
     SlotFields,
-    NOTHING,
+)
+from ducktools.classbuilder.constants import NOTHING
+from ducktools.classbuilder.functions import get_fields
+from ducktools.classbuilder.methods import (
+    GeneratedCode,
     MethodMaker,
+    eq_maker,
 )
 
 
