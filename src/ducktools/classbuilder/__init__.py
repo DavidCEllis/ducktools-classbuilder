@@ -43,7 +43,7 @@ try:
     from _types import (  # type: ignore
         FunctionType as _FunctionType,
         MemberDescriptorType as _MemberDescriptorType,
-        MappingProxyType as _MappingProxyType
+        MappingProxyType as _MappingProxyType,
     )
 except ImportError:  # pragma: nocover
     from types import (
@@ -52,7 +52,12 @@ except ImportError:  # pragma: nocover
         MappingProxyType as _MappingProxyType,
     )
 
-from .annotations import apply_annotations, get_ns_annotations, is_classvar, resolve_type
+from .annotations import (
+    apply_annotations,
+    get_ns_annotations,
+    is_classvar,
+    resolve_type,
+)
 from ._version import __version__, __version_tuple__  # noqa: F401
 
 try:
@@ -90,6 +95,7 @@ _UNDER_TESTING = os.environ.get("PYTEST_VERSION") is not None
 def _recursive_repr(func):
     # defer the reprlib import
     import reprlib
+
     return reprlib.recursive_repr()(func)
 
 
@@ -146,10 +152,7 @@ def get_generated_code(cls):
     :return: dict of generated method names and the GeneratedCode objects for the class
     """
     methods = get_methods(cls)
-    source = {
-        name: method.code_generator(cls)
-        for name, method in methods.items()
-    }
+    source = {name: method.code_generator(cls) for name, method in methods.items()}
 
     return source
 
@@ -259,6 +262,7 @@ class GeneratedCode:
     This class provides a return value for the generated output from source code
     generators.
     """
+
     __slots__ = ("source_code", "globs", "annotations")
 
     def __init__(self, source_code, globs=None, annotations=None):
@@ -279,7 +283,7 @@ class GeneratedCode:
                 self.source_code,
                 self.globs,
                 self.annotations,
-                ) == (
+            ) == (
                 other.source_code,
                 other.globs,
                 other.annotations,
@@ -301,6 +305,7 @@ class MethodMaker:
     This is used to convert a code generator that returns code and a globals
     dictionary into a descriptor to assign on a generated class.
     """
+
     def __init__(self, funcname, code_generator, cached_generator=None, decorator=None):
         """
         :param funcname: name of the generated function eg `__init__`
@@ -384,13 +389,11 @@ class _SignatureMaker:
 
         if instance is None:
             raise AttributeError(
-                f"type object {cls.__name__!r} "
-                "has no attribute '__signature__'"
+                f"type object {cls.__name__!r} has no attribute '__signature__'"
             )
         else:
             raise AttributeError(
-                f"{cls.__name__!r} object"
-                "has no attribute '__signature__'"
+                f"{cls.__name__!r} objecthas no attribute '__signature__'"
             )
 
 
@@ -559,6 +562,7 @@ def get_counter_field_names(argcount):
 # Classes to handle cached methods
 class _CacheStats:
     __slots__ = ("hits", "misses")
+
     def __init__(self):
         self.hits = 0
         self.misses = 0
@@ -618,6 +622,7 @@ class _SimpleCache:
 def _simple_cache(*, cache_seed):
     def wrapper(func):
         return _SimpleCache(func, cache_seed=cache_seed)
+
     return wrapper
 
 
@@ -655,9 +660,7 @@ def counter_to_class_generator(
 
         raw_func = source_exec(*exec_args, funcname=funcname)
 
-        arg_fixes = {
-            f"{REPLACE_NAME}{i}_": arg for i, arg in enumerate(fieldnames)
-        }
+        arg_fixes = {f"{REPLACE_NAME}{i}_": arg for i, arg in enumerate(fieldnames)}
 
         # Get existing attribute names and strings
         co_names = raw_func.__code__.co_names
@@ -680,7 +683,9 @@ def counter_to_class_generator(
             new_co_consts = co_consts
 
         if param_updater:
-            varnames, argcount, kwonlyargcount, defaults, kwdefaults, annotations = param_updater(cls)
+            varnames, argcount, kwonlyargcount, defaults, kwdefaults, annotations = (
+                param_updater(cls)
+            )
         else:
             varnames = raw_func.__code__.co_varnames
             argcount = raw_func.__code__.co_argcount
@@ -704,7 +709,8 @@ def counter_to_class_generator(
             argdefs=defaults,
             closure=raw_func.__closure__,
         )
-        method.__kwdefaults__ = kwdefaults  # Argument to FunctionType was only added in 3.13
+        # Argument to FunctionType was only added in 3.13
+        method.__kwdefaults__ = kwdefaults
 
         # Remove the module reference to avoid retrieving incorrect code
         method.__module__ = None  # type: ignore
@@ -755,7 +761,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
                     elif frozen:
                         assignment = f"self.__dict__[{k!r}] = _{k}_factory() if {k} is None else {k}"
                     else:
-                        assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"
+                        assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"  # fmt: skip
                 else:
                     arg = f"{k}"
                     if frozen and slotted:
@@ -824,6 +830,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
 
 class_init_generator = get_init_generator()
 
+
 def generic_init_generator(field_names, frozen, slotted, *, funcname="__init__"):
     # Unlike the other generators, this only handles a subset of __init__ functions
     # those without default_factories or non-init defaults
@@ -831,11 +838,11 @@ def generic_init_generator(field_names, frozen, slotted, *, funcname="__init__")
     assignments = []
     for f in field_names:
         if frozen and slotted:
-            assignments.append(f"    __object_setattr(self, {f!r}, {f})")
+            assignments.append(f"__object_setattr(self, {f!r}, {f})")
         elif frozen:
-            assignments.append(f"    self.__dict__[{f!r}] = {f}")
+            assignments.append(f"self.__dict__[{f!r}] = {f}")
         else:
-            assignments.append(f"    self.{f} = {f}")
+            assignments.append(f"self.{f} = {f}")
 
     if field_names:
         params = "self, " + ", ".join(field_names)
@@ -843,14 +850,16 @@ def generic_init_generator(field_names, frozen, slotted, *, funcname="__init__")
         params = "self"
 
     if assignments:
-        body = "\n".join(assignments)
+        body = "\n    ".join(assignments)
     else:
-        body = "    pass"
+        body = "pass"
 
+    # fmt: off
     code = (
         f"def {funcname}({params}):\n"
-        f"{body}\n"
+        f"    {body}\n"
     )
+    # fmt: on
 
     return GeneratedCode(code)
 
@@ -861,10 +870,7 @@ def _counter_init_generator(argcount, frozen, slotted, *, funcname="__init__"):
 
 
 def generic_repr_generator(field_names, *, funcname="__repr__"):
-    content = ", ".join(
-        f"{name}={{self.{name}!r}}"
-        for name in field_names
-    )
+    content = ", ".join(f"{name}={{self.{name}!r}}" for name in field_names)
 
     # fmt: off
     code = (
@@ -911,11 +917,7 @@ def generic_eq_generator(field_names, *, funcname="__eq__"):
 
 
 def class_eq_generator(cls, funcname="__eq__"):
-    field_names = [
-        name
-        for name, attrib in get_fields(cls).items()
-        if attrib.compare
-    ]
+    field_names = [name for name, attrib in get_fields(cls).items() if attrib.compare]
 
     return generic_eq_generator(field_names, funcname=funcname)
 
@@ -941,9 +943,7 @@ def get_generic_order_generator(field_names, operator, *, funcname):
         )
         for name in field_names
     ]
-    instance_comparisons.append(
-        f"        return {eq_return}"
-    )
+    instance_comparisons.append(f"        return {eq_return}")
 
     instance_comparison = "".join(instance_comparisons)
 
@@ -960,13 +960,11 @@ def get_generic_order_generator(field_names, operator, *, funcname):
 
     return GeneratedCode(code)
 
+
 def get_class_order_generator(cls, operator, *, funcname):
-    field_names = [
-        name
-        for name, attrib in get_fields(cls).items()
-        if attrib.compare
-    ]
+    field_names = [name for name, attrib in get_fields(cls).items() if attrib.compare]
     return get_generic_order_generator(field_names, operator, funcname=funcname)
+
 
 def _get_counter_order_generator(argcount, operator, *, funcname):
     field_names = get_counter_field_names(argcount)
@@ -976,12 +974,14 @@ def _get_counter_order_generator(argcount, operator, *, funcname):
 def class_lt_generator(cls, funcname="__lt__"):
     return get_class_order_generator(cls, "<", funcname=funcname)
 
+
 def _counter_lt_generator(argcount, *, funcname="__lt__"):
     return _get_counter_order_generator(argcount, "<", funcname=funcname)
 
 
 def class_le_generator(cls, funcname="__le__"):
     return get_class_order_generator(cls, "<=", funcname=funcname)
+
 
 def _counter_le_generator(argcount, *, funcname="__le__"):
     return _get_counter_order_generator(argcount, "<=", funcname=funcname)
@@ -990,12 +990,14 @@ def _counter_le_generator(argcount, *, funcname="__le__"):
 def class_gt_generator(cls, funcname="__gt__"):
     return get_class_order_generator(cls, ">", funcname=funcname)
 
+
 def _counter_gt_generator(argcount, *, funcname="__gt__"):
     return _get_counter_order_generator(argcount, ">", funcname=funcname)
 
 
 def class_ge_generator(cls, funcname="__ge__"):
     return get_class_order_generator(cls, ">=", funcname=funcname)
+
 
 def _counter_ge_generator(argcount, *, funcname="__ge__"):
     return _get_counter_order_generator(argcount, ">=", funcname=funcname)
@@ -1009,16 +1011,17 @@ def generic_replace_generator(field_pairs, *, funcname="__replace__"):
         vals = ",\n".join(
             f"        '{param}': self.{attrib}"
             for param, attrib in field_pairs
-        )
+        )  # fmt: skip
+
         init_dict = f"{{\n{vals},\n    }}"
-        # fmt: off
+
         code = (
             f"def {funcname}(self, /, **changes):\n"
             f"    new_kwargs = {init_dict}\n"
             f"    new_kwargs |= changes\n"
             f"    return self.__class__(**new_kwargs)\n"
-        )
-        # fmt: on
+        )  # fmt: skip
+
     else:
         # There are no fields to keep, but may be init params
         # to pass forward.
@@ -1026,7 +1029,7 @@ def generic_replace_generator(field_pairs, *, funcname="__replace__"):
         code = (
             f"def {funcname}(self, /, **changes):\n"
             f"    return self.__class__(**changes)\n"
-        )
+        )  # fmt: skip
 
     return GeneratedCode(code)
 
@@ -1043,7 +1046,7 @@ def _field_replace_generator(cls, funcname="__replace__"):
         (k, k if k != "type" else f"_{k}")
         for k, v in get_fields(cls).items()
         if v.init
-    ]
+    ]  # fmt: skip
     return generic_replace_generator(field_pairs, funcname=funcname)
 
 
@@ -1092,7 +1095,7 @@ def generic_frozen_delattr_generator(*, funcname="__delattr__"):
         '    raise TypeError(\n'
         '        f"{type(self).__name__!r} object does not support attribute deletion"\n'
         '    )\n'
-    )
+    )  # fmt: skip
     code = f"def {funcname}(self, name):\n{body}"
     return GeneratedCode(code)
 
@@ -1210,7 +1213,7 @@ frozen_setattr_maker = MethodMaker(
         get_frozen_setattr_args,
         get_frozen_setattr_globals,
         cache=setattr_cache,
-    )
+    ),
 )
 frozen_delattr_maker = MethodMaker(
     "__delattr__",
@@ -1219,7 +1222,7 @@ frozen_delattr_maker = MethodMaker(
         _counter_frozen_delattr_generator,
         get_empty_args,
         cache=delattr_cache,
-    )
+    ),
 )
 hash_maker = MethodMaker(
     "__hash__",
@@ -1228,7 +1231,7 @@ hash_maker = MethodMaker(
         _counter_hash_generator,
         get_compare_args,
         cache=hash_cache,
-    )
+    ),
 )
 default_methods = frozenset({init_maker, repr_maker, eq_maker})
 
@@ -1238,7 +1241,7 @@ _field_init_maker = MethodMaker(
     code_generator=get_init_generator(
         null=FIELD_NOTHING,
         extra_code=["self.validate_field()"],
-    )
+    ),
 )
 
 # Special `__replace__` method for `Field` that will use the internal `_type`
@@ -1276,7 +1279,16 @@ def add_methods(cls, methods, *, internals=None):
     return all_methods
 
 
-def builder(cls=None, /, *, gatherer, methods, flags=None, fix_signature=True, field_getter=get_fields):
+def builder(
+    cls=None,
+    /,
+    *,
+    gatherer,
+    methods,
+    flags=None,
+    fix_signature=True,
+    field_getter=get_fields,
+):
     """
     The main builder for class generation
 
@@ -1389,6 +1401,7 @@ class SlotFields(dict):
 
     This should be replaced on `__slots__` after fields have been gathered.
     """
+
     def __repr__(self):
         return f"SlotFields({super().__repr__()})"
 
@@ -1448,6 +1461,7 @@ class SlotMakerMeta(type):
 
     Will not convert `ClassVar` hinted values.
     """
+
     def __new__(
         cls,
         name,
@@ -1456,7 +1470,7 @@ class SlotMakerMeta(type):
         slots=True,
         gatherer=None,
         ignore_annotations=None,
-        **kwargs
+        **kwargs,
     ):
         # Slot makers should inherit flags
         for base in bases:
@@ -1559,12 +1573,18 @@ class SlotMakerMeta(type):
             if cached_properties:
                 # Now the class and slots have been created, create any new cached properties
                 for name, prop in cached_properties.items():
-                    slot = getattr(new_cls, name)  # This may be inherited, which is fine
+                    # This may be inherited, which is fine
+                    slot = getattr(new_cls, name)
 
                     # May be a replaced cached property already, if so extract the actual slot
                     if isinstance(slot, _SlottedCachedProperty):
                         slot = slot.slot
-                    slotted_property = _SlottedCachedProperty(slot=slot, func=prop.func, attrname=name)
+
+                    slotted_property = _SlottedCachedProperty(
+                        slot=slot,
+                        func=prop.func,
+                        attrname=name,
+                    )
 
                     setattr(new_cls, name, slotted_property)
 
@@ -1583,6 +1603,7 @@ class GatheredFields:
     """
     Helper class to store gathered field data
     """
+
     __slots__ = ("fields", "modifications")
 
     def __init__(self, fields, modifications):
@@ -1591,7 +1612,10 @@ class GatheredFields:
 
     def __eq__(self, other):
         if type(self) is type(other):
-            return self.fields == other.fields and self.modifications == other.modifications
+            return (
+                self.fields == other.fields
+                and self.modifications == other.modifications
+            )
         return NotImplemented
 
     def __repr__(self):
@@ -1686,12 +1710,15 @@ class Field(metaclass=SlotMakerMeta):
                 "kw_only": True,
                 "frozen": frozen or _UNDER_TESTING,
                 "ignore_annotations": ignore_annotations,
-            }
+            },
         )
 
     def validate_field(self):
         cls_name = self.__class__.__name__
-        if type(self.default) is not _NothingType and type(self.default_factory) is not _NothingType:
+        if (
+            type(self.default) is not _NothingType
+            and type(self.default_factory) is not _NothingType
+        ):
             raise AttributeError(
                 f"{cls_name} cannot define both a default value and a default factory."
             )
@@ -1749,13 +1776,15 @@ def _build_field():
         "repr": "Include this attribute in the class __repr__",
         "compare": "Include this attribute in the class __eq__ method",
         "kw_only": "Make this a keyword only parameter in __init__",
-    }
+    }  # fmt: skip
 
     # Fields here must be marked as kw_only to prevent the builder from trying
     # to call the __replace__ method which doesn't exist yet
     fields = {
         "default": Field(default=NOTHING, doc=field_docs["default"], kw_only=True),
-        "default_factory": Field(default=NOTHING, doc=field_docs["default_factory"], kw_only=True),
+        "default_factory": Field(
+            default=NOTHING, doc=field_docs["default_factory"], kw_only=True
+        ),
         "type": Field(default=NOTHING, doc=field_docs["type"], kw_only=True),
         "doc": Field(default=None, doc=field_docs["doc"], kw_only=True),
         "init": Field(default=True, doc=field_docs["init"], kw_only=True),
@@ -1790,6 +1819,7 @@ def make_slot_gatherer(field_type=Field):
     :return: A slot gatherer that will check for and generate Fields of
              the type field_type.
     """
+
     def field_slot_gatherer(cls_or_ns):
         """
         Gather field information for class generation based on __slots__
@@ -1861,6 +1891,7 @@ def make_annotation_gatherer(
                                  default values in place as class variables.
     :return: An annotation gatherer with these settings.
     """
+
     def field_annotation_gatherer(cls_or_ns, *, cls_annotations=None):
         # cls_annotations are included as the unified gatherer may already have
         # obtained the annotations, this prevents the method being called twice
@@ -1938,9 +1969,7 @@ def make_field_gatherer(
             cls_dict = cls_or_ns.__dict__
 
         cls_attributes = {
-            k: v
-            for k, v in cls_dict.items()
-            if isinstance(v, field_type)
+            k: v for k, v in cls_dict.items() if isinstance(v, field_type)
         }
 
         cls_modifications = {}
@@ -1953,6 +1982,7 @@ def make_field_gatherer(
                 cls_modifications[name] = NOTHING
 
         return cls_attributes, cls_modifications
+
     return field_attribute_gatherer
 
 
@@ -1987,7 +2017,11 @@ def make_unified_gatherer(
             return slot_g(cls_dict)
 
         # Get ignore_annotations flag
-        ignore_annotations = cls_dict.get(INTERNALS_DICT, {}).get("flags", {}).get("ignore_annotations", False)
+        ignore_annotations = (
+            cls_dict.get(INTERNALS_DICT, {})
+            .get("flags", {})
+            .get("ignore_annotations", False)
+        )
 
         if ignore_annotations:
             return attrib_g(cls_dict)
@@ -2006,7 +2040,9 @@ def make_unified_gatherer(
                         _t = resolve_type(v_anno)
                         if is_classvar(_t):
                             k_type = type(v).__name__
-                            raise TypeError(f"{k!r} is a ClassVar, but {k_type!r} instances are not supported as ClassVars")
+                            raise TypeError(
+                                f"{k!r} is a ClassVar, but {k_type!r} instances are not supported as ClassVars"
+                            )
 
             if use_annotations:
                 # All `Field` values have annotations, so use annotation gatherer
