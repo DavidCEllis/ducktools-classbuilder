@@ -2,6 +2,7 @@
 import types
 import typing as t
 
+init_cache: dict[tuple[int, bool, bool], types.FunctionType]
 eq_cache: dict[tuple[int], types.FunctionType]
 repr_cache: dict[tuple[int], types.FunctionType]
 replace_cache: dict[tuple[int], types.FunctionType]

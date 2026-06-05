@@ -62,6 +62,7 @@ from ._version import __version__, __version_tuple__  # noqa: F401
 
 try:
     from ._cached_methods import (
+        init_cache,
         eq_cache,
         replace_cache,
         repr_cache,
@@ -71,6 +72,7 @@ try:
     )
 except ImportError:  # pragma: nocover
     # Needed for generating cached methods after deletion
+    init_cache = {}
     eq_cache = {}
     replace_cache = {}
     repr_cache = {}
@@ -434,7 +436,7 @@ def get_init_args(cls):
     slotted = flags.get("slotted", False)
     frozen = flags.get("frozen", False)
     field_names = (*field_args, *kw_field_args)
-    return (field_names, frozen, slotted)
+    return (field_names, frozen, frozen and slotted)
 
 
 def get_compare_args(cls):
@@ -834,13 +836,17 @@ def get_init_generator(null=NOTHING, extra_code=None):
 class_init_generator = get_init_generator()
 
 
-def generic_init_generator(field_names, frozen, slotted, *, funcname="__init__"):
+def generic_init_generator(field_names, frozen, frozen_and_slotted, *, funcname="__init__"):
     # Unlike the other generators, this only handles a subset of __init__ functions
     # those without default_factories or non-init defaults
 
+    # Because slotted alone doesn't change the init, frozen_and_slotted
+    # is used as a separate argument so slotted and unslotted unfrozen
+    # classes share the same __init__ cache
+
     assignments = []
     for f in field_names:
-        if frozen and slotted:
+        if frozen_and_slotted:
             assignments.append(f"__object_setattr(self, {f!r}, {f})")
         elif frozen:
             assignments.append(f"self.__dict__[{f!r}] = {f}")
@@ -867,9 +873,9 @@ def generic_init_generator(field_names, frozen, slotted, *, funcname="__init__")
     return GeneratedCode(code)
 
 
-def _counter_init_generator(argcount, frozen, slotted, /, *, funcname="__init__"):
+def _counter_init_generator(argcount, frozen, frozen_and_slotted, /, *, funcname="__init__"):
     field_names = get_counter_field_names(argcount)
-    return generic_init_generator(field_names, frozen, slotted, funcname=funcname)
+    return generic_init_generator(field_names, frozen, frozen_and_slotted, funcname=funcname)
 
 
 def generic_repr_generator(field_names, *, funcname="__repr__"):
@@ -1144,6 +1150,7 @@ init_maker = MethodMaker(
         globals_getter=get_init_globals,
         param_updater=get_init_parameters,
         replace_strings=True,
+        cache=init_cache,
     ),
 )
 repr_maker = MethodMaker(

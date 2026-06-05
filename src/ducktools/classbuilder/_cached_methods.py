@@ -2,6 +2,110 @@
 # These methods are not used directly and so may reference globals that don't exist
 # DO NOT EDIT BY HAND
 
+init_cache = {}
+
+def __init__(self):
+    pass
+
+init_cache[(0, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+
+init_cache[(1, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+
+init_cache[(2, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+    self._classbuilder_cache_names_2_ = _classbuilder_cache_names_2_
+
+init_cache[(3, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+    self._classbuilder_cache_names_2_ = _classbuilder_cache_names_2_
+    self._classbuilder_cache_names_3_ = _classbuilder_cache_names_3_
+
+init_cache[(4, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+    self._classbuilder_cache_names_2_ = _classbuilder_cache_names_2_
+    self._classbuilder_cache_names_3_ = _classbuilder_cache_names_3_
+    self._classbuilder_cache_names_4_ = _classbuilder_cache_names_4_
+
+init_cache[(5, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+    self._classbuilder_cache_names_2_ = _classbuilder_cache_names_2_
+    self._classbuilder_cache_names_3_ = _classbuilder_cache_names_3_
+    self._classbuilder_cache_names_4_ = _classbuilder_cache_names_4_
+    self._classbuilder_cache_names_5_ = _classbuilder_cache_names_5_
+
+init_cache[(6, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+    self._classbuilder_cache_names_2_ = _classbuilder_cache_names_2_
+    self._classbuilder_cache_names_3_ = _classbuilder_cache_names_3_
+    self._classbuilder_cache_names_4_ = _classbuilder_cache_names_4_
+    self._classbuilder_cache_names_5_ = _classbuilder_cache_names_5_
+    self._classbuilder_cache_names_6_ = _classbuilder_cache_names_6_
+
+init_cache[(7, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+    self._classbuilder_cache_names_2_ = _classbuilder_cache_names_2_
+    self._classbuilder_cache_names_3_ = _classbuilder_cache_names_3_
+    self._classbuilder_cache_names_4_ = _classbuilder_cache_names_4_
+    self._classbuilder_cache_names_5_ = _classbuilder_cache_names_5_
+    self._classbuilder_cache_names_6_ = _classbuilder_cache_names_6_
+    self._classbuilder_cache_names_7_ = _classbuilder_cache_names_7_
+
+init_cache[(8, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_, _classbuilder_cache_names_8_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+    self._classbuilder_cache_names_2_ = _classbuilder_cache_names_2_
+    self._classbuilder_cache_names_3_ = _classbuilder_cache_names_3_
+    self._classbuilder_cache_names_4_ = _classbuilder_cache_names_4_
+    self._classbuilder_cache_names_5_ = _classbuilder_cache_names_5_
+    self._classbuilder_cache_names_6_ = _classbuilder_cache_names_6_
+    self._classbuilder_cache_names_7_ = _classbuilder_cache_names_7_
+    self._classbuilder_cache_names_8_ = _classbuilder_cache_names_8_
+
+init_cache[(9, False, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_, _classbuilder_cache_names_8_, _classbuilder_cache_names_9_):
+    self._classbuilder_cache_names_0_ = _classbuilder_cache_names_0_
+    self._classbuilder_cache_names_1_ = _classbuilder_cache_names_1_
+    self._classbuilder_cache_names_2_ = _classbuilder_cache_names_2_
+    self._classbuilder_cache_names_3_ = _classbuilder_cache_names_3_
+    self._classbuilder_cache_names_4_ = _classbuilder_cache_names_4_
+    self._classbuilder_cache_names_5_ = _classbuilder_cache_names_5_
+    self._classbuilder_cache_names_6_ = _classbuilder_cache_names_6_
+    self._classbuilder_cache_names_7_ = _classbuilder_cache_names_7_
+    self._classbuilder_cache_names_8_ = _classbuilder_cache_names_8_
+    self._classbuilder_cache_names_9_ = _classbuilder_cache_names_9_
+
+init_cache[(10, False, False)] = __init__
+
+del __init__
+
 eq_cache = {}
 
 def __eq__(self, other):

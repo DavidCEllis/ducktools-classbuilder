@@ -69,6 +69,7 @@ from . import (
 )
 #fmt: on
 
+from ._cached_methods import init_cache
 from .annotations import get_func_annotations, is_type, replace_generic_with_arg
 
 # These aren't used but are re-exported for ease of use
@@ -407,6 +408,7 @@ init_maker = MethodMaker(
         globals_getter=get_init_globals,
         param_updater=get_init_parameters,
         replace_strings=True,
+        cache=init_cache,
     ),
 )
 prefab_init_maker = MethodMaker(PREFAB_INIT_FUNC, init_generator)
