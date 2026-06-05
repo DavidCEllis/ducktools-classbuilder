@@ -129,8 +129,8 @@ def init_generator(cls, funcname="__init__"):
     attributes = get_attributes(cls)
     flags = get_flags(cls)
 
-    frozen = flags.get("frozen", False)
-    slotted = flags.get("slotted", False)
+    frozen = flags.get("frozen", True)
+    slotted = flags.get("slotted", True)
 
     # Handle pre/post init first - post_init can change types for __init__
     # Get pre and post init arguments

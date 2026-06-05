@@ -104,6 +104,216 @@ def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _
 
 init_cache[(10, False, False)] = __init__
 
+def __init__(self):
+    __classbuilder_selfdict = self.__dict__
+
+init_cache[(0, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+
+init_cache[(1, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+
+init_cache[(2, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+    __classbuilder_selfdict['_classbuilder_cache_names_2_'] = _classbuilder_cache_names_2_
+
+init_cache[(3, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+    __classbuilder_selfdict['_classbuilder_cache_names_2_'] = _classbuilder_cache_names_2_
+    __classbuilder_selfdict['_classbuilder_cache_names_3_'] = _classbuilder_cache_names_3_
+
+init_cache[(4, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+    __classbuilder_selfdict['_classbuilder_cache_names_2_'] = _classbuilder_cache_names_2_
+    __classbuilder_selfdict['_classbuilder_cache_names_3_'] = _classbuilder_cache_names_3_
+    __classbuilder_selfdict['_classbuilder_cache_names_4_'] = _classbuilder_cache_names_4_
+
+init_cache[(5, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+    __classbuilder_selfdict['_classbuilder_cache_names_2_'] = _classbuilder_cache_names_2_
+    __classbuilder_selfdict['_classbuilder_cache_names_3_'] = _classbuilder_cache_names_3_
+    __classbuilder_selfdict['_classbuilder_cache_names_4_'] = _classbuilder_cache_names_4_
+    __classbuilder_selfdict['_classbuilder_cache_names_5_'] = _classbuilder_cache_names_5_
+
+init_cache[(6, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+    __classbuilder_selfdict['_classbuilder_cache_names_2_'] = _classbuilder_cache_names_2_
+    __classbuilder_selfdict['_classbuilder_cache_names_3_'] = _classbuilder_cache_names_3_
+    __classbuilder_selfdict['_classbuilder_cache_names_4_'] = _classbuilder_cache_names_4_
+    __classbuilder_selfdict['_classbuilder_cache_names_5_'] = _classbuilder_cache_names_5_
+    __classbuilder_selfdict['_classbuilder_cache_names_6_'] = _classbuilder_cache_names_6_
+
+init_cache[(7, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+    __classbuilder_selfdict['_classbuilder_cache_names_2_'] = _classbuilder_cache_names_2_
+    __classbuilder_selfdict['_classbuilder_cache_names_3_'] = _classbuilder_cache_names_3_
+    __classbuilder_selfdict['_classbuilder_cache_names_4_'] = _classbuilder_cache_names_4_
+    __classbuilder_selfdict['_classbuilder_cache_names_5_'] = _classbuilder_cache_names_5_
+    __classbuilder_selfdict['_classbuilder_cache_names_6_'] = _classbuilder_cache_names_6_
+    __classbuilder_selfdict['_classbuilder_cache_names_7_'] = _classbuilder_cache_names_7_
+
+init_cache[(8, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_, _classbuilder_cache_names_8_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+    __classbuilder_selfdict['_classbuilder_cache_names_2_'] = _classbuilder_cache_names_2_
+    __classbuilder_selfdict['_classbuilder_cache_names_3_'] = _classbuilder_cache_names_3_
+    __classbuilder_selfdict['_classbuilder_cache_names_4_'] = _classbuilder_cache_names_4_
+    __classbuilder_selfdict['_classbuilder_cache_names_5_'] = _classbuilder_cache_names_5_
+    __classbuilder_selfdict['_classbuilder_cache_names_6_'] = _classbuilder_cache_names_6_
+    __classbuilder_selfdict['_classbuilder_cache_names_7_'] = _classbuilder_cache_names_7_
+    __classbuilder_selfdict['_classbuilder_cache_names_8_'] = _classbuilder_cache_names_8_
+
+init_cache[(9, True, False)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_, _classbuilder_cache_names_8_, _classbuilder_cache_names_9_):
+    __classbuilder_selfdict = self.__dict__
+    __classbuilder_selfdict['_classbuilder_cache_names_0_'] = _classbuilder_cache_names_0_
+    __classbuilder_selfdict['_classbuilder_cache_names_1_'] = _classbuilder_cache_names_1_
+    __classbuilder_selfdict['_classbuilder_cache_names_2_'] = _classbuilder_cache_names_2_
+    __classbuilder_selfdict['_classbuilder_cache_names_3_'] = _classbuilder_cache_names_3_
+    __classbuilder_selfdict['_classbuilder_cache_names_4_'] = _classbuilder_cache_names_4_
+    __classbuilder_selfdict['_classbuilder_cache_names_5_'] = _classbuilder_cache_names_5_
+    __classbuilder_selfdict['_classbuilder_cache_names_6_'] = _classbuilder_cache_names_6_
+    __classbuilder_selfdict['_classbuilder_cache_names_7_'] = _classbuilder_cache_names_7_
+    __classbuilder_selfdict['_classbuilder_cache_names_8_'] = _classbuilder_cache_names_8_
+    __classbuilder_selfdict['_classbuilder_cache_names_9_'] = _classbuilder_cache_names_9_
+
+init_cache[(10, True, False)] = __init__
+
+def __init__(self):
+    pass
+
+init_cache[(0, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+
+init_cache[(1, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+
+init_cache[(2, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+    __object_setattr(self, '_classbuilder_cache_names_2_', _classbuilder_cache_names_2_)
+
+init_cache[(3, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+    __object_setattr(self, '_classbuilder_cache_names_2_', _classbuilder_cache_names_2_)
+    __object_setattr(self, '_classbuilder_cache_names_3_', _classbuilder_cache_names_3_)
+
+init_cache[(4, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+    __object_setattr(self, '_classbuilder_cache_names_2_', _classbuilder_cache_names_2_)
+    __object_setattr(self, '_classbuilder_cache_names_3_', _classbuilder_cache_names_3_)
+    __object_setattr(self, '_classbuilder_cache_names_4_', _classbuilder_cache_names_4_)
+
+init_cache[(5, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+    __object_setattr(self, '_classbuilder_cache_names_2_', _classbuilder_cache_names_2_)
+    __object_setattr(self, '_classbuilder_cache_names_3_', _classbuilder_cache_names_3_)
+    __object_setattr(self, '_classbuilder_cache_names_4_', _classbuilder_cache_names_4_)
+    __object_setattr(self, '_classbuilder_cache_names_5_', _classbuilder_cache_names_5_)
+
+init_cache[(6, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+    __object_setattr(self, '_classbuilder_cache_names_2_', _classbuilder_cache_names_2_)
+    __object_setattr(self, '_classbuilder_cache_names_3_', _classbuilder_cache_names_3_)
+    __object_setattr(self, '_classbuilder_cache_names_4_', _classbuilder_cache_names_4_)
+    __object_setattr(self, '_classbuilder_cache_names_5_', _classbuilder_cache_names_5_)
+    __object_setattr(self, '_classbuilder_cache_names_6_', _classbuilder_cache_names_6_)
+
+init_cache[(7, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+    __object_setattr(self, '_classbuilder_cache_names_2_', _classbuilder_cache_names_2_)
+    __object_setattr(self, '_classbuilder_cache_names_3_', _classbuilder_cache_names_3_)
+    __object_setattr(self, '_classbuilder_cache_names_4_', _classbuilder_cache_names_4_)
+    __object_setattr(self, '_classbuilder_cache_names_5_', _classbuilder_cache_names_5_)
+    __object_setattr(self, '_classbuilder_cache_names_6_', _classbuilder_cache_names_6_)
+    __object_setattr(self, '_classbuilder_cache_names_7_', _classbuilder_cache_names_7_)
+
+init_cache[(8, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_, _classbuilder_cache_names_8_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+    __object_setattr(self, '_classbuilder_cache_names_2_', _classbuilder_cache_names_2_)
+    __object_setattr(self, '_classbuilder_cache_names_3_', _classbuilder_cache_names_3_)
+    __object_setattr(self, '_classbuilder_cache_names_4_', _classbuilder_cache_names_4_)
+    __object_setattr(self, '_classbuilder_cache_names_5_', _classbuilder_cache_names_5_)
+    __object_setattr(self, '_classbuilder_cache_names_6_', _classbuilder_cache_names_6_)
+    __object_setattr(self, '_classbuilder_cache_names_7_', _classbuilder_cache_names_7_)
+    __object_setattr(self, '_classbuilder_cache_names_8_', _classbuilder_cache_names_8_)
+
+init_cache[(9, True, True)] = __init__
+
+def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _classbuilder_cache_names_2_, _classbuilder_cache_names_3_, _classbuilder_cache_names_4_, _classbuilder_cache_names_5_, _classbuilder_cache_names_6_, _classbuilder_cache_names_7_, _classbuilder_cache_names_8_, _classbuilder_cache_names_9_):
+    __object_setattr(self, '_classbuilder_cache_names_0_', _classbuilder_cache_names_0_)
+    __object_setattr(self, '_classbuilder_cache_names_1_', _classbuilder_cache_names_1_)
+    __object_setattr(self, '_classbuilder_cache_names_2_', _classbuilder_cache_names_2_)
+    __object_setattr(self, '_classbuilder_cache_names_3_', _classbuilder_cache_names_3_)
+    __object_setattr(self, '_classbuilder_cache_names_4_', _classbuilder_cache_names_4_)
+    __object_setattr(self, '_classbuilder_cache_names_5_', _classbuilder_cache_names_5_)
+    __object_setattr(self, '_classbuilder_cache_names_6_', _classbuilder_cache_names_6_)
+    __object_setattr(self, '_classbuilder_cache_names_7_', _classbuilder_cache_names_7_)
+    __object_setattr(self, '_classbuilder_cache_names_8_', _classbuilder_cache_names_8_)
+    __object_setattr(self, '_classbuilder_cache_names_9_', _classbuilder_cache_names_9_)
+
+init_cache[(10, True, True)] = __init__
+
 del __init__
 
 eq_cache = {}

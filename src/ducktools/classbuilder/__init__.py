@@ -59,6 +59,14 @@ from .annotations import (
     resolve_type,
 )
 from ._version import __version__, __version_tuple__  # noqa: F401
+from .constants import INTERNALS_DICT, META_GATHERER_NAME, GATHERED_DATA, REPLACE_NAME
+from .methods import (
+    get_fields,
+    get_flags,
+    get_methods as get_methods,
+    get_generated_code as get_generated_code,
+    print_generated_code as print_generated_code,
+)
 
 try:
     from ._cached_methods import (
@@ -81,14 +89,6 @@ except ImportError:  # pragma: nocover
     hash_cache = {}
 
 
-# Change this name if you make heavy modifications
-INTERNALS_DICT = "__classbuilder_internals__"
-META_GATHERER_NAME = "__classbuilder_meta_gatherer__"
-GATHERED_DATA = "__classbuilder_gathered_fields__"
-
-# Special Cache name
-REPLACE_NAME = "_classbuilder_cache_names_"
-
 # If testing, make Field classes frozen to make sure attributes are not
 # overwritten. When running this is a performance penalty so it is not required.
 _UNDER_TESTING = os.environ.get("PYTEST_VERSION") is not None
@@ -99,98 +99,6 @@ def _recursive_repr(func):
     import reprlib
 
     return reprlib.recursive_repr()(func)
-
-
-def get_fields(cls, *, local=False):
-    """
-    Utility function to gather the fields dictionary
-    from the class internals.
-
-    :param cls: generated class
-    :param local: get only fields that were not inherited
-    :return: dictionary of keys and Field attribute info
-    """
-    key = "local_fields" if local else "fields"
-    try:
-        return getattr(cls, INTERNALS_DICT)[key]
-    except (AttributeError, KeyError):
-        raise TypeError(f"{cls} is not a classbuilder generated class")
-
-
-def get_flags(cls):
-    """
-    Utility function to gather the flags dictionary
-    from the class internals.
-
-    :param cls: generated class
-    :return: dictionary of keys and flag values
-    """
-    try:
-        return getattr(cls, INTERNALS_DICT)["flags"]
-    except (AttributeError, KeyError):
-        raise TypeError(f"{cls} is not a classbuilder generated class")
-
-
-def get_methods(cls):
-    """
-    Utility function to gather the set of methods
-    from the class internals.
-
-    :param cls: generated class
-    :return: dict of generated methods attached to the class by name
-    """
-    try:
-        return getattr(cls, INTERNALS_DICT)["methods"]
-    except (AttributeError, KeyError):
-        raise TypeError(f"{cls} is not a classbuilder generated class")
-
-
-def get_generated_code(cls):
-    """
-    Retrieve the source code, globals and annotations of all generated methods
-    as they would be generated for a specific class.
-
-    :param cls: generated class
-    :return: dict of generated method names and the GeneratedCode objects for the class
-    """
-    methods = get_methods(cls)
-    source = {name: method.code_generator(cls) for name, method in methods.items()}
-
-    return source
-
-
-def print_generated_code(cls):
-    """
-    Print out all of the generated source code that will be executed for this class
-
-    This function is useful when checking that your code generators are writing source
-    code as expected.
-
-    :param cls: generated class
-    """
-    import textwrap
-
-    source = get_generated_code(cls)
-
-    source_list = []
-    globs_list = []
-    annotation_list = []
-
-    for name, method in sorted(source.items()):
-        source_list.append(method.source_code)
-        if method.globs:
-            globs_list.append(f"{name}: {method.globs}")
-        if method.annotations:
-            annotation_list.append(f"{name}: {method.annotations}")
-
-    print("Source:")
-    print(textwrap.indent("\n".join(source_list), "    "))
-    if globs_list:
-        print("\nGlobals:")
-        print(textwrap.indent("\n".join(globs_list), "    "))
-    if annotation_list:
-        print("\nAnnotations:")
-        print(textwrap.indent("\n".join(annotation_list), "    "))
 
 
 def _exec_and_retrieve(source, globs):
@@ -433,8 +341,8 @@ def get_init_args(cls):
                 field_args.append(name)
 
     flags = get_flags(cls)
-    slotted = flags.get("slotted", False)
-    frozen = flags.get("frozen", False)
+    slotted = flags.get("slotted", True)
+    frozen = flags.get("frozen", True)
     field_names = (*field_args, *kw_field_args)
     return (field_names, frozen, frozen and slotted)
 
@@ -462,8 +370,8 @@ def get_frozen_setattr_args(cls):
 def get_init_globals(cls):
     flags = get_flags(cls)
     globs = {}
-    frozen = flags.get("frozen", False)
-    slotted = flags.get("slotted", False)
+    frozen = flags.get("frozen", True)
+    slotted = flags.get("slotted", True)
 
     if frozen and slotted:
         globs["__object_setattr"] = object.__setattr__
@@ -566,11 +474,12 @@ def get_counter_field_names(argcount):
 
 # Classes to handle cached methods
 class _CacheStats:
-    __slots__ = ("hits", "misses")
+    __slots__ = ("hits", "misses", "skips")
 
     def __init__(self):
         self.hits = 0
         self.misses = 0
+        self.skips = 0
 
     @property
     def hit_percent(self):
@@ -580,7 +489,7 @@ class _CacheStats:
         return 100
 
     def __repr__(self):
-        return f"<CacheStats; hits: {self.hits}, misses: {self.misses}; {self.hit_percent:.1f}% cache hits>"
+        return f"<CacheStats; hits: {self.hits}, misses: {self.misses}; {self.hit_percent:.1f}% cache hits; uncacheable: {self.skips}>"
 
 
 class _SimpleCache:
@@ -654,6 +563,7 @@ def counter_to_class_generator(
         if args is None:
             # If the argument getter returns None
             # the method is not cacheable
+            source_exec.stats.skips += 1  # Add one to skip count
             return None
 
         # The first argument should always be a tuple of fields
@@ -691,6 +601,11 @@ def counter_to_class_generator(
             varnames, argcount, kwonlyargcount, defaults, kwdefaults, annotations = (
                 param_updater(cls)
             )
+            original_varnames = raw_func.__code__.co_varnames
+            if len(varnames) < len(original_varnames):
+                # Extra locals are defined outside of the function signature
+                # Add them to the end
+                varnames = (*varnames, *original_varnames[len(varnames):])
         else:
             varnames = raw_func.__code__.co_varnames
             argcount = raw_func.__code__.co_argcount
@@ -735,8 +650,8 @@ def get_init_generator(null=NOTHING, extra_code=None):
         fields = get_fields(cls)
         flags = get_flags(cls)
 
-        frozen = flags.get("frozen", False)
-        slotted = flags.get("slotted", False)
+        frozen = flags.get("frozen", True)
+        slotted = flags.get("slotted", True)
 
         arglist = []
         kw_only_arglist = []
@@ -746,6 +661,8 @@ def get_init_generator(null=NOTHING, extra_code=None):
 
         if frozen and slotted:
             globs["__object_setattr"] = object.__setattr__
+        elif frozen:
+            assignments.append("__classbuilder_selfdict = self.__dict__")
 
         for k, v in fields.items():
             if v.init:
@@ -755,7 +672,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
                     if frozen and slotted:
                         assignment = f"__object_setattr(self, {k!r}, {k})"
                     elif frozen:
-                        assignment = f"self.__dict__[{k!r}] = {k}"
+                        assignment = f"__classbuilder_selfdict[{k!r}] = {k}"
                     else:
                         assignment = f"self.{k} = {k}"
                 elif v.default_factory is not null:
@@ -764,7 +681,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
                     if frozen and slotted:
                         assignment = f"__object_setattr(self, {k!r}, _{k}_factory() if {k} is None else {k})"
                     elif frozen:
-                        assignment = f"self.__dict__[{k!r}] = _{k}_factory() if {k} is None else {k}"
+                        assignment = f"__classbuilder_selfdict[{k!r}] = _{k}_factory() if {k} is None else {k}"
                     else:
                         assignment = f"self.{k} = _{k}_factory() if {k} is None else {k}"  # fmt: skip
                 else:
@@ -772,7 +689,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
                     if frozen and slotted:
                         assignment = f"__object_setattr(self, {k!r}, {k})"
                     elif frozen:
-                        assignment = f"self.__dict__[{k!r}] = {k}"
+                        assignment = f"__classbuilder_selfdict[{k!r}] = {k}"
                     else:
                         assignment = f"self.{k} = {k}"
 
@@ -791,7 +708,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
                     if frozen and slotted:
                         assignment = f"__object_setattr(self, {k!r}, _{k}_default)"
                     elif frozen:
-                        assignment = f"self.__dict__[{k!r}] = _{k}_default"
+                        assignment = f"__classbuilder_selfdict[{k!r}] = _{k}_default"
                     else:
                         assignment = f"self.{k} = _{k}_default"
                     assignments.append(assignment)
@@ -800,7 +717,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
                     if frozen and slotted:
                         assignment = f"__object_setattr(self, {k!r}, _{k}_factory())"
                     elif frozen:
-                        assignment = f"self.__dict__[{k!r}] = _{k}_factory()"
+                        assignment = f"__classbuilder_selfdict[{k!r}] = _{k}_factory()"
                     else:
                         assignment = f"self.{k} = _{k}_factory()"
                     assignments.append(assignment)
@@ -845,11 +762,14 @@ def generic_init_generator(field_names, frozen, frozen_and_slotted, *, funcname=
     # classes share the same __init__ cache
 
     assignments = []
+    if frozen and not frozen_and_slotted:
+        assignments.append("__classbuilder_selfdict = self.__dict__")
+
     for f in field_names:
         if frozen_and_slotted:
             assignments.append(f"__object_setattr(self, {f!r}, {f})")
         elif frozen:
-            assignments.append(f"self.__dict__[{f!r}] = {f}")
+            assignments.append(f"__classbuilder_selfdict[{f!r}] = {f}")
         else:
             assignments.append(f"self.{f} = {f}")
 
@@ -1812,7 +1732,7 @@ def _build_field():
         Field,
         gatherer=GatheredFields(fields, modifications),
         methods=field_methods,
-        flags={"slotted": True, "kw_only": True},
+        flags={"slotted": True, "kw_only": True, "frozen": _UNDER_TESTING},
     )
 
 
@@ -2126,7 +2046,7 @@ def slotclass(cls=None, /, *, methods=default_methods, syntax_check=True):
     if not cls:
         return lambda cls_: slotclass(cls_, methods=methods, syntax_check=syntax_check)
 
-    cls = builder(cls, gatherer=slot_gatherer, methods=methods, flags={"slotted": True})
+    cls = builder(cls, gatherer=slot_gatherer, methods=methods, flags={"slotted": True, "frozen": False})
 
     if syntax_check:
         check_argument_order(cls)
