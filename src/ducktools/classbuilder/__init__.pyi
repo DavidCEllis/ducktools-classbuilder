@@ -59,8 +59,40 @@ class _CodegenType(typing.Protocol):
     def __call__(self, cls: type, funcname: str = ...) -> GeneratedCode: ...
 
 @typing.type_check_only
-class _ArgcountCodegenType(typing.Protocol):
-    def __call__(self, argcount: int, *, funcname: str = ...) -> GeneratedCode: ...
+class _InitArgcountCodegenType(typing.Protocol):
+    def __call__(
+        self,
+        argcount: int,
+        frozen: bool,
+        slotted: bool,
+        /,
+        *,
+        funcname: str = ...
+) -> GeneratedCode: ...
+
+@typing.type_check_only
+class _SetattrArgcountCodegenType(typing.Protocol):
+    def __call__(
+        self,
+        argcount: int,
+        slotted: bool,
+        /,
+        *,
+        funcname: str = ...
+    ) -> GeneratedCode: ...
+
+@typing.type_check_only
+class _BaseArgcountCodegenType(typing.Protocol):
+    def __call__(
+        self,
+        argcount: int,
+        /,
+        *,
+        funcname: str = ...
+    ) -> GeneratedCode: ...
+
+type _ArgcountCodegenType = _InitArgcountCodegenType | _SetattrArgcountCodegenType | _BaseArgcountCodegenType
+
 
 @typing.type_check_only
 class GathererProtocol(typing.Protocol, typing.Generic[_FieldType]):
@@ -113,13 +145,31 @@ class _SignatureMaker:
 
 signature_maker: _SignatureMaker
 
+# Args
 def get_empty_args(cls: type) -> tuple[tuple[()]]: ...
 def get_init_args(cls: type) -> tuple[tuple[str, ...], bool, bool] | None: ...
 def get_compare_args(cls: type) -> tuple[tuple[str, ...]]: ...
 def get_repr_args(cls: type) -> tuple[tuple[str, ...]]: ...
 def get_replace_args(cls: type) -> tuple[tuple[str, ...]]: ...
 def get_frozen_setattr_args(cls: type) -> tuple[tuple[()], bool]: ...
+
+# Globals
+def get_init_globals(cls: type) -> dict[str, typing.Any]: ...
 def get_frozen_setattr_globals(cls: type) -> dict[str, typing.Any]: ...
+
+# Parameters
+type _FunctionParameterType = tuple[
+    tuple[str],
+    int,
+    int,
+    tuple[typing.Any],
+    dict[str, typing.Any],
+    dict[str, typing.Any],
+]
+
+def get_init_parameters(cls: type) -> _FunctionParameterType: ...
+
+# field names
 def get_counter_field_names(argcount: int) -> list[str]: ...
 
 class _CacheStats:
@@ -165,11 +215,12 @@ class _CachedFunctionBuilder(typing.Protocol):
 
 def counter_to_class_generator(
     counter_generator: _ArgcountCodegenType,
-    argument_getter: Callable[[type], tuple],
+    argument_getter: Callable[[type], tuple | None],
     globals_getter: Callable[[type], dict[str, typing.Any]] | None = ...,
     *,
     cache: None | dict[str, types.FunctionType] = ...,
     replace_strings: bool = ...,
+    param_updater: None | Callable[[type], _FunctionParameterType] = ...,
 ) -> _CachedFunctionBuilder: ...
 
 # Actual generators
@@ -182,7 +233,7 @@ def generic_init_generator(
     field_names: list[str], frozen: bool, slotted: bool, *, funcname: str = ...
 ) -> GeneratedCode: ...
 def _counter_init_generator(
-    argcount: int, frozen: bool, slotted: bool, *, funcname: str = ...
+    argcount: int, frozen: bool, slotted: bool, /, *, funcname: str = ...
 ) -> GeneratedCode: ...
 
 # __repr__

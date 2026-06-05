@@ -58,8 +58,11 @@ from . import (
     ge_maker, gt_maker, le_maker, lt_maker,
     hash_maker,
     replace_maker,
+
+    # Cached generator tools
     counter_to_class_generator, get_counter_field_names,
-    get_init_args,
+    get_init_args, get_init_globals, get_init_parameters,
+    _counter_init_generator,
 
     # Gatherer
     make_unified_gatherer,
@@ -343,7 +346,7 @@ def init_generator(cls, funcname="__init__"):
 
 
 def get_prefab_init_args(cls):
-    if hasattr(cls, POST_INIT_FUNC):
+    if hasattr(cls, POST_INIT_FUNC) or hasattr(cls, PRE_INIT_FUNC):
         return None
     return get_init_args(cls)
 
@@ -364,7 +367,7 @@ def generic_iter_generator(field_names, *, funcname="__iter__"):
     return GeneratedCode(code)
 
 
-def _counter_iter_generator(argcount, *, funcname="__iter__"):
+def _counter_iter_generator(argcount, /, *, funcname="__iter__"):
     field_names = get_counter_field_names(argcount)
     return generic_iter_generator(field_names, funcname=funcname)
 
@@ -385,7 +388,7 @@ def generic_as_dict_generator(field_names, *, funcname="as_dict"):
     return GeneratedCode(code)
 
 
-def _counter_as_dict_generator(argcount, *, funcname="as_dict"):
+def _counter_as_dict_generator(argcount, /, *, funcname="as_dict"):
     field_names = get_counter_field_names(argcount)
     return generic_as_dict_generator(field_names, funcname=funcname)
 
@@ -395,7 +398,17 @@ def class_as_dict_generator(cls, funcname="as_dict"):
     return generic_as_dict_generator(field_names, funcname=funcname)
 
 
-init_maker = MethodMaker("__init__", init_generator)
+init_maker = MethodMaker(
+    "__init__",
+    init_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_init_generator,
+        get_prefab_init_args,
+        globals_getter=get_init_globals,
+        param_updater=get_init_parameters,
+        replace_strings=True,
+    ),
+)
 prefab_init_maker = MethodMaker(PREFAB_INIT_FUNC, init_generator)
 iter_maker = MethodMaker(
     "__iter__",

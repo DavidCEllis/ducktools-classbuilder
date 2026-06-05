@@ -421,7 +421,7 @@ def get_init_args(cls):
     for name, f in fields.items():
         if f.default_factory is not NOTHING:
             return None
-        if f.default and not f.init:
+        if f.default is not NOTHING and not f.init:
             return None
 
         if f.init:
@@ -503,7 +503,7 @@ def get_init_parameters(cls):
     for name, field in fields.items():
         # The actual checks for these are covered by get_init_args
         # These are the conditions under which cached init is not supported
-        assert field.init or field.default is NOTHING
+        assert field.init or (field.default is NOTHING)
         assert field.default_factory is NOTHING
 
         if field.init:
@@ -522,6 +522,9 @@ def get_init_parameters(cls):
                 annotations[name] = field._type
 
     varnames = (*varnames, *kw_varnames)
+
+    if annotations:
+        annotations["return"] = None
 
     return varnames, argcount, kwonlyargcount, tuple(defaults), kwdefaults, annotations
 
@@ -864,7 +867,7 @@ def generic_init_generator(field_names, frozen, slotted, *, funcname="__init__")
     return GeneratedCode(code)
 
 
-def _counter_init_generator(argcount, frozen, slotted, *, funcname="__init__"):
+def _counter_init_generator(argcount, frozen, slotted, /, *, funcname="__init__"):
     field_names = get_counter_field_names(argcount)
     return generic_init_generator(field_names, frozen, slotted, funcname=funcname)
 
@@ -888,7 +891,7 @@ def class_repr_generator(cls, funcname="__repr__"):
     return generic_repr_generator(field_names, funcname=funcname)
 
 
-def _counter_repr_generator(argcount, *, funcname="__repr__"):
+def _counter_repr_generator(argcount, /, *, funcname="__repr__"):
     field_names = get_counter_field_names(argcount)
     return generic_repr_generator(field_names, funcname=funcname)
 
@@ -922,7 +925,7 @@ def class_eq_generator(cls, funcname="__eq__"):
     return generic_eq_generator(field_names, funcname=funcname)
 
 
-def _counter_eq_generator(argcount, *, funcname="__eq__"):
+def _counter_eq_generator(argcount, /, *, funcname="__eq__"):
     # This is a cached accelerated eq generator
     # It returns uglier source, but the source can be cached
     # and reused more easily.
@@ -966,7 +969,7 @@ def get_class_order_generator(cls, operator, *, funcname):
     return get_generic_order_generator(field_names, operator, funcname=funcname)
 
 
-def _get_counter_order_generator(argcount, operator, *, funcname):
+def _get_counter_order_generator(argcount, operator, /, *, funcname):
     field_names = get_counter_field_names(argcount)
     return get_generic_order_generator(field_names, operator, funcname=funcname)
 
@@ -975,7 +978,7 @@ def class_lt_generator(cls, funcname="__lt__"):
     return get_class_order_generator(cls, "<", funcname=funcname)
 
 
-def _counter_lt_generator(argcount, *, funcname="__lt__"):
+def _counter_lt_generator(argcount, /, *, funcname="__lt__"):
     return _get_counter_order_generator(argcount, "<", funcname=funcname)
 
 
@@ -983,7 +986,7 @@ def class_le_generator(cls, funcname="__le__"):
     return get_class_order_generator(cls, "<=", funcname=funcname)
 
 
-def _counter_le_generator(argcount, *, funcname="__le__"):
+def _counter_le_generator(argcount, /, *, funcname="__le__"):
     return _get_counter_order_generator(argcount, "<=", funcname=funcname)
 
 
@@ -991,7 +994,7 @@ def class_gt_generator(cls, funcname="__gt__"):
     return get_class_order_generator(cls, ">", funcname=funcname)
 
 
-def _counter_gt_generator(argcount, *, funcname="__gt__"):
+def _counter_gt_generator(argcount, /, *, funcname="__gt__"):
     return _get_counter_order_generator(argcount, ">", funcname=funcname)
 
 
@@ -999,7 +1002,7 @@ def class_ge_generator(cls, funcname="__ge__"):
     return get_class_order_generator(cls, ">=", funcname=funcname)
 
 
-def _counter_ge_generator(argcount, *, funcname="__ge__"):
+def _counter_ge_generator(argcount, /, *, funcname="__ge__"):
     return _get_counter_order_generator(argcount, ">=", funcname=funcname)
 
 
@@ -1050,7 +1053,7 @@ def _field_replace_generator(cls, funcname="__replace__"):
     return generic_replace_generator(field_pairs, funcname=funcname)
 
 
-def _counter_replace_generator(argcount, *, funcname="__replace__"):
+def _counter_replace_generator(argcount, /, *, funcname="__replace__"):
     field_pairs = [(n, n) for n in get_counter_field_names(argcount)]
     return generic_replace_generator(field_pairs, funcname=funcname)
 
@@ -1077,7 +1080,7 @@ def generic_frozen_setattr_generator(slotted, *, funcname="__setattr__"):
     return GeneratedCode(code)
 
 
-def _counter_frozen_setattr_generator(argcount, slotted, *, funcname="__setattr__"):
+def _counter_frozen_setattr_generator(argcount, slotted, /, *, funcname="__setattr__"):
     return generic_frozen_setattr_generator(slotted, funcname=funcname)
 
 
@@ -1100,7 +1103,7 @@ def generic_frozen_delattr_generator(*, funcname="__delattr__"):
     return GeneratedCode(code)
 
 
-def _counter_frozen_delattr_generator(argcount, *, funcname="__delattr__"):
+def _counter_frozen_delattr_generator(argcount, /, *, funcname="__delattr__"):
     # Argcount is needed for consistency but is ignored
     return generic_frozen_delattr_generator(funcname=funcname)
 
@@ -1120,7 +1123,7 @@ def generic_hash_generator(field_names, *, funcname="__hash__"):
     return GeneratedCode(code)
 
 
-def _counter_hash_generator(argcount, *, funcname="__hash__"):
+def _counter_hash_generator(argcount, /, *, funcname="__hash__"):
     field_names = get_counter_field_names(argcount)
     return generic_hash_generator(field_names, funcname=funcname)
 
