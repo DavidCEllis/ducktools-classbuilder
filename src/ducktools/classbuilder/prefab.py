@@ -36,20 +36,33 @@ try:
 except ImportError:
     from types import GenericAlias, NoneType
 
-#fmt: off
+# fmt: off
 from . import (
-    # Constants
-    NOTHING, FIELD_NOTHING,
-
     # Classes
-    Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
+    Field, GatheredFields, SlotMakerMeta,
 
     # Builder
     builder,
 
     # Internals Retrieval
     build_completed,
-    get_flags, get_fields,
+
+    # Gatherer
+    make_unified_gatherer,
+)
+
+from .constants import (
+    FIELD_NOTHING,
+    NOTHING,
+    KW_ONLY as KW_ONLY,
+)
+from .functions import (
+    get_flags,
+    get_fields,
+)
+from .methods import (
+    GeneratedCode,
+    MethodMaker,
 
     # Method Makers
     eq_maker,
@@ -63,18 +76,15 @@ from . import (
     counter_to_class_generator, get_counter_field_names,
     get_init_args, get_init_globals, get_init_parameters,
     _counter_init_generator,
-
-    # Gatherer
-    make_unified_gatherer,
 )
-#fmt: on
+# fmt: on
+
 
 from ._cached_methods import init_cache
 from .annotations import get_func_annotations, is_type, replace_generic_with_arg
 
 # These aren't used but are re-exported for ease of use
 from . import (
-    KW_ONLY as KW_ONLY,
     SlotFields as SlotFields,
     replace as replace,
 )

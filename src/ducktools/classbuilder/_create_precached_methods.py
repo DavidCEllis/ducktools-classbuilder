@@ -25,7 +25,8 @@
 
 from pathlib import Path
 
-import ducktools.classbuilder as dtbuild
+import ducktools.classbuilder.methods as dtbuild
+
 
 DEST = Path(dtbuild.__file__).parent / "_cached_methods.py"
 COUNT = 11
