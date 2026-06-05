@@ -190,7 +190,7 @@ def __init__(self, _classbuilder_cache_names_0_, _classbuilder_cache_names_1_, _
 init_cache[(15, False, False)] = __init__
 
 def __init__(self):
-    __classbuilder_selfdict = self.__dict__
+    pass
 
 init_cache[(0, True, False)] = __init__
 

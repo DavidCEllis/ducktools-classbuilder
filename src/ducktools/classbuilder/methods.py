@@ -677,7 +677,7 @@ def generic_init_generator(field_names, frozen, frozen_and_slotted, *, funcname=
     # classes share the same __init__ cache
 
     assignments = []
-    if frozen and not frozen_and_slotted:
+    if field_names and frozen and not frozen_and_slotted:
         assignments.append("__classbuilder_selfdict = self.__dict__")
 
     for f in field_names:
