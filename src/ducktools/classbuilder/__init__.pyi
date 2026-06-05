@@ -29,7 +29,6 @@ META_GATHERER_NAME: str
 GATHERED_DATA: str
 REPLACE_NAME: str
 
-
 @typing.type_check_only
 class GetFieldsProtocol(typing.Protocol):
     def __call__(self, cls: type, *, local: bool = ...) -> Mapping[str, Field]: ...
@@ -41,11 +40,11 @@ def get_generated_code(cls: type) -> dict[str, GeneratedCode]: ...
 def print_generated_code(cls: type) -> None: ...
 def build_completed(cls: type) -> bool: ...
 
-
 class _NothingType:
     custom: str | None
     def __new__(cls, custom: str | None = ...) -> typing.Self: ...
     def __repr__(self) -> str: ...
+
 NOTHING: _NothingType
 FIELD_NOTHING: _NothingType
 
@@ -65,7 +64,10 @@ class _ArgcountCodegenType(typing.Protocol):
 
 @typing.type_check_only
 class GathererProtocol(typing.Protocol, typing.Generic[_FieldType]):
-    def __call__(self, cls: _gatherer_argtype) -> tuple[dict[str, _FieldType], dict[str, typing.Any]]: ...
+    def __call__(
+        self,
+        cls: _gatherer_argtype,
+    ) -> tuple[dict[str, _FieldType], dict[str, typing.Any]]: ...
 
 @typing.type_check_only
 class AnnotationGathererProtocol(typing.Protocol, typing.Generic[_FieldType]):
@@ -73,7 +75,7 @@ class AnnotationGathererProtocol(typing.Protocol, typing.Generic[_FieldType]):
         self,
         cls: _gatherer_argtype,
         *,
-        cls_annotations: None | dict[str, typing.Any]
+        cls_annotations: None | dict[str, typing.Any],
     ) -> tuple[dict[str, _FieldType], dict[str, typing.Any]]: ...
 
 class GeneratedCode:
@@ -117,11 +119,8 @@ def get_compare_args(cls: type) -> tuple[tuple[str, ...]]: ...
 def get_repr_args(cls: type) -> tuple[tuple[str, ...]]: ...
 def get_replace_args(cls: type) -> tuple[tuple[str, ...]]: ...
 def get_frozen_setattr_args(cls: type) -> tuple[tuple[()], bool]: ...
-
 def get_frozen_setattr_globals(cls: type) -> dict[str, typing.Any]: ...
-
 def get_counter_field_names(argcount: int) -> list[str]: ...
-
 
 class _CacheStats:
     __slots__: tuple[str, str]
@@ -131,7 +130,6 @@ class _CacheStats:
     def hit_percent(self) -> float: ...
     def __init__(self) -> None: ...
     def __repr__(self) -> str: ...
-
 
 class _SimpleCache:
     __slots__: tuple[str, ...]
@@ -145,25 +143,25 @@ class _SimpleCache:
         cache_seed: dict[tuple, types.FunctionType] | None = ...,
     ) -> None: ...
     def __repr__(self) -> str: ...
-    def clear(self, new_cache: dict[tuple, types.FunctionType] | None = ...) -> None: ...
+    def clear(
+        self,
+        new_cache: dict[tuple, types.FunctionType] | None = ...,
+    ) -> None: ...
     @property
     def stats(self) -> _CacheStats: ...
     @property
     def state(self) -> types.MappingProxyType[tuple, types.FunctionType]: ...
     def __call__(self, *args, **kwargs) -> types.FunctionType: ...
 
-
 def _simple_cache(
     *,
     cache_seed: dict[tuple, types.FunctionType],
 ) -> Callable[[types.FunctionType], _SimpleCache]: ...
 
-
 @typing.type_check_only
 class _CachedFunctionBuilder(typing.Protocol):
     cache: _SimpleCache
     def __call__(self, cls: type, funcname: str) -> types.FunctionType | None: ...
-
 
 def counter_to_class_generator(
     counter_generator: _ArgcountCodegenType,
@@ -174,39 +172,61 @@ def counter_to_class_generator(
     replace_strings: bool = ...,
 ) -> _CachedFunctionBuilder: ...
 
-
+# Actual generators
+# __init__
 def get_init_generator(
-    null: _NothingType = NOTHING,
-    extra_code: None | list[str] = None
+    null: _NothingType = NOTHING, extra_code: None | list[str] = None
 ) -> _CodegenType: ...
-
 def class_init_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
-def generic_init_generator(field_names: list[str], frozen: bool, slotted: bool, *, funcname: str = ...) -> GeneratedCode: ...
-def _counter_init_generator(argcount: int, frozen: bool, slotted: bool, *, funcname: str = ...) -> GeneratedCode: ...
+def generic_init_generator(
+    field_names: list[str], frozen: bool, slotted: bool, *, funcname: str = ...
+) -> GeneratedCode: ...
+def _counter_init_generator(
+    argcount: int, frozen: bool, slotted: bool, *, funcname: str = ...
+) -> GeneratedCode: ...
 
-def generic_repr_generator(field_names: list[str], *, funcname: str = ...) -> GeneratedCode: ...
+# __repr__
+def generic_repr_generator(
+    field_names: list[str], *, funcname: str = ...
+) -> GeneratedCode: ...
 def class_repr_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 
-def generic_eq_generator(field_names: list[str], *, funcname: str = ...) -> GeneratedCode: ...
+# __eq__
+def generic_eq_generator(
+    field_names: list[str], *, funcname: str = ...
+) -> GeneratedCode: ...
 def class_eq_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 
-def get_generic_order_generator(field_names: list[str], operator: str, *, funcname: str) -> GeneratedCode: ...
-def get_class_order_generator(cls: type, operator: str, *, funcname: str) -> GeneratedCode: ...
+# __ge__, __gt__, __le__, __lt__
+def get_generic_order_generator(
+    field_names: list[str], operator: str, *, funcname: str
+) -> GeneratedCode: ...
+def get_class_order_generator(
+    cls: type, operator: str, *, funcname: str
+) -> GeneratedCode: ...
 def class_lt_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 def class_le_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 def class_gt_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 def class_ge_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 
-def generic_replace_generator(field_pairs: list[tuple[str, str]], *, funcname: str = ...) -> GeneratedCode: ...
+# __replace__
+def generic_replace_generator(
+    field_pairs: list[tuple[str, str]], *, funcname: str = ...
+) -> GeneratedCode: ...
 def class_replace_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 
-def generic_frozen_setattr_generator(slotted: bool, *, funcname: str = ...) -> GeneratedCode: ...
+# __setattr__ and __delattr__
+def generic_frozen_setattr_generator(
+    slotted: bool, *, funcname: str = ...
+) -> GeneratedCode: ...
 def class_frozen_setattr_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
-
 def generic_frozen_delattr_generator(*, funcname: str = ...) -> GeneratedCode: ...
 def class_frozen_delattr_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 
-def generic_hash_generator(field_names: list[str], *, funcname: str = ...) -> GeneratedCode: ...
+# __hash__
+def generic_hash_generator(
+    field_names: list[str], *, funcname: str = ...
+) -> GeneratedCode: ...
 def class_hash_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 
 init_maker: MethodMaker
@@ -224,13 +244,13 @@ default_methods: frozenset[MethodMaker]
 
 _TypeT = typing.TypeVar("_TypeT", bound=type)
 
+# Construction functions
 def add_methods(
     cls: type,
     methods: Iterable[MethodMaker],
     *,
-    internals: None | dict[str, typing.Any] = ...
+    internals: None | dict[str, typing.Any] = ...,
 ) -> dict[str, MethodMaker]: ...
-
 @typing.overload
 def builder(
     cls: _TypeT,
@@ -242,7 +262,6 @@ def builder(
     fix_signature: bool = ...,
     field_getter: GetFieldsProtocol = ...,
 ) -> _TypeT: ...
-
 @typing.overload
 def builder(
     cls: None = None,
@@ -255,10 +274,7 @@ def builder(
     field_getter: GetFieldsProtocol = ...,
 ) -> Callable[[_TypeT], _TypeT]: ...
 
-
-class SlotFields(dict):
-    ...
-
+class SlotFields(dict): ...
 
 class SlotMakerMeta(type):
     def __new__(
@@ -272,6 +288,20 @@ class SlotMakerMeta(type):
         **kwargs: typing.Any,
     ) -> _TypeT: ...
 
+class GatheredFields:
+    __slots__: tuple[str, ...]
+
+    fields: dict[str, Field]
+    modifications: dict[str, typing.Any]
+
+    def __init__(
+        self, fields: dict[str, Field], modifications: dict[str, typing.Any]
+    ) -> None: ...
+    def __repr__(self) -> str: ...
+    def __eq__(self, other) -> bool: ...
+    def __call__(
+        self, cls_dict: type | dict[str, typing.Any]
+    ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 
 # Only technically frozen under testing but we should *act* like they are frozen
 # Field is its own field specifier
@@ -302,7 +332,6 @@ class Field(metaclass=SlotMakerMeta):
         compare: bool = ...,
         kw_only: bool = ...,
     ) -> None: ...
-
     def __init_subclass__(cls, frozen: bool = ..., ignore_annotations: bool = ...): ...
     def __repr__(self) -> str: ...
     def __eq__(self, other: Field | object) -> bool: ...
@@ -315,118 +344,83 @@ class Field(metaclass=SlotMakerMeta):
 # Technically they're wrong as `isinstance` gets used
 _ReturnsField = Callable[..., Field]
 
+# Gatherers
 @typing.type_check_only
 class NoArgGathererProtocol(typing.Protocol):
     def __call__(
-        self,
-        cls: _gatherer_argtype,
-        *,
-        cls_annotations: None | dict[str, typing.Any]
+        self, cls: _gatherer_argtype, *, cls_annotations: None | dict[str, typing.Any]
     ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 
 @typing.type_check_only
 class NoArgAnnotationGathererProtocol(typing.Protocol):
     def __call__(
-        self,
-        cls: _gatherer_argtype,
-        *,
-        cls_annotations: None | dict[str, typing.Any]
+        self, cls: _gatherer_argtype, *, cls_annotations: None | dict[str, typing.Any]
     ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
-
 
 @typing.overload
 def make_slot_gatherer(
     field_type: _ReturnsField = ...,
 ) -> NoArgGathererProtocol: ...
-
 @typing.overload
 def make_slot_gatherer(
     field_type: type[_FieldType],
 ) -> GathererProtocol[_FieldType]: ...
-
 @typing.overload
 def make_annotation_gatherer(
     field_type: _ReturnsField = ...,
     leave_default_values: bool = False,
 ) -> NoArgAnnotationGathererProtocol: ...
-
 @typing.overload
 def make_annotation_gatherer(
     field_type: type[_FieldType],
     leave_default_values: bool = False,
 ) -> AnnotationGathererProtocol[_FieldType]: ...
-
 @typing.overload
 def make_field_gatherer(
     field_type: _ReturnsField = ...,
     leave_default_values: bool = False,
 ) -> NoArgGathererProtocol: ...
-
 @typing.overload
 def make_field_gatherer(
     field_type: type[_FieldType],
     leave_default_values: bool = False,
 ) -> GathererProtocol[_FieldType]: ...
-
 @typing.overload
 def make_unified_gatherer(
     field_type: _ReturnsField = ...,
     leave_default_values: bool = ...,
 ) -> NoArgGathererProtocol: ...
-
 @typing.overload
 def make_unified_gatherer(
     field_type: type[_FieldType],
     leave_default_values: bool = ...,
 ) -> GathererProtocol[_FieldType]: ...
-
 def slot_gatherer(cls_or_ns: type | _CopiableMappings) -> _gatherer_returntype: ...
 def annotation_gatherer(
     cls_or_ns: type | _CopiableMappings,
     *,
-    cls_annotations: None | dict[str, typing.Any] = ...
+    cls_annotations: None | dict[str, typing.Any] = ...,
 ) -> _gatherer_returntype: ...
-
 def unified_gatherer(cls_or_ns: type | _CopiableMappings) -> _gatherer_returntype: ...
-
-
 def check_argument_order(cls: type) -> None: ...
 
+# Generic replace function
 def replace(obj: _T, /, **changes: typing.Any) -> _T: ...
 
+# Basic slotclass example
 @typing.overload
 def slotclass(
     cls: _TypeT,
     /,
     *,
     methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
-    syntax_check: bool = True
+    syntax_check: bool = True,
 ) -> _TypeT: ...
-
 @typing.overload
 def slotclass(
     cls: None = None,
     /,
     *,
     methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
-    syntax_check: bool = True
+    syntax_check: bool = True,
 ) -> Callable[[_TypeT], _TypeT]: ...
-
-
-_gatherer_type = Callable[[type | _CopiableMappings], tuple[dict[str, Field], dict[str, typing.Any]]]
-
-class GatheredFields:
-    __slots__: tuple[str, ...]
-
-    fields: dict[str, Field]
-    modifications: dict[str, typing.Any]
-
-    def __init__(
-        self,
-        fields: dict[str, Field],
-        modifications: dict[str, typing.Any]
-    ) -> None: ...
-
-    def __repr__(self) -> str: ...
-    def __eq__(self, other) -> bool: ...
-    def __call__(self, cls_dict: type | dict[str, typing.Any]) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
