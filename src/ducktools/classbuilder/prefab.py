@@ -44,9 +44,6 @@ from . import (
     # Builder
     builder,
 
-    # Internals Retrieval
-    build_completed,
-
     # Gatherer
     make_unified_gatherer,
 )
@@ -57,6 +54,7 @@ from .constants import (
     KW_ONLY as KW_ONLY,
 )
 from .functions import (
+    build_completed,
     get_flags,
     get_fields,
 )
