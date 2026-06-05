@@ -25,9 +25,11 @@
 
 from pathlib import Path
 
-import ducktools.classbuilder as dtbuild
+import ducktools.classbuilder.methods as dtbuild
+
 
 DEST = Path(dtbuild.__file__).parent / "_cached_methods.py"
+INIT_COUNT = 16
 COUNT = 11
 
 
@@ -60,6 +62,7 @@ def generate_all_caches():
     cache_lines.append("# These methods are not used directly and so may reference globals that don't exist\n")
     cache_lines.append("# DO NOT EDIT BY HAND\n")
 
+    cache_lines.append(pre_generate_counter_cache("__init__", dtbuild._counter_init_generator, INIT_COUNT, "init_cache", extra_args=[(False, False), (True, False), (True, True)]))
     cache_lines.append(pre_generate_counter_cache("__eq__", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
     cache_lines.append(pre_generate_counter_cache("__repr__", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
     cache_lines.append(pre_generate_counter_cache("__replace__", dtbuild._counter_replace_generator, COUNT, "replace_cache"))  # type: ignore

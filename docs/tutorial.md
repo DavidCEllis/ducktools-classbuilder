@@ -41,6 +41,8 @@ from types import MappingProxyType
 from pprint import pp
 
 import ducktools.classbuilder as dtbuild
+import ducktools.classbuilder.functions as dtfunctions
+import ducktools.classbuilder.methods as dtmethods
 ```
 
 ## Step 1: Defining a Field subclass ##
@@ -121,7 +123,7 @@ field_3: <HIDDEN>
 
 ```python
 def report_generator(cls, funcname="report"):
-    fields = dtbuild.get_fields(cls)
+    fields = dtfunctions.get_fields(cls)
 
     field_reports = []
     for name, fld in fields.items():
@@ -140,10 +142,10 @@ def report_generator(cls, funcname="report"):
     )
     globs = {}
 
-    return dtbuild.GeneratedCode(code, globs)
+    return dtmethods.GeneratedCode(code, globs)
 
 
-report_maker = dtbuild.MethodMaker("report", report_generator)
+report_maker = dtmethods.MethodMaker("report", report_generator)
 ```
 
 We can take a quick look at what this generates by applying it to a `slotclass`:
@@ -173,9 +175,9 @@ based builder that can create `__slots__`.
 def reportclass(cls):
     gatherer = fields_attribute_gatherer
     methods = {
-        dtbuild.eq_maker,
-        dtbuild.repr_maker,
-        dtbuild.init_maker,
+        dtmethods.eq_maker,
+        dtmethods.repr_maker,
+        dtmethods.init_maker,
         report_maker
     }
 
@@ -236,5 +238,3 @@ class ExampleSlots(ReportClass):
 
 print(ExampleSlots().report)
 ```
-
-

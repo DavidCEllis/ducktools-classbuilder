@@ -1,11 +1,6 @@
-from ducktools.classbuilder import (
-    add_methods,
-    get_fields,
-    make_unified_gatherer,
-    get_generated_code,
-    GeneratedCode,
-    MethodMaker,
-)
+from ducktools.classbuilder import make_unified_gatherer
+from ducktools.classbuilder.functions import get_fields, get_generated_code
+from ducktools.classbuilder.methods import add_methods, GeneratedCode, MethodMaker
 from ducktools.classbuilder.prefab import attribute, Attribute, Prefab
 
 

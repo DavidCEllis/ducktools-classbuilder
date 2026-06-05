@@ -20,14 +20,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# This should only contain the types for the caches
-import types
-import typing as t
+import typing
 
-init_cache: dict[tuple[int, bool, bool], types.FunctionType]
-eq_cache: dict[tuple[int], types.FunctionType]
-repr_cache: dict[tuple[int], types.FunctionType]
-replace_cache: dict[tuple[int], types.FunctionType]
-hash_cache: dict[tuple[int], types.FunctionType]
-setattr_cache: dict[tuple[t.Literal[0], bool], types.FunctionType]
-delattr_cache: dict[tuple[t.Literal[0]], types.FunctionType]
+
+INTERNALS_DICT: str
+META_GATHERER_NAME: str
+GATHERED_DATA: str
+REPLACE_NAME: str
+
+class _NothingType:
+    custom: str | None
+    def __new__(cls, custom: str | None = ...) -> typing.Self: ...
+    def __repr__(self) -> str: ...
+
+NOTHING: _NothingType
+FIELD_NOTHING: _NothingType
+
+class _KW_ONLY_META(type):
+    def __repr__(self) -> str: ...
+
+class KW_ONLY(metaclass=_KW_ONLY_META): ...

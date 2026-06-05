@@ -6,10 +6,8 @@ import types
 from functools import wraps
 from typing import Annotated, Any, ClassVar, get_origin
 
-from ducktools.classbuilder import (
-    get_methods,
-    NOTHING,
-)
+from ducktools.classbuilder.constants import NOTHING
+from ducktools.classbuilder.functions import get_methods
 from ducktools.classbuilder.prefab import prefab, Prefab, Attribute, attribute, get_attributes
 
 from ducktools.classbuilder.annotations import get_ns_annotations, is_classvar, resolve_type

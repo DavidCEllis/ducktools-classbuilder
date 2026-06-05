@@ -20,14 +20,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# This should only contain the types for the caches
 import types
-import typing as t
 
-init_cache: dict[tuple[int, bool, bool], types.FunctionType]
-eq_cache: dict[tuple[int], types.FunctionType]
-repr_cache: dict[tuple[int], types.FunctionType]
-replace_cache: dict[tuple[int], types.FunctionType]
-hash_cache: dict[tuple[int], types.FunctionType]
-setattr_cache: dict[tuple[t.Literal[0], bool], types.FunctionType]
-delattr_cache: dict[tuple[t.Literal[0]], types.FunctionType]
+from . import Field
+from .methods import MethodMaker, GeneratedCode
+
+def build_completed(cls: type) -> bool: ...
+def get_fields(cls: type, *, local: bool = ...) -> dict[str, Field]: ...
+def get_flags(cls: type) -> dict[str, bool]: ...
+def get_methods(cls: type) -> types.MappingProxyType[str, MethodMaker]: ...
+def get_generated_code(cls: type) -> dict[str, GeneratedCode]: ...
+def print_generated_code(cls: type) -> None: ...

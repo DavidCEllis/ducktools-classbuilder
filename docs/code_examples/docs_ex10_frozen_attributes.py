@@ -1,5 +1,6 @@
 import ducktools.classbuilder as dtbuild
-
+import ducktools.classbuilder.functions as dtfuncs
+import ducktools.classbuilder.methods as dtmethods
 
 class FreezableField(dtbuild.Field):
     frozen: bool = False
@@ -8,8 +9,8 @@ class FreezableField(dtbuild.Field):
 def setattr_generator(cls, funcname="__setattr__"):
     globs = {}
 
-    flags = dtbuild.get_flags(cls)
-    fields = dtbuild.get_fields(cls)
+    flags = dtfuncs.get_flags(cls)
+    fields = dtfuncs.get_fields(cls)
 
     frozen_fields = set(
         name for name, field in fields.items()
@@ -36,14 +37,14 @@ def setattr_generator(cls, funcname="__setattr__"):
         f"        {setattr_method}\n"
     )
 
-    return dtbuild.GeneratedCode(code, globs)
+    return dtmethods.GeneratedCode(code, globs)
 
 
 def delattr_generator(cls, funcname="__delattr__"):
     globs = {}
 
-    flags = dtbuild.get_flags(cls)
-    fields = dtbuild.get_fields(cls)
+    flags = dtfuncs.get_flags(cls)
+    fields = dtfuncs.get_fields(cls)
 
     frozen_fields = set(
         name for name, field in fields.items()
@@ -68,11 +69,11 @@ def delattr_generator(cls, funcname="__delattr__"):
         f"        {delattr_method}\n"
     )
 
-    return dtbuild.GeneratedCode(code, globs)
+    return dtmethods.GeneratedCode(code, globs)
 
 
-frozen_setattr_field_maker = dtbuild.MethodMaker("__setattr__", setattr_generator)
-frozen_delattr_field_maker = dtbuild.MethodMaker("__delattr__", delattr_generator)
+frozen_setattr_field_maker = dtmethods.MethodMaker("__setattr__", setattr_generator)
+frozen_delattr_field_maker = dtmethods.MethodMaker("__delattr__", delattr_generator)
 gatherer = dtbuild.make_unified_gatherer(FreezableField)
 
 
@@ -93,10 +94,10 @@ def freezable(cls=None, /, *, frozen=False):
     # Frozen attributes need to be added afterwards
     # Due to the need to know if frozen fields exist
     if frozen:
-        setattr(cls, "__setattr__", dtbuild.frozen_setattr_maker)
-        setattr(cls, "__delattr__", dtbuild.frozen_delattr_maker)
+        setattr(cls, "__setattr__", dtmethods.frozen_setattr_maker)
+        setattr(cls, "__delattr__", dtmethods.frozen_delattr_maker)
     else:
-        fields = dtbuild.get_fields(cls)
+        fields = dtfuncs.get_fields(cls)
         has_frozen_fields = False
         for f in fields.values():
             if getattr(f, "frozen", False):

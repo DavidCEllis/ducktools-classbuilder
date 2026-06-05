@@ -36,20 +36,31 @@ try:
 except ImportError:
     from types import GenericAlias, NoneType
 
-#fmt: off
+# fmt: off
 from . import (
-    # Constants
-    NOTHING, FIELD_NOTHING,
-
     # Classes
-    Field, MethodMaker, GatheredFields, GeneratedCode, SlotMakerMeta,
+    Field, GatheredFields, SlotMakerMeta,
 
     # Builder
     builder,
 
-    # Internals Retrieval
+    # Gatherer
+    make_unified_gatherer,
+)
+
+from .constants import (
+    FIELD_NOTHING,
+    NOTHING,
+    KW_ONLY as KW_ONLY,
+)
+from .functions import (
     build_completed,
-    get_flags, get_fields,
+    get_flags,
+    get_fields,
+)
+from .methods import (
+    GeneratedCode,
+    MethodMaker,
 
     # Method Makers
     eq_maker,
@@ -58,18 +69,20 @@ from . import (
     ge_maker, gt_maker, le_maker, lt_maker,
     hash_maker,
     replace_maker,
+
+    # Cached generator tools
     counter_to_class_generator, get_counter_field_names,
-
-    # Gatherer
-    make_unified_gatherer,
+    get_init_args, get_init_globals, get_init_parameters,
+    _counter_init_generator,
 )
-#fmt: on
+# fmt: on
 
+
+from ._cached_methods import init_cache
 from .annotations import get_func_annotations, is_type, replace_generic_with_arg
 
 # These aren't used but are re-exported for ease of use
 from . import (
-    KW_ONLY as KW_ONLY,
     SlotFields as SlotFields,
     replace as replace,
 )
@@ -124,8 +137,8 @@ def init_generator(cls, funcname="__init__"):
     attributes = get_attributes(cls)
     flags = get_flags(cls)
 
-    frozen = flags.get("frozen", False)
-    slotted = flags.get("slotted", False)
+    frozen = flags.get("frozen", True)
+    slotted = flags.get("slotted", True)
 
     # Handle pre/post init first - post_init can change types for __init__
     # Get pre and post init arguments
@@ -341,6 +354,12 @@ def init_generator(cls, funcname="__init__"):
     return GeneratedCode(code, globs, annotations)
 
 
+def get_prefab_init_args(cls):
+    if hasattr(cls, POST_INIT_FUNC) or hasattr(cls, PRE_INIT_FUNC):
+        return None
+    return get_init_args(cls)
+
+
 def get_iter_args(cls):
     return (tuple(k for k, v in get_attributes(cls).items() if v.iter),)
 
@@ -357,7 +376,7 @@ def generic_iter_generator(field_names, *, funcname="__iter__"):
     return GeneratedCode(code)
 
 
-def _counter_iter_generator(argcount, *, funcname="__iter__"):
+def _counter_iter_generator(argcount, /, *, funcname="__iter__"):
     field_names = get_counter_field_names(argcount)
     return generic_iter_generator(field_names, funcname=funcname)
 
@@ -378,7 +397,7 @@ def generic_as_dict_generator(field_names, *, funcname="as_dict"):
     return GeneratedCode(code)
 
 
-def _counter_as_dict_generator(argcount, *, funcname="as_dict"):
+def _counter_as_dict_generator(argcount, /, *, funcname="as_dict"):
     field_names = get_counter_field_names(argcount)
     return generic_as_dict_generator(field_names, funcname=funcname)
 
@@ -388,7 +407,18 @@ def class_as_dict_generator(cls, funcname="as_dict"):
     return generic_as_dict_generator(field_names, funcname=funcname)
 
 
-init_maker = MethodMaker("__init__", init_generator)
+init_maker = MethodMaker(
+    "__init__",
+    init_generator,
+    cached_generator=counter_to_class_generator(
+        _counter_init_generator,
+        get_prefab_init_args,
+        globals_getter=get_init_globals,
+        param_updater=get_init_parameters,
+        replace_strings=True,
+        cache=init_cache,
+    ),
+)
 prefab_init_maker = MethodMaker(PREFAB_INIT_FUNC, init_generator)
 iter_maker = MethodMaker(
     "__iter__",
