@@ -43,24 +43,11 @@ from .constants import INTERNALS_DICT, NOTHING, REPLACE_NAME
 from .functions import get_fields, get_flags
 
 try:
-    from ._cached_methods import (
-        init_cache,
-        eq_cache,
-        replace_cache,
-        repr_cache,
-        setattr_cache,
-        delattr_cache,
-        hash_cache,
-    )
+    from ._cached_methods import init_cache, setattr_cache
 except ImportError:  # pragma: nocover
     # Needed for generating cached methods after deletion
     init_cache = {}
-    eq_cache = {}
-    replace_cache = {}
-    repr_cache = {}
     setattr_cache = {}
-    delattr_cache = {}
-    hash_cache = {}
 
 
 def _recursive_repr(func):
@@ -984,7 +971,6 @@ repr_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_repr_generator,
         get_repr_args,
-        cache=repr_cache,
         replace_strings=True,
     ),
     decorator=_recursive_repr,
@@ -995,7 +981,6 @@ eq_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_eq_generator,
         get_compare_args,
-        cache=eq_cache,
     ),
 )
 lt_maker = MethodMaker(
@@ -1036,7 +1021,6 @@ replace_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_replace_generator,
         get_replace_args,
-        cache=replace_cache,
         replace_strings=True,
     ),
 )
@@ -1056,7 +1040,6 @@ frozen_delattr_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_frozen_delattr_generator,
         get_empty_args,
-        cache=delattr_cache,
     ),
 )
 hash_maker = MethodMaker(
@@ -1065,7 +1048,6 @@ hash_maker = MethodMaker(
     cached_generator=counter_to_class_generator(
         _counter_hash_generator,
         get_compare_args,
-        cache=hash_cache,
     ),
 )
 

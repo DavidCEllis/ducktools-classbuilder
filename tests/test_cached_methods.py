@@ -6,7 +6,7 @@ from pathlib import Path
 import ducktools.classbuilder._cached_methods as _cached_methods
 from ducktools.classbuilder._create_precached_methods import generate_all_caches
 
-from ducktools.classbuilder import eq_maker, repr_maker
+from ducktools.classbuilder.methods import eq_maker, repr_maker
 from ducktools.classbuilder.prefab import attribute, prefab, build_prefab
 
 def test_cached_methods_match():
@@ -37,8 +37,8 @@ class TestCache:
 
     def reset_caches(self):
         # Restore the eq and repr caches to their initial state
-        eq_maker.cached_generator.cache.clear(_cached_methods.eq_cache)
-        repr_maker.cached_generator.cache.clear(_cached_methods.repr_cache)
+        eq_maker.cached_generator.cache.clear()
+        repr_maker.cached_generator.cache.clear()
 
     def get_eq_repr_stats(self):
         eq_stats = eq_maker.cached_generator.cache.stats
@@ -49,27 +49,34 @@ class TestCache:
         self.reset_caches()
         Cached = self.get_cached_class()
 
+        # Add examples to the cache
+        Cached.__eq__
+        Cached.__repr__
+
         eq_stats, repr_stats = self.get_eq_repr_stats()
 
+        # Get a new version of the class
+        Cached = self.get_cached_class()
+
         assert eq_stats.hits == 0
-        assert eq_stats.misses == 0
+        assert eq_stats.misses == 1
         Cached.__eq__
         assert eq_stats.hits == 1
-        assert eq_stats.misses == 0
+        assert eq_stats.misses == 1
 
         # Not regenerated
         Cached.__eq__
         assert eq_stats.hits == 1
-        assert eq_stats.misses == 0
+        assert eq_stats.misses == 1
 
         assert repr_stats.hits == 0
-        assert repr_stats.misses == 0
+        assert repr_stats.misses == 1
         Cached.__repr__
         assert repr_stats.hits == 1
-        assert repr_stats.misses == 0
+        assert repr_stats.misses == 1
         Cached.__repr__
         assert repr_stats.hits == 1
-        assert repr_stats.misses == 0
+        assert repr_stats.misses == 1
 
     def test_cache_misses(self):
         self.reset_caches()
