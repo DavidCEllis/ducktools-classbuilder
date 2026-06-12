@@ -63,12 +63,12 @@ def generate_all_caches():
     cache_lines.append("# DO NOT EDIT BY HAND\n")
 
     cache_lines.append(pre_generate_counter_cache("__init__", dtbuild._counter_init_generator, INIT_COUNT, "init_cache", extra_args=[(False, False), (True, False), (True, True)]))
-    cache_lines.append(pre_generate_counter_cache("__eq__", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
-    cache_lines.append(pre_generate_counter_cache("__repr__", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
-    cache_lines.append(pre_generate_counter_cache("__replace__", dtbuild._counter_replace_generator, COUNT, "replace_cache"))  # type: ignore
-    cache_lines.append(pre_generate_counter_cache("__hash__", dtbuild._counter_hash_generator, COUNT, "hash_cache"))  # type: ignore
+    # cache_lines.append(pre_generate_counter_cache("__eq__", dtbuild._counter_eq_generator, COUNT, "eq_cache"))  # type: ignore
+    # cache_lines.append(pre_generate_counter_cache("__repr__", dtbuild._counter_repr_generator, COUNT, "repr_cache"))  # type: ignore
+    # cache_lines.append(pre_generate_counter_cache("__replace__", dtbuild._counter_replace_generator, COUNT, "replace_cache"))  # type: ignore
+    # cache_lines.append(pre_generate_counter_cache("__hash__", dtbuild._counter_hash_generator, COUNT, "hash_cache"))  # type: ignore
     cache_lines.append(pre_generate_counter_cache("__setattr__", dtbuild._counter_frozen_setattr_generator, 1, "setattr_cache", extra_args=[(True,), (False,)]))  # type: ignore
-    cache_lines.append(pre_generate_counter_cache("__delattr__", dtbuild._counter_frozen_delattr_generator, 1, "delattr_cache"))  # type: ignore
+    # cache_lines.append(pre_generate_counter_cache("__delattr__", dtbuild._counter_frozen_delattr_generator, 1, "delattr_cache"))  # type: ignore
     return "".join(cache_lines)
 
 
