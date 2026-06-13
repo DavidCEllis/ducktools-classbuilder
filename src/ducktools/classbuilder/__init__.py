@@ -463,8 +463,8 @@ class GatheredFields:
     def __repr__(self):
         return f"{type(self).__name__}(fields={self.fields!r}, modifications={self.modifications!r})"
 
-    def __call__(self, cls_dict):
-        # cls_dict will be provided, but isn't needed
+    def __call__(self, cls_or_ns):
+        # cls_or_ns will be provided, but isn't needed
         return self.fields, self.modifications
 
 

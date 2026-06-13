@@ -40,7 +40,7 @@ except ImportError:
 
 from .annotations import apply_annotations
 from .constants import INTERNALS_DICT, NOTHING, REPLACE_NAME
-from .functions import get_fields, get_flags
+from .functions import get_fields, get_flags, get_methods
 
 try:
     from ._cached_methods import init_cache, setattr_cache
@@ -109,6 +109,15 @@ class GeneratedCode:
         return method
 
 
+def _get_method(cls, name):
+    try:
+        methods = get_methods(cls)
+    except TypeError:
+        return None
+
+    return methods.get(name, None)
+
+
 class MethodMaker:
     """
     The descriptor class to place where methods should be generated.
@@ -135,16 +144,18 @@ class MethodMaker:
         return f"<MethodMaker for {self.funcname!r} method>"
 
     def __get__(self, inst, cls):
-        # This can be called via super().funcname(...) in which case the class
+        # This can be called via a subclass or through
+        # super().funcname(...) in which case the class
         # may not be the correct one. If this is the correct class
         # it should have this descriptor in the class dict under
         # the correct funcname.
         # Otherwise is should be found in the MRO of the class.
-        if cls.__dict__.get(self.funcname) is self:
+
+        if _get_method(cls, self.funcname) is self:
             gen_cls = cls
         else:
             for c in cls.__mro__[1:]:  # skip 'cls' as special cased
-                if c.__dict__.get(self.funcname) is self:
+                if _get_method(c, self.funcname) is self:
                     gen_cls = c
                     break
             else:
