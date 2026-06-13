@@ -94,8 +94,10 @@ def freezable(cls=None, /, *, frozen=False):
     # Frozen attributes need to be added afterwards
     # Due to the need to know if frozen fields exist
     if frozen:
-        setattr(cls, "__setattr__", dtmethods.frozen_setattr_maker)
-        setattr(cls, "__delattr__", dtmethods.frozen_delattr_maker)
+        dtmethods.add_methods(
+            cls,
+            [dtmethods.frozen_setattr_maker, dtmethods.frozen_delattr_maker]
+        )
     else:
         fields = dtfuncs.get_fields(cls)
         has_frozen_fields = False
@@ -105,8 +107,10 @@ def freezable(cls=None, /, *, frozen=False):
                 break
 
         if has_frozen_fields:
-            setattr(cls, "__setattr__", frozen_setattr_field_maker)
-            setattr(cls, "__delattr__", frozen_delattr_field_maker)
+            dtmethods.add_methods(
+                cls,
+                [frozen_setattr_field_maker, frozen_delattr_field_maker]
+            )
 
     return cls
 

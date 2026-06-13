@@ -4,31 +4,37 @@ import pytest
 import pickle
 
 from ducktools.classbuilder import (
-    _NothingType,
-
-    INTERNALS_DICT,
-    NOTHING,
-    FIELD_NOTHING,
-
-    add_methods,
     builder,
     default_methods,
-    eq_maker,
-    frozen_delattr_maker,
-    frozen_setattr_maker,
-    get_fields,
-    get_flags,
-    get_methods,
-    init_maker,
     make_unified_gatherer,
     slot_gatherer,
     slotclass,
 
     Field,
     GatheredFields,
+    SlotFields,
+)
+from ducktools.classbuilder.constants import (
+    _NothingType,
+
+    INTERNALS_DICT,
+    NOTHING,
+    FIELD_NOTHING,
+)
+from ducktools.classbuilder.functions import (
+    get_fields,
+    get_flags,
+    get_methods,
+)
+from ducktools.classbuilder.methods import (
     GeneratedCode,
     MethodMaker,
-    SlotFields,
+
+    add_methods,
+    eq_maker,
+    frozen_delattr_maker,
+    frozen_setattr_maker,
+    init_maker,
 )
 from ducktools.classbuilder.annotations import get_ns_annotations
 
@@ -68,11 +74,13 @@ def test_method_maker():
 
     assert repr(method_desc) == "<MethodMaker for 'demo' method>"
 
+    gatherer = GatheredFields({}, {})
+    @builder(gatherer=gatherer, methods={method_desc})
     class ValueX:
-        demo = method_desc
-
         def __init__(self):
             self.x = "Example Value"
+
+    add_methods(ValueX, [method_desc])
 
     ex = ValueX()
 
