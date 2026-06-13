@@ -47,7 +47,7 @@ def get_fields(cls, *, local=False):
     """
     key = "local_fields" if local else "fields"
     try:
-        return getattr(cls, INTERNALS_DICT)[key]
+        return cls.__dict__[INTERNALS_DICT][key]
     except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
@@ -61,7 +61,7 @@ def get_flags(cls):
     :return: dictionary of keys and flag values
     """
     try:
-        return getattr(cls, INTERNALS_DICT)["flags"]
+        return cls.__dict__[INTERNALS_DICT]["flags"]
     except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
@@ -75,7 +75,7 @@ def get_methods(cls):
     :return: dict of generated methods attached to the class by name
     """
     try:
-        return getattr(cls, INTERNALS_DICT)["methods"]
+        return cls.__dict__[INTERNALS_DICT]["methods"]
     except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
