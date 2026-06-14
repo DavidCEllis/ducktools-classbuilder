@@ -2,6 +2,7 @@
 import inspect
 import pytest
 import pickle
+import types
 
 from ducktools.classbuilder import (
     builder,
@@ -84,13 +85,13 @@ def test_method_maker():
 
     ex = ValueX()
 
-    assert ValueX.__dict__["demo"] == method_desc
+    assert ValueX.__dict__["demo"].maker == method_desc
 
     assert ex.x == "Example Value"
     assert ex.demo() == "Example Value"
 
     # Should no longer be equal as demo was called
-    assert ValueX.__dict__["demo"] != method_desc
+    assert isinstance(ValueX.__dict__["demo"], types.FunctionType)
 
 
 @graalpy_fails
@@ -590,13 +591,13 @@ def test_subclass_method_not_overwritten():
 
     y_init_func = Y.__init__
 
-    assert X.__dict__["__eq__"] is eq_maker
+    assert X.__dict__["__eq__"].maker is eq_maker
 
     y_inst = Y(0, 1)
 
     # super().__init__ method generated correctly
     assert y_init_func is Y.__init__
-    assert X.__dict__["__init__"] is not init_maker
+    assert isinstance(X.__dict__["__init__"], types.FunctionType)
     assert (y_inst.x, y_inst.y) == (0, 1)
 
     # Would fail previously as __init__ would be overwritten
@@ -604,5 +605,5 @@ def test_subclass_method_not_overwritten():
 
     assert y_inst == y_inst_2
 
-    assert X.__dict__["__eq__"] is not eq_maker
+    assert isinstance(X.__dict__["__eq__"], types.FunctionType)
     assert "__eq__" not in Y.__dict__

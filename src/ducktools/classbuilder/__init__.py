@@ -81,7 +81,6 @@ from .methods import (
     eq_maker,
     frozen_setattr_maker,
     frozen_delattr_maker,
-    signature_maker,
 
     GeneratedCode as GeneratedCode,
     MethodMaker as MethodMaker,
@@ -128,7 +127,6 @@ def builder(
     gatherer,
     methods,
     flags=None,
-    fix_signature=True,
     field_getter=get_fields,
 ):
     """
@@ -145,9 +143,6 @@ def builder(
     :param flags: additional flags to store in the internals dictionary
                   for use by method generators.
     :type flags: None | dict[str, bool]
-    :param fix_signature: Add a __signature__ attribute to work-around an issue with
-                          inspect.signature incorrectly handling __init__ descriptors.
-    :type fix_signature: bool
     :param field_getter: function to use to retrieve fields from parent classes
     :type field_getter: Callable[[type], dict[str, Field]]
     :return: The modified class (the class itself is modified, but this is expected).
@@ -159,7 +154,6 @@ def builder(
             gatherer=gatherer,
             methods=methods,
             flags=flags,
-            fix_signature=fix_signature,
             field_getter=field_getter,
         )
 
@@ -218,10 +212,6 @@ def builder(
         # defined a hash method
         if "__hash__" not in cls.__dict__:
             setattr(cls, "__hash__", None)
-
-    # Fix for inspect.signature(cls)
-    if fix_signature:
-        setattr(cls, "__signature__", signature_maker)
 
     # Add attribute indicating build completed
     internals["build_complete"] = True

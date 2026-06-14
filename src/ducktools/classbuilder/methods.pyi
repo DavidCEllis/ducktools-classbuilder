@@ -88,6 +88,7 @@ class GeneratedCode:
     def generate(self) -> types.FunctionType: ...
 
 class MethodMaker:
+    __slots__: tuple[str, ...]
     funcname: str
     code_generator: _CodegenType
     cached_generator: _CachedFunctionBuilder
@@ -96,16 +97,37 @@ class MethodMaker:
         self,
         funcname: str,
         code_generator: _CodegenType,
+        *,
         cached_generator: None | _CachedFunctionBuilder = ...,
         decorator: None | Callable[[types.FunctionType], types.FunctionType] = ...,
     ) -> None: ...
     def __repr__(self) -> str: ...
-    def __get__(self, instance, cls) -> types.FunctionType: ...
+    def attach(self, cls: type) -> None: ...
+    def generate(self, cls: type) -> types.FunctionType: ...
 
-class _SignatureMaker:
-    def __get__(self, instance, cls=None) -> typing_extensions.Never: ...
-
-signature_maker: _SignatureMaker
+class _AttachedMethod:
+    __slots__: tuple[str, ...]
+    maker: MethodMaker
+    cls: type
+    def __init__(
+        self,
+        maker: MethodMaker,
+        cls: type,
+    ) -> None: ...
+    def __repr__(self) -> str: ...
+    def __eq__(self, other) -> bool: ...
+    @typing.overload
+    def __get__[T](
+        self,
+        instance: None,
+        type: type[T],
+    ) -> types.FunctionType: ...
+    @typing.overload
+    def __get__[T](
+        self,
+        instance: T,
+        type: type[T] | None = ...,
+    ) -> types.MethodType: ...
 
 # Args
 def get_empty_args(cls: type) -> tuple[tuple[()]]: ...

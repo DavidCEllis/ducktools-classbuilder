@@ -44,7 +44,7 @@ from .constants import (
     NOTHING,
     KW_ONLY as KW_ONLY,
 )
-from .methods import GeneratedCode, MethodMaker, _SignatureMaker
+from .methods import GeneratedCode, MethodMaker
 
 
 _T = typing.TypeVar("_T")
@@ -87,7 +87,6 @@ asdict_maker: MethodMaker
 
 class Attribute(Field):
     __slots__: dict
-    __signature__: _SignatureMaker
     __classbuilder_gathered_fields__: tuple[dict[str, Field], dict[str, typing.Any]]
     __classbuilder_meta_gatherer__: GathererProtocol
 

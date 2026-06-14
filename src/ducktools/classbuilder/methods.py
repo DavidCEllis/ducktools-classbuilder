@@ -126,13 +126,19 @@ class MethodMaker:
     This is used to convert a code generator that returns code and a globals
     dictionary into a descriptor to assign on a generated class.
     """
-
-    def __init__(self, funcname, code_generator, cached_generator=None, decorator=None):
+    __slots__ = (
+        "funcname",
+        "code_generator",
+        "cached_generator",
+        "decorator",
+    )
+    def __init__(self, funcname, code_generator, *, cached_generator=None, decorator=None):
         """
         :param funcname: name of the generated function eg `__init__`
         :param code_generator: code generator function to operate on a class.
         :param cached_generator: a method generator that includes an internal cache
         :param decorator: a decorator to apply directly to method after it has been created
+        :param cls: The class the decorator is being attached to
         """
 
         self.funcname = funcname
@@ -143,36 +149,22 @@ class MethodMaker:
     def __repr__(self):
         return f"<MethodMaker for {self.funcname!r} method>"
 
-    def __get__(self, inst, cls):
-        # This can be called via a subclass or through
-        # super().funcname(...) in which case the class
-        # may not be the correct one. If this is the correct class
-        # it should have this descriptor in the class dict under
-        # the correct funcname.
-        # Otherwise is should be found in the MRO of the class.
+    def attach(self, cls):
+        # Creates an `AttachedMethod` that attaches this `MethodMaker`
+        # to the class as a descriptor
+        method = _AttachedMethod(self, cls)
+        setattr(cls, self.funcname, method)
 
-        if _get_method(cls, self.funcname) is self:
-            gen_cls = cls
-        else:
-            for c in cls.__mro__[1:]:  # skip 'cls' as special cased
-                if _get_method(c, self.funcname) is self:
-                    gen_cls = c
-                    break
-            else:
-                # This should only be reached if called with incorrect arguments
-                # manually
-                raise AttributeError(
-                    f"Could not find {self!r} in class {cls.__name__!r} MRO."
-                )
-
+    def generate(self, cls):
+        # Generate and return a method for the given class
         method = None
         if self.cached_generator:
             # If the class is not supported by the cached generator, this returns
             # None to fall back to the standard generator.
-            method = self.cached_generator(gen_cls, funcname=self.funcname)
+            method = self.cached_generator(cls, funcname=self.funcname)
 
         if method is None:
-            method = self.code_generator(gen_cls, funcname=self.funcname).generate()
+            method = self.code_generator(cls, funcname=self.funcname).generate()
 
         # Patch up the method name and annotations
         try:
@@ -185,42 +177,37 @@ class MethodMaker:
         if self.decorator:
             method = self.decorator(method)
 
+        return method
+
+
+class _AttachedMethod:
+    """
+    Descriptor for attaching a method maker to a class.
+    """
+    __slots__ = ("maker", "cls")
+    def __init__(self, maker, cls):
+        self.maker = maker
+        self.cls = cls
+
+    def __repr__(self):
+            return f"<_AttachedMethod for {self.maker.funcname!r} method on {self.cls.__qualname__!r}>"
+
+    def __eq__(self, other):
+        if self.__class__ is not other.__class__:
+            return NotImplemented
+        return (
+            self.maker == other.maker
+            and self.cls == other.cls
+        )
+
+    def __get__(self, inst, cls=None):
+        method = self.maker.generate(self.cls)
         # Replace this descriptor on the class with the generated function
-        setattr(gen_cls, self.funcname, method)
+        setattr(self.cls, self.maker.funcname, method)
 
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
         return method.__get__(inst, cls)
-
-
-class _SignatureMaker:
-    # 'inspect.signature' calls the `__get__` method of the `__init__` methodmaker with
-    # the wrong arguments.
-    # Instead of __get__(None, cls) or __get__(inst, type(inst))
-    # it uses __get__(cls, type(cls)).
-    #
-    # If this is done before `__init__` has been generated then
-    # help(cls) will fail along with inspect.signature(cls)
-    # This signature maker descriptor is placed to override __signature__ and force
-    # the `__init__` signature to be generated first if the signature is requested.
-    def __get__(self, instance, cls=None):
-        if cls is None:
-            cls = type(instance)
-
-        # force generation of `__init__` function
-        _ = cls.__init__
-
-        if instance is None:
-            raise AttributeError(
-                f"type object {cls.__name__!r} has no attribute '__signature__'"
-            )
-        else:
-            raise AttributeError(
-                f"{cls.__name__!r} objecthas no attribute '__signature__'"
-            )
-
-
-signature_maker = _SignatureMaker()
 
 
 # Argument getters for the generic cached methods
@@ -1082,7 +1069,7 @@ def add_methods(cls, methods, *, internals=None):
     new_methods = {}
 
     for method in methods:
-        setattr(cls, method.funcname, method)
+        method.attach(cls)
         new_methods[method.funcname] = method
 
     all_methods = _MappingProxyType(existing_methods | new_methods)

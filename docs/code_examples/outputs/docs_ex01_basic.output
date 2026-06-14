@@ -29,8 +29,6 @@ class Slotted(ducktools.classbuilder.prefab.Prefab)
  |
  |  __repr__(self) from Slotted
  |
- |  __signature__
- |
  |  ----------------------------------------------------------------------
  |  Data descriptors defined here:
  |

@@ -29,7 +29,7 @@ from collections.abc import Callable, Mapping
 from types import MappingProxyType
 
 from .constants import _NothingType
-from .methods import MethodMaker, _SignatureMaker
+from .methods import MethodMaker
 
 if sys.version_info >= (3, 14):
     import reannotate
@@ -98,7 +98,6 @@ def builder(
     gatherer: GathererProtocol[Field] | NoArgGathererProtocol,
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
-    fix_signature: bool = ...,
     field_getter: GetFieldsProtocol = ...,
 ) -> _TypeT: ...
 @typing.overload
@@ -109,7 +108,6 @@ def builder(
     gatherer: GathererProtocol[Field] | NoArgGathererProtocol,
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
-    fix_signature: bool = ...,
     field_getter: GetFieldsProtocol = ...,
 ) -> Callable[[_TypeT], _TypeT]: ...
 
@@ -157,7 +155,6 @@ class Field(metaclass=SlotMakerMeta):
 
     __slots__: dict[str, str]
     __classbuilder_internals__: dict
-    __signature__: _SignatureMaker
 
     def __init__(
         self,
