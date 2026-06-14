@@ -146,19 +146,8 @@ class TestCachedMethodsMatch:
         "as_dict",
     ]
 
-    @pytest.mark.parametrize("method", methods)
-    def test_non_init_methods(self, method):
-        @prefab(order=True, frozen=True, iter=True, dict_method=True)
-        class Ex:
-            a: int
-            b: int
-            c: int
-            d: int
-
-        maker = get_methods(Ex)[method]
-        codegen = maker.code_generator(Ex, method).generate()
-        cached = maker.cached_generator(Ex, method)
-
+    @staticmethod
+    def compare_code(codegen, cached):
         assert cached is not None
         assert codegen.__code__.co_code == cached.__code__.co_code
         assert codegen.__code__.co_names == cached.__code__.co_names
@@ -172,6 +161,20 @@ class TestCachedMethodsMatch:
         assert codegen.__defaults__ == cached.__defaults__
         assert codegen.__kwdefaults__ == cached.__kwdefaults__
 
+    @pytest.mark.parametrize("method", methods)
+    def test_non_init_methods(self, method):
+        @prefab(order=True, frozen=True, iter=True, dict_method=True)
+        class Ex:
+            a: int
+            b: int
+            c: int
+            d: int
+
+        maker = get_methods(Ex)[method]
+        codegen = maker.code_generator(Ex, method).generate()
+        cached = maker.cached_generator(Ex, method)
+
+        self.compare_code(codegen, cached)
 
     @pytest.mark.parametrize("frozen", [True, False])
     @pytest.mark.parametrize("slotted", [True, False])
@@ -187,18 +190,7 @@ class TestCachedMethodsMatch:
         codegen = maker.code_generator(Ex, method).generate()
         cached = maker.cached_generator(Ex, method)
 
-        assert cached is not None
-        assert codegen.__code__.co_code == cached.__code__.co_code
-        assert codegen.__code__.co_names == cached.__code__.co_names
-        assert codegen.__code__.co_consts == cached.__code__.co_consts
-        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
-        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
-        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount
-        assert codegen.__globals__ == cached.__globals__
-        assert codegen.__qualname__ == cached.__qualname__
-        assert codegen.__annotations__ == cached.__annotations__
-        assert codegen.__defaults__ == cached.__defaults__
-        assert codegen.__kwdefaults__ == cached.__kwdefaults__
+        self.compare_code(codegen, cached)
 
 
     @pytest.mark.parametrize("frozen", [True, False])
@@ -216,18 +208,7 @@ class TestCachedMethodsMatch:
         codegen = maker.code_generator(Ex, method).generate()
         cached = maker.cached_generator(Ex, method)
 
-        assert cached is not None
-        assert codegen.__code__.co_code == cached.__code__.co_code
-        assert codegen.__code__.co_names == cached.__code__.co_names
-        assert codegen.__code__.co_consts == cached.__code__.co_consts
-        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
-        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
-        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount == 1
-        assert codegen.__globals__ == cached.__globals__
-        assert codegen.__qualname__ == cached.__qualname__
-        assert codegen.__annotations__ == cached.__annotations__
-        assert codegen.__defaults__ == cached.__defaults__
-        assert codegen.__kwdefaults__ == cached.__kwdefaults__
+        self.compare_code(codegen, cached)
 
 
     @pytest.mark.parametrize("frozen", [True, False])
@@ -249,18 +230,7 @@ class TestCachedMethodsMatch:
         codegen = maker.code_generator(Ex, method).generate()
         cached = maker.cached_generator(Ex, method)
 
-        assert cached is not None
-        assert codegen.__code__.co_code == cached.__code__.co_code
-        assert codegen.__code__.co_names == cached.__code__.co_names
-        assert codegen.__code__.co_consts == cached.__code__.co_consts
-        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
-        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
-        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount == 1
-        assert codegen.__globals__ == cached.__globals__
-        assert codegen.__qualname__ == cached.__qualname__
-        assert codegen.__annotations__ == cached.__annotations__
-        assert codegen.__defaults__ == cached.__defaults__
-        assert codegen.__kwdefaults__ == cached.__kwdefaults__
+        self.compare_code(codegen, cached)
 
     @pytest.mark.parametrize("frozen", [True, False])
     @pytest.mark.parametrize("slotted", [True, False])
@@ -281,18 +251,7 @@ class TestCachedMethodsMatch:
         codegen = maker.code_generator(Ex, method).generate()
         cached = maker.cached_generator(Ex, method)
 
-        assert cached is not None
-        assert codegen.__code__.co_code == cached.__code__.co_code
-        assert codegen.__code__.co_names == cached.__code__.co_names
-        assert codegen.__code__.co_consts == cached.__code__.co_consts
-        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
-        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
-        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount == 1
-        assert codegen.__globals__ == cached.__globals__
-        assert codegen.__qualname__ == cached.__qualname__
-        assert codegen.__annotations__ == cached.__annotations__
-        assert codegen.__defaults__ == cached.__defaults__
-        assert codegen.__kwdefaults__ == cached.__kwdefaults__
+        self.compare_code(codegen, cached)
 
     def test_init_uncached(self):
         # Test the various options that break caching actually
