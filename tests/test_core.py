@@ -295,6 +295,15 @@ def test_slot_gatherer_failure():
         slot_gatherer(DictSlots)
 
 
+@pytest.mark.parametrize("func", [get_fields, get_flags, get_methods])
+def test_function_failures(func):
+    class NonBuilt:
+        pass
+
+    with pytest.raises(TypeError):
+        func(NonBuilt)
+
+
 @graalpy_fails
 def test_slotclass_empty():
     @slotclass
