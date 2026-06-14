@@ -24,7 +24,6 @@ __lazy_modules__: list[str]
 
 import types
 import typing
-import typing_extensions
 
 from collections.abc import Callable, Iterable
 

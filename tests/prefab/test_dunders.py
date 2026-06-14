@@ -2,7 +2,7 @@
 
 import types
 import pytest
-from ducktools.classbuilder.methods import MethodMaker, _AttachedMethod
+from ducktools.classbuilder.methods import _AttachedMethod
 from ducktools.classbuilder.prefab import attribute, prefab, SlotFields
 
 from utils import graalpy_fails  # type: ignore
