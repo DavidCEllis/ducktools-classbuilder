@@ -293,3 +293,54 @@ class TestCachedMethodsMatch:
         assert codegen.__annotations__ == cached.__annotations__
         assert codegen.__defaults__ == cached.__defaults__
         assert codegen.__kwdefaults__ == cached.__kwdefaults__
+
+    def test_init_uncached(self):
+        # Test the various options that break caching actually
+        # break caching as expected
+        method = "__init__"
+
+        # default_factory
+        @prefab
+        class Ex:
+            a: int
+            b: list[int] = attribute(default_factory=list)
+
+        maker = get_methods(Ex)[method]
+        cached = maker.cached_generator(Ex, method)
+        assert cached is None
+
+        # init=False with default
+        @prefab
+        class Ex:
+            a: int
+            b: int = attribute(default=42, init=False)
+
+        maker = get_methods(Ex)[method]
+        cached = maker.cached_generator(Ex, method)
+        assert cached is None
+
+        # prefab_pre_init
+        @prefab
+        class Ex:
+            a: int
+            b: int = 42
+
+            def __prefab_pre_init__(self):
+                pass
+
+        maker = get_methods(Ex)[method]
+        cached = maker.cached_generator(Ex, method)
+        assert cached is None
+
+        # prefab_post_init
+        @prefab
+        class Ex:
+            a: int
+            b: int = 42
+
+            def __prefab_post_init__(self):
+                pass
+
+        maker = get_methods(Ex)[method]
+        cached = maker.cached_generator(Ex, method)
+        assert cached is None
