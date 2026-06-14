@@ -10,7 +10,7 @@ from ducktools.classbuilder._create_precached_methods import generate_all_caches
 
 from ducktools.classbuilder.functions import get_methods
 from ducktools.classbuilder.methods import eq_maker, repr_maker
-from ducktools.classbuilder.prefab import attribute, prefab, build_prefab
+from ducktools.classbuilder.prefab import attribute, prefab, build_prefab, Prefab, KW_ONLY
 
 def test_cached_methods_match():
     # Test the pre-generated cache matches the source
@@ -147,7 +147,7 @@ class TestCachedMethodsMatch:
     ]
 
     @pytest.mark.parametrize("method", methods)
-    def test_basic_methods(self, method):
+    def test_non_init_methods(self, method):
         @prefab(order=True, frozen=True, iter=True, dict_method=True)
         class Ex:
             a: int
@@ -164,4 +164,132 @@ class TestCachedMethodsMatch:
         assert codegen.__code__.co_names == cached.__code__.co_names
         assert codegen.__code__.co_consts == cached.__code__.co_consts
         assert codegen.__code__.co_varnames == cached.__code__.co_varnames
+        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
+        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount
         assert codegen.__globals__ == cached.__globals__
+        assert codegen.__qualname__ == cached.__qualname__
+        assert codegen.__annotations__ == cached.__annotations__
+        assert codegen.__defaults__ == cached.__defaults__
+        assert codegen.__kwdefaults__ == cached.__kwdefaults__
+
+
+    @pytest.mark.parametrize("frozen", [True, False])
+    @pytest.mark.parametrize("slotted", [True, False])
+    def test_init_basic(self, frozen, slotted):
+        method = "__init__"
+        class Ex(Prefab, frozen=frozen, slots=slotted):
+            a: int
+            b: int
+            c: int = 2
+            d: int = 42
+
+        maker = get_methods(Ex)[method]
+        codegen = maker.code_generator(Ex, method).generate()
+        cached = maker.cached_generator(Ex, method)
+
+        assert cached is not None
+        assert codegen.__code__.co_code == cached.__code__.co_code
+        assert codegen.__code__.co_names == cached.__code__.co_names
+        assert codegen.__code__.co_consts == cached.__code__.co_consts
+        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
+        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
+        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount
+        assert codegen.__globals__ == cached.__globals__
+        assert codegen.__qualname__ == cached.__qualname__
+        assert codegen.__annotations__ == cached.__annotations__
+        assert codegen.__defaults__ == cached.__defaults__
+        assert codegen.__kwdefaults__ == cached.__kwdefaults__
+
+
+    @pytest.mark.parametrize("frozen", [True, False])
+    @pytest.mark.parametrize("slotted", [True, False])
+    def test_init_kwonly_end(self, frozen, slotted):
+        method = "__init__"
+        class Ex(Prefab, frozen=frozen, slots=slotted):
+            a: int
+            b: int
+            c: int = 2
+            _: KW_ONLY
+            d: int = 42
+
+        maker = get_methods(Ex)[method]
+        codegen = maker.code_generator(Ex, method).generate()
+        cached = maker.cached_generator(Ex, method)
+
+        assert cached is not None
+        assert codegen.__code__.co_code == cached.__code__.co_code
+        assert codegen.__code__.co_names == cached.__code__.co_names
+        assert codegen.__code__.co_consts == cached.__code__.co_consts
+        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
+        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
+        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount == 1
+        assert codegen.__globals__ == cached.__globals__
+        assert codegen.__qualname__ == cached.__qualname__
+        assert codegen.__annotations__ == cached.__annotations__
+        assert codegen.__defaults__ == cached.__defaults__
+        assert codegen.__kwdefaults__ == cached.__kwdefaults__
+
+
+    @pytest.mark.parametrize("frozen", [True, False])
+    @pytest.mark.parametrize("slotted", [True, False])
+    def test_init_kwonly_middle(self, frozen, slotted):
+        # This tests the difference if a kw_only parameter is defined
+        # in the middle of a class.
+        # The assignments should be done at the end for both cached
+        # and generated __init__
+        # This kind of logic will also be apparent in subclasses
+        method = "__init__"
+        class Ex(Prefab, frozen=frozen, slots=slotted):
+            a: int
+            b: int
+            c: int = attribute(default=2, kw_only=True)
+            d: int = 42
+
+        maker = get_methods(Ex)[method]
+        codegen = maker.code_generator(Ex, method).generate()
+        cached = maker.cached_generator(Ex, method)
+
+        assert cached is not None
+        assert codegen.__code__.co_code == cached.__code__.co_code
+        assert codegen.__code__.co_names == cached.__code__.co_names
+        assert codegen.__code__.co_consts == cached.__code__.co_consts
+        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
+        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
+        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount == 1
+        assert codegen.__globals__ == cached.__globals__
+        assert codegen.__qualname__ == cached.__qualname__
+        assert codegen.__annotations__ == cached.__annotations__
+        assert codegen.__defaults__ == cached.__defaults__
+        assert codegen.__kwdefaults__ == cached.__kwdefaults__
+
+    @pytest.mark.parametrize("frozen", [True, False])
+    @pytest.mark.parametrize("slotted", [True, False])
+    def test_init_base(self, frozen, slotted):
+        # This tests the difference if a kw_only parameter is defined
+        # in the middle of a class.
+        # The assignments should be done at the end for both cached
+        # and generated __init__
+        # This kind of logic will also be apparent in subclasses
+        method = "__init__"
+        class Ex(Prefab, frozen=frozen, slots=slotted):
+            a: int
+            b: int
+            c: int = attribute(default=2, kw_only=True)
+            d: int = 42
+
+        maker = get_methods(Ex)[method]
+        codegen = maker.code_generator(Ex, method).generate()
+        cached = maker.cached_generator(Ex, method)
+
+        assert cached is not None
+        assert codegen.__code__.co_code == cached.__code__.co_code
+        assert codegen.__code__.co_names == cached.__code__.co_names
+        assert codegen.__code__.co_consts == cached.__code__.co_consts
+        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
+        assert codegen.__code__.co_argcount == cached.__code__.co_argcount
+        assert codegen.__code__.co_kwonlyargcount == cached.__code__.co_kwonlyargcount == 1
+        assert codegen.__globals__ == cached.__globals__
+        assert codegen.__qualname__ == cached.__qualname__
+        assert codegen.__annotations__ == cached.__annotations__
+        assert codegen.__defaults__ == cached.__defaults__
+        assert codegen.__kwdefaults__ == cached.__kwdefaults__

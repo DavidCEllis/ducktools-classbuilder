@@ -337,7 +337,10 @@ def get_init_parameters(cls):
     if annotations:
         annotations["return"] = None
 
-    return varnames, argcount, kwonlyargcount, tuple(defaults), kwdefaults, annotations
+    defaults = tuple(defaults) if defaults else None
+    kwdefaults = kwdefaults if kwdefaults else None
+
+    return varnames, argcount, kwonlyargcount, defaults, kwdefaults, annotations
 
 
 def _fix_consts(consts, active_pair, pairs):
@@ -561,6 +564,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
         arglist = []
         kw_only_arglist = []
         assignments = []
+        kw_only_assignments = []
         globs = {}
         annotations = {}
 
@@ -600,10 +604,10 @@ def get_init_generator(null=NOTHING, extra_code=None):
 
                 if v.kw_only:
                     kw_only_arglist.append(arg)
+                    kw_only_assignments.append(assignment)
                 else:
                     arglist.append(arg)
-
-                assignments.append(assignment)
+                    assignments.append(assignment)
 
                 if v._type is not NOTHING:
                     annotations[k] = v._type
@@ -635,6 +639,8 @@ def get_init_generator(null=NOTHING, extra_code=None):
             args = f"*, {kw_args}"
         else:
             args = pos_args
+
+        assignments.extend(kw_only_assignments)
 
         assigns = "\n    ".join(assignments) if assignments else "pass\n"
         # fmt: off
