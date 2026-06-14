@@ -32,7 +32,7 @@ try:
         FunctionType as _FunctionType,
         MappingProxyType as _MappingProxyType,
     )
-except ImportError:
+except ImportError:  # pragma: no cover
     from types import (
         FunctionType as _FunctionType,
         MappingProxyType as _MappingProxyType,
@@ -41,7 +41,7 @@ except ImportError:
 
 from .annotations import apply_annotations
 from .constants import INTERNALS_DICT, NOTHING, REPLACE_NAME
-from .functions import get_fields, get_flags, get_methods
+from .functions import get_fields, get_flags
 
 try:
     from ._cached_methods import init_cache, setattr_cache
@@ -108,15 +108,6 @@ class GeneratedCode:
         if self.annotations:
             apply_annotations(method, self.annotations)
         return method
-
-
-def _get_method(cls, name):
-    try:
-        methods = get_methods(cls)
-    except TypeError:
-        return None
-
-    return methods.get(name, None)
 
 
 class MethodMaker:
