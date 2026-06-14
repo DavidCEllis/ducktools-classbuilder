@@ -29,8 +29,8 @@ def __init__(self, x, b='Not In Repr', c=None, f=42, *, e):
     self.b = b
     self.c = c if c is not None else []
     self.d = 'Not Anywhere'
-    self.e = e
     self.f = f
+    self.e = e
 
 def __replace__(self, /, **changes):
     new_kwargs = {

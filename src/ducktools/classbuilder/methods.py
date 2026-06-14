@@ -25,13 +25,14 @@ __lazy_modules__ = [
     "reprlib",
 ]
 
+import builtins
 import reprlib
 try:
     from _types import (  # type: ignore
         FunctionType as _FunctionType,
         MappingProxyType as _MappingProxyType,
     )
-except ImportError:
+except ImportError:  # pragma: no cover
     from types import (
         FunctionType as _FunctionType,
         MappingProxyType as _MappingProxyType,
@@ -40,7 +41,7 @@ except ImportError:
 
 from .annotations import apply_annotations
 from .constants import INTERNALS_DICT, NOTHING, REPLACE_NAME
-from .functions import get_fields, get_flags, get_methods
+from .functions import get_fields, get_flags
 
 try:
     from ._cached_methods import init_cache, setattr_cache
@@ -109,15 +110,6 @@ class GeneratedCode:
         return method
 
 
-def _get_method(cls, name):
-    try:
-        methods = get_methods(cls)
-    except TypeError:
-        return None
-
-    return methods.get(name, None)
-
-
 class MethodMaker:
     """
     The descriptor class to place where methods should be generated.
@@ -126,13 +118,19 @@ class MethodMaker:
     This is used to convert a code generator that returns code and a globals
     dictionary into a descriptor to assign on a generated class.
     """
-
-    def __init__(self, funcname, code_generator, cached_generator=None, decorator=None):
+    __slots__ = (
+        "funcname",
+        "code_generator",
+        "cached_generator",
+        "decorator",
+    )
+    def __init__(self, funcname, code_generator, *, cached_generator=None, decorator=None):
         """
         :param funcname: name of the generated function eg `__init__`
         :param code_generator: code generator function to operate on a class.
         :param cached_generator: a method generator that includes an internal cache
         :param decorator: a decorator to apply directly to method after it has been created
+        :param cls: The class the decorator is being attached to
         """
 
         self.funcname = funcname
@@ -143,36 +141,22 @@ class MethodMaker:
     def __repr__(self):
         return f"<MethodMaker for {self.funcname!r} method>"
 
-    def __get__(self, inst, cls):
-        # This can be called via a subclass or through
-        # super().funcname(...) in which case the class
-        # may not be the correct one. If this is the correct class
-        # it should have this descriptor in the class dict under
-        # the correct funcname.
-        # Otherwise is should be found in the MRO of the class.
+    def attach(self, cls):
+        # Creates an `AttachedMethod` that attaches this `MethodMaker`
+        # to the class as a descriptor
+        method = _AttachedMethod(self, cls)
+        setattr(cls, self.funcname, method)
 
-        if _get_method(cls, self.funcname) is self:
-            gen_cls = cls
-        else:
-            for c in cls.__mro__[1:]:  # skip 'cls' as special cased
-                if _get_method(c, self.funcname) is self:
-                    gen_cls = c
-                    break
-            else:
-                # This should only be reached if called with incorrect arguments
-                # manually
-                raise AttributeError(
-                    f"Could not find {self!r} in class {cls.__name__!r} MRO."
-                )
-
+    def generate(self, cls):
+        # Generate and return a method for the given class
         method = None
         if self.cached_generator:
             # If the class is not supported by the cached generator, this returns
             # None to fall back to the standard generator.
-            method = self.cached_generator(gen_cls, funcname=self.funcname)
+            method = self.cached_generator(cls, funcname=self.funcname)
 
         if method is None:
-            method = self.code_generator(gen_cls, funcname=self.funcname).generate()
+            method = self.code_generator(cls, funcname=self.funcname).generate()
 
         # Patch up the method name and annotations
         try:
@@ -185,42 +169,37 @@ class MethodMaker:
         if self.decorator:
             method = self.decorator(method)
 
+        return method
+
+
+class _AttachedMethod:
+    """
+    Descriptor for attaching a method maker to a class.
+    """
+    __slots__ = ("maker", "cls")
+    def __init__(self, maker, cls):
+        self.maker = maker
+        self.cls = cls
+
+    def __repr__(self):
+            return f"<_AttachedMethod for {self.maker.funcname!r} method on {self.cls.__qualname__!r}>"
+
+    def __eq__(self, other):
+        if self.__class__ is not other.__class__:
+            return NotImplemented
+        return (
+            self.maker == other.maker
+            and self.cls == other.cls
+        )
+
+    def __get__(self, inst, cls=None):
+        method = self.maker.generate(self.cls)
         # Replace this descriptor on the class with the generated function
-        setattr(gen_cls, self.funcname, method)
+        setattr(self.cls, self.maker.funcname, method)
 
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
         return method.__get__(inst, cls)
-
-
-class _SignatureMaker:
-    # 'inspect.signature' calls the `__get__` method of the `__init__` methodmaker with
-    # the wrong arguments.
-    # Instead of __get__(None, cls) or __get__(inst, type(inst))
-    # it uses __get__(cls, type(cls)).
-    #
-    # If this is done before `__init__` has been generated then
-    # help(cls) will fail along with inspect.signature(cls)
-    # This signature maker descriptor is placed to override __signature__ and force
-    # the `__init__` signature to be generated first if the signature is requested.
-    def __get__(self, instance, cls=None):
-        if cls is None:
-            cls = type(instance)
-
-        # force generation of `__init__` function
-        _ = cls.__init__
-
-        if instance is None:
-            raise AttributeError(
-                f"type object {cls.__name__!r} has no attribute '__signature__'"
-            )
-        else:
-            raise AttributeError(
-                f"{cls.__name__!r} objecthas no attribute '__signature__'"
-            )
-
-
-signature_maker = _SignatureMaker()
 
 
 # Argument getters for the generic cached methods
@@ -349,7 +328,10 @@ def get_init_parameters(cls):
     if annotations:
         annotations["return"] = None
 
-    return varnames, argcount, kwonlyargcount, tuple(defaults), kwdefaults, annotations
+    defaults = tuple(defaults) if defaults else None
+    kwdefaults = kwdefaults if kwdefaults else None
+
+    return varnames, argcount, kwonlyargcount, defaults, kwdefaults, annotations
 
 
 def _fix_consts(consts, active_pair, pairs):
@@ -368,7 +350,7 @@ def _fix_consts(consts, active_pair, pairs):
                     except IndexError:
                         # All placeholders have been replaced
                         active_pair = None
-            elif isinstance(const, tuple):
+            elif isinstance(const, tuple):  # cover-req-lt3.14
                 new_const = _fix_consts(const, active_pair, pairs)
             else:
                 new_const = const
@@ -529,6 +511,10 @@ def counter_to_class_generator(
 
         globs = {} if globals_getter is None else globals_getter(cls)
 
+        # The exec() call would normally insert this but it's not included automatically
+        # by functiontype so make sure to add it here
+        globs["__builtins__"] = builtins.__dict__
+
         method = _FunctionType(
             raw_func.__code__.replace(
                 co_names=new_co_names,
@@ -569,6 +555,7 @@ def get_init_generator(null=NOTHING, extra_code=None):
         arglist = []
         kw_only_arglist = []
         assignments = []
+        kw_only_assignments = []
         globs = {}
         annotations = {}
 
@@ -608,10 +595,10 @@ def get_init_generator(null=NOTHING, extra_code=None):
 
                 if v.kw_only:
                     kw_only_arglist.append(arg)
+                    kw_only_assignments.append(assignment)
                 else:
                     arglist.append(arg)
-
-                assignments.append(assignment)
+                    assignments.append(assignment)
 
                 if v._type is not NOTHING:
                     annotations[k] = v._type
@@ -643,6 +630,8 @@ def get_init_generator(null=NOTHING, extra_code=None):
             args = f"*, {kw_args}"
         else:
             args = pos_args
+
+        assignments.extend(kw_only_assignments)
 
         assigns = "\n    ".join(assignments) if assignments else "pass\n"
         # fmt: off
@@ -1082,7 +1071,7 @@ def add_methods(cls, methods, *, internals=None):
     new_methods = {}
 
     for method in methods:
-        setattr(cls, method.funcname, method)
+        method.attach(cls)
         new_methods[method.funcname] = method
 
     all_methods = _MappingProxyType(existing_methods | new_methods)

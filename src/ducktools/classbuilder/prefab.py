@@ -272,7 +272,11 @@ def init_generator(cls, funcname="__init__"):
     else:
         args = pos_args
 
+    # assignments for keyword-only parameters are done after kw or positional
+    # parameters in order to make the bytecode more consistent and match cached
+    # examples.
     assignments = []
+    kw_only_assignments = []
     processes = []  # post_init values still need default factories to be called.
     for name, attrib in attributes.items():
         if attrib.init:
@@ -301,13 +305,18 @@ def init_generator(cls, funcname="__init__"):
             if attrib.default_factory is not NOTHING:
                 processes.append((name, value))
         elif value is not None:
-            assignments.append((name, value))
+            if attrib.kw_only:
+                kw_only_assignments.append((name, value))
+            else:
+                assignments.append((name, value))
 
     if hasattr(cls, PRE_INIT_FUNC):
         pre_init_arg_call = ", ".join(f"{name}={name}" for name in pre_init_args)
         pre_init_call = f"    self.{PRE_INIT_FUNC}({pre_init_arg_call})\n"
     else:
         pre_init_call = ""
+
+    assignments.extend(kw_only_assignments)
 
     if assignments or processes:
         if frozen and slotted:
@@ -317,9 +326,9 @@ def init_generator(cls, funcname="__init__"):
                 for name, value in assignments
             )
         elif frozen:
-            body = "    __prefab_selfdict = self.__dict__\n"
+            body = "    __classbuilder_selfdict = self.__dict__\n"
             body += "\n".join(
-                f"    __prefab_selfdict[{name!r}] = {value}"
+                f"    __classbuilder_selfdict[{name!r}] = {value}"
                 for name, value in assignments
             )
         else:

@@ -65,6 +65,28 @@ class C{n}:
     e: int
 '''
 
+dataclass_init_template = '''
+@dataclass
+class C{n}:
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+
+C{n}.__init__
+'''
+
+dataclass_slotted_template = '''
+@dataclass(slots=True)
+class C{n}:
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+'''
+
 attr_template = '''
 @define
 class C{n}:
@@ -259,6 +281,12 @@ def run_all_tests(reps, test_everything=False):
 
         write_perftemp(100, dataclass_template, 'from dataclasses import dataclass\n')
         run_test('dataclasses', reps)
+
+        write_perftemp(100, dataclass_init_template, 'from dataclasses import dataclass\n')
+        run_test('dataclasses with init', reps)
+
+        write_perftemp(100, dataclass_slotted_template, 'from dataclasses import dataclass\n')
+        run_test('dataclasses with slots', reps)
 
         try:
             import attrs  # type: ignore

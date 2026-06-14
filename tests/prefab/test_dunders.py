@@ -2,7 +2,7 @@
 
 import types
 import pytest
-from ducktools.classbuilder import MethodMaker
+from ducktools.classbuilder.methods import _AttachedMethod
 from ducktools.classbuilder.prefab import attribute, prefab, SlotFields
 
 from utils import graalpy_fails  # type: ignore
@@ -119,7 +119,7 @@ class TestOrder:
             z: int
             t: int
 
-        assert isinstance (Ordered4D.__dict__["__lt__"], MethodMaker)
+        assert isinstance (Ordered4D.__dict__["__lt__"], _AttachedMethod)
 
         x = Ordered4D(1, 2, 3, 4)
         y = Ordered4D(1, 2, 3, 5)
@@ -138,7 +138,7 @@ class TestOrder:
             z: int
             t: int
 
-        assert isinstance (Ordered4D.__dict__["__le__"], MethodMaker)
+        assert isinstance (Ordered4D.__dict__["__le__"], _AttachedMethod)
 
         x = Ordered4D(1, 2, 3, 4)
         y = Ordered4D(1, 2, 3, 5)
@@ -158,7 +158,7 @@ class TestOrder:
             z: int
             t: int
 
-        assert isinstance (Ordered4D.__dict__["__gt__"], MethodMaker)
+        assert isinstance (Ordered4D.__dict__["__gt__"], _AttachedMethod)
 
         x = Ordered4D(1, 2, 3, 4)
         y = Ordered4D(1, 2, 3, 5)
@@ -177,7 +177,7 @@ class TestOrder:
             z: int
             t: int
 
-        assert isinstance (Ordered4D.__dict__["__ge__"], MethodMaker)
+        assert isinstance (Ordered4D.__dict__["__ge__"], _AttachedMethod)
 
         x = Ordered4D(1, 2, 3, 4)
         y = Ordered4D(1, 2, 3, 5)
