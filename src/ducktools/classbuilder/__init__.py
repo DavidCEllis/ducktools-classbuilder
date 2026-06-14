@@ -588,10 +588,6 @@ class Field(metaclass=SlotMakerMeta):
             # Under testing, frozen logic will prevent writing to _test
             object.__setattr__(self, "_type", value)
 
-    @type.deleter
-    def type(self):
-        del self._type
-
 
 def _build_field():
     # Complete the construction of the Field class
