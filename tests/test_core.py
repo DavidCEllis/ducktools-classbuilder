@@ -30,6 +30,7 @@ from ducktools.classbuilder.functions import (
 from ducktools.classbuilder.methods import (
     GeneratedCode,
     MethodMaker,
+    _AttachedMethod,
 
     add_methods,
     eq_maker,
@@ -81,11 +82,15 @@ def test_method_maker():
         def __init__(self):
             self.x = "Example Value"
 
+    assert generator(ValueX) == generator(ValueX)
+    assert generator(ValueX) != ''  # Test the NotImplemented branch
+
     add_methods(ValueX, [method_desc])
 
     ex = ValueX()
 
-    assert ValueX.__dict__["demo"].maker == method_desc
+    assert ValueX.__dict__["demo"] != method_desc
+    assert ValueX.__dict__["demo"] == _AttachedMethod(method_desc, ValueX)
 
     assert ex.x == "Example Value"
     assert ex.demo() == "Example Value"
