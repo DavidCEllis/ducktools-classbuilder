@@ -157,7 +157,7 @@ def test_kw_flag_no_defaults():
     assert repr(x).endswith("KWFlagNoDefaults(x=1, y=2)")
 
 
-def test_kw_flat_defaults():
+def test_kw_flag_defaults():
     @prefab
     class KWFlagXDefault:
         x: int = 1
@@ -173,3 +173,14 @@ def test_kw_flat_defaults():
     assert (x.x, x.y) == (1, 2)
     assert x == y
     assert repr(x).endswith("KWFlagXDefault(x=1, y=2)")
+
+
+def test_kw_flag_twice_raises():
+    with pytest.raises(SyntaxError):
+        @prefab
+        class KWFlagXDefault:
+            x: int = 1
+            _: KW_ONLY  # type: ignore
+            y: int  # type: ignore
+            __: KW_ONLY  # type: ignore
+            z: int
