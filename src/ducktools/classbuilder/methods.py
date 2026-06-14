@@ -25,6 +25,7 @@ __lazy_modules__ = [
     "reprlib",
 ]
 
+import builtins
 import reprlib
 try:
     from _types import (  # type: ignore
@@ -515,6 +516,10 @@ def counter_to_class_generator(
             annotations = None
 
         globs = {} if globals_getter is None else globals_getter(cls)
+
+        # The exec() call would normally insert this but it's not included automatically
+        # by functiontype so make sure to add it here
+        globs["__builtins__"] = builtins.__dict__
 
         method = _FunctionType(
             raw_func.__code__.replace(

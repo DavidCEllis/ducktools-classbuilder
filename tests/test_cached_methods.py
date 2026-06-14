@@ -3,9 +3,12 @@
 
 from pathlib import Path
 
+import pytest
+
 import ducktools.classbuilder._cached_methods as _cached_methods
 from ducktools.classbuilder._create_precached_methods import generate_all_caches
 
+from ducktools.classbuilder.functions import get_methods
 from ducktools.classbuilder.methods import eq_maker, repr_maker
 from ducktools.classbuilder.prefab import attribute, prefab, build_prefab
 
@@ -123,3 +126,42 @@ class TestCache:
         assert eq_stats.misses == 1
         assert repr_stats.hits == 1
         assert repr_stats.misses == 1
+
+
+class TestCachedMethodsMatch:
+    # Tests that the cached methods match those that would be generated
+    methods = [
+        "__init__",
+        "__eq__",
+        "__repr__",
+        "__replace__",
+        "__setattr__",
+        "__delattr__",
+        "__hash__",
+        "__lt__",
+        "__le__",
+        "__gt__",
+        "__ge__",
+        "__iter__",
+        "as_dict",
+    ]
+
+    @pytest.mark.parametrize("method", methods)
+    def test_basic_methods(self, method):
+        @prefab(order=True, frozen=True, iter=True, dict_method=True)
+        class Ex:
+            a: int
+            b: int
+            c: int
+            d: int
+
+        maker = get_methods(Ex)[method]
+        codegen = maker.code_generator(Ex, method).generate()
+        cached = maker.cached_generator(Ex, method)
+
+        assert cached is not None
+        assert codegen.__code__.co_code == cached.__code__.co_code
+        assert codegen.__code__.co_names == cached.__code__.co_names
+        assert codegen.__code__.co_consts == cached.__code__.co_consts
+        assert codegen.__code__.co_varnames == cached.__code__.co_varnames
+        assert codegen.__globals__ == cached.__globals__

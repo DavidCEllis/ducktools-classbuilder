@@ -317,9 +317,9 @@ def init_generator(cls, funcname="__init__"):
                 for name, value in assignments
             )
         elif frozen:
-            body = "    __prefab_selfdict = self.__dict__\n"
+            body = "    __classbuilder_selfdict = self.__dict__\n"
             body += "\n".join(
-                f"    __prefab_selfdict[{name!r}] = {value}"
+                f"    __classbuilder_selfdict[{name!r}] = {value}"
                 for name, value in assignments
             )
         else:
