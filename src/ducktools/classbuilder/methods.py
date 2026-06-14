@@ -350,7 +350,7 @@ def _fix_consts(consts, active_pair, pairs):
                     except IndexError:
                         # All placeholders have been replaced
                         active_pair = None
-            elif isinstance(const, tuple):
+            elif isinstance(const, tuple):  # cover-req-lt3.14
                 new_const = _fix_consts(const, active_pair, pairs)
             else:
                 new_const = const
