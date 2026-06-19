@@ -27,6 +27,7 @@ __lazy_modules__ = [
 
 import builtins
 import reprlib
+import _thread
 try:
     from _types import (  # type: ignore
         FunctionType as _FunctionType,
@@ -176,10 +177,14 @@ class _AttachedMethod:
     """
     Descriptor for attaching a method maker to a class.
     """
-    __slots__ = ("maker", "cls")
+    __slots__ = ("maker", "cls", "_generated_method", "_lock")
     def __init__(self, maker, cls):
         self.maker = maker
         self.cls = cls
+
+        # Internals
+        self._generated_method = None
+        self._lock = _thread.allocate_lock()  # in 3.12 _thread.lock doesn't exist
 
     def __repr__(self):
             return f"<_AttachedMethod for {self.maker.funcname!r} method on {self.cls.__qualname__!r}>"
@@ -193,13 +198,17 @@ class _AttachedMethod:
         )
 
     def __get__(self, inst, cls=None):
-        method = self.maker.generate(self.cls)
-        # Replace this descriptor on the class with the generated function
-        setattr(self.cls, self.maker.funcname, method)
+        with self._lock:
+            # Check again in case something held the lock
+            if self._generated_method is None:
+                self._generated_method = self.maker.generate(self.cls)
+
+                # Replace this descriptor on the class with the generated function
+                setattr(self.cls, self.maker.funcname, self._generated_method)
 
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
-        return method.__get__(inst, cls)
+        return self._generated_method.__get__(inst, cls)
 
 
 # Argument getters for the generic cached methods
