@@ -439,7 +439,7 @@ class _SimpleCache:
                 except KeyError:
                     result = self._func(*args, **kwargs)
                     self._internal_cache[args] = result
-            self._stats.misses += 1
+                    self._stats.misses += 1
 
         return result
 
