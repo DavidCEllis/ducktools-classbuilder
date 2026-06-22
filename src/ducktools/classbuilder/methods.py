@@ -403,12 +403,13 @@ class _SimpleCache:
     for caching purposes.
     """
 
-    __slots__ = ("_func", "_seed", "_stats")
+    __slots__ = ("_func", "_internal_cache", "_stats", "_lock_cache")
 
     def __init__(self, func, *, cache_seed=None):
         self._func = func
-        self._seed = {} if cache_seed is None else dict(cache_seed)
+        self._internal_cache = {} if cache_seed is None else dict(cache_seed)
         self._stats = _CacheStats()
+        self._lock_cache = {}
 
     def __repr__(self):
         return f"<{type(self).__name__} for {self._func}>"
@@ -419,19 +420,25 @@ class _SimpleCache:
 
     @property
     def state(self):
-        return _MappingProxyType(self._seed)
+        return _MappingProxyType(self._internal_cache)
 
     def clear(self, new_cache=None):
-        self._seed = {} if new_cache is None else dict(new_cache)
+        self._internal_cache = {} if new_cache is None else dict(new_cache)
         self._stats = _CacheStats()
 
     def __call__(self, *args, **kwargs):
         try:
-            result = self._seed[args]
+            result = self._internal_cache[args]
             self._stats.hits += 1
         except KeyError:
-            result = self._func(*args, **kwargs)
-            self._seed[args] = result
+            lock = self._lock_cache.setdefault(args, _thread.allocate_lock())
+            with lock:
+                try:
+                    result = self._internal_cache[args]
+                    self._stats.hits += 1
+                except KeyError:
+                    result = self._func(*args, **kwargs)
+                    self._internal_cache[args] = result
             self._stats.misses += 1
 
         return result
