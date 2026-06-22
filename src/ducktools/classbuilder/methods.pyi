@@ -22,6 +22,7 @@
 
 __lazy_modules__: list[str]
 
+import threading
 import types
 import typing
 
@@ -108,6 +109,10 @@ class _AttachedMethod:
     __slots__: tuple[str, ...]
     maker: MethodMaker
     cls: type
+
+    _generated_method: types.FunctionType
+    _lock: threading.Lock
+
     def __init__(
         self,
         maker: MethodMaker,
@@ -115,6 +120,8 @@ class _AttachedMethod:
     ) -> None: ...
     def __repr__(self) -> str: ...
     def __eq__(self, other) -> bool: ...
+    def generate(self) -> types.FunctionType: ...
+    def __call__(self, *args, **kwargs) -> typing.Any: ...
     @typing.overload
     def __get__[T](
         self,
@@ -168,8 +175,9 @@ class _CacheStats:
 class _SimpleCache:
     __slots__: tuple[str, ...]
     _func: Callable[..., types.FunctionType]
-    _seed: dict[tuple, types.FunctionType]
+    _internal_cache: dict[tuple, types.FunctionType]
     _stats: _CacheStats
+    _lock_cache: dict[tuple, threading.Lock]
     def __init__(
         self,
         func: types.FunctionType,

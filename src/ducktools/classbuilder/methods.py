@@ -197,18 +197,26 @@ class _AttachedMethod:
             and self.cls == other.cls
         )
 
+    def generate(self):
+        if self._generated_method is None:
+            # Generate the method and attach it to the class
+            with self._lock:
+                # Check again in case something held the lock
+                if self._generated_method is None:
+                    self._generated_method = self.maker.generate(self.cls)
+
+                    # Replace this descriptor on the class with the generated function
+                    setattr(self.cls, self.maker.funcname, self._generated_method)
+
+        return self._generated_method
+
+    def __call__(self, *args, **kwargs):
+        return self.generate()(*args, **kwargs)
+
     def __get__(self, inst, cls=None):
-        with self._lock:
-            # Check again in case something held the lock
-            if self._generated_method is None:
-                self._generated_method = self.maker.generate(self.cls)
-
-                # Replace this descriptor on the class with the generated function
-                setattr(self.cls, self.maker.funcname, self._generated_method)
-
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
-        return self._generated_method.__get__(inst, cls)
+        return self.generate().__get__(inst, cls)
 
 
 # Argument getters for the generic cached methods
