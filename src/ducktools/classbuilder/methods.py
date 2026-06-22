@@ -197,18 +197,26 @@ class _AttachedMethod:
             and self.cls == other.cls
         )
 
+    def generate(self):
+        if self._generated_method is None:
+            # Generate the method and attach it to the class
+            with self._lock:
+                # Check again in case something held the lock
+                if self._generated_method is None:
+                    self._generated_method = self.maker.generate(self.cls)
+
+                    # Replace this descriptor on the class with the generated function
+                    setattr(self.cls, self.maker.funcname, self._generated_method)
+
+        return self._generated_method
+
+    def __call__(self, *args, **kwargs):
+        return self.generate()(*args, **kwargs)
+
     def __get__(self, inst, cls=None):
-        with self._lock:
-            # Check again in case something held the lock
-            if self._generated_method is None:
-                self._generated_method = self.maker.generate(self.cls)
-
-                # Replace this descriptor on the class with the generated function
-                setattr(self.cls, self.maker.funcname, self._generated_method)
-
         # Use 'get' to return the generated function as a bound method
         # instead of as a regular function for first usage.
-        return self._generated_method.__get__(inst, cls)
+        return self.generate().__get__(inst, cls)
 
 
 # Argument getters for the generic cached methods
@@ -403,12 +411,13 @@ class _SimpleCache:
     for caching purposes.
     """
 
-    __slots__ = ("_func", "_seed", "_stats")
+    __slots__ = ("_func", "_internal_cache", "_stats", "_lock_cache")
 
     def __init__(self, func, *, cache_seed=None):
         self._func = func
-        self._seed = {} if cache_seed is None else dict(cache_seed)
+        self._internal_cache = {} if cache_seed is None else dict(cache_seed)
         self._stats = _CacheStats()
+        self._lock_cache = {}
 
     def __repr__(self):
         return f"<{type(self).__name__} for {self._func}>"
@@ -419,20 +428,26 @@ class _SimpleCache:
 
     @property
     def state(self):
-        return _MappingProxyType(self._seed)
+        return _MappingProxyType(self._internal_cache)
 
     def clear(self, new_cache=None):
-        self._seed = {} if new_cache is None else dict(new_cache)
+        self._internal_cache = {} if new_cache is None else dict(new_cache)
         self._stats = _CacheStats()
 
     def __call__(self, *args, **kwargs):
         try:
-            result = self._seed[args]
+            result = self._internal_cache[args]
             self._stats.hits += 1
         except KeyError:
-            result = self._func(*args, **kwargs)
-            self._seed[args] = result
-            self._stats.misses += 1
+            lock = self._lock_cache.setdefault(args, _thread.allocate_lock())
+            with lock:
+                try:
+                    result = self._internal_cache[args]
+                    self._stats.hits += 1
+                except KeyError:
+                    result = self._func(*args, **kwargs)
+                    self._internal_cache[args] = result
+                    self._stats.misses += 1
 
         return result
 
