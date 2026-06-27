@@ -386,12 +386,31 @@ def get_counter_field_names(argcount):
 
 # Classes to handle cached methods
 class _CacheStats:
-    __slots__ = ("hits", "misses", "skips")
+    __slots__ = (
+        "hits", "misses", "skips",
+        "_hitlock", "_misslock", "_skiplock",
+    )
 
     def __init__(self):
         self.hits = 0
         self.misses = 0
         self.skips = 0
+
+        self._hitlock = _thread.allocate_lock()
+        self._misslock = _thread.allocate_lock()
+        self._skiplock = _thread.allocate_lock()
+
+    def add_hit(self):
+        with self._hitlock:
+            self.hits += 1
+
+    def add_miss(self):
+        with self._misslock:
+            self.misses += 1
+
+    def add_skip(self):
+        with self._skiplock:
+            self.skips += 1
 
     @property
     def hit_percent(self):
@@ -437,17 +456,17 @@ class _SimpleCache:
     def __call__(self, *args, **kwargs):
         try:
             result = self._internal_cache[args]
-            self._stats.hits += 1
+            self._stats.add_hit()
         except KeyError:
             lock = self._lock_cache.setdefault(args, _thread.allocate_lock())
             with lock:
                 try:
                     result = self._internal_cache[args]
-                    self._stats.hits += 1
+                    self._stats.add_hit()
                 except KeyError:
                     result = self._func(*args, **kwargs)
                     self._internal_cache[args] = result
-                    self._stats.misses += 1
+                    self._stats.add_miss()
 
         return result
 
@@ -482,7 +501,7 @@ def counter_to_class_generator(
         if args is None:
             # If the argument getter returns None
             # the method is not cacheable
-            source_exec.stats.skips += 1  # Add one to skip count
+            source_exec.stats.add_skip()  # Add one to skip count
             return None
 
         # The first argument should always be a tuple of fields
