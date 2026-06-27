@@ -22,7 +22,7 @@
 
 __lazy_modules__: list[str]
 
-import threading
+import _thread
 import types
 import typing
 
@@ -111,7 +111,7 @@ class _AttachedMethod:
     cls: type
 
     _generated_method: types.FunctionType
-    _lock: threading.Lock
+    _lock: _thread.LockType
 
     def __init__(
         self,
@@ -163,10 +163,19 @@ def get_init_parameters(cls: type) -> _FunctionParameterType: ...
 def get_counter_field_names(argcount: int) -> list[str]: ...
 
 class _CacheStats:
-    __slots__: tuple[str, str, str]
+    __slots__: tuple[str, ...]
     hits: int
     misses: int
     skips: int
+
+    _hitlock: _thread.LockType
+    _misslock: _thread.LockType
+    _skiplock: _thread.LockType
+
+    def add_hit(self) -> None: ...
+    def add_miss(self) -> None: ...
+    def add_skip(self) -> None: ...
+
     @property
     def hit_percent(self) -> float: ...
     def __init__(self) -> None: ...
@@ -177,7 +186,7 @@ class _SimpleCache:
     _func: Callable[..., types.FunctionType]
     _internal_cache: dict[tuple, types.FunctionType]
     _stats: _CacheStats
-    _lock_cache: dict[tuple, threading.Lock]
+    _lock_cache: dict[tuple, _thread.LockType]
     def __init__(
         self,
         func: types.FunctionType,
