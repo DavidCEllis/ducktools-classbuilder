@@ -154,3 +154,53 @@ def apply_annotations(obj, annotations):
         obj.__annotate__ = _reannotate.ReAnnotate(annotations)
     else:
         obj.__annotations__ = annotations
+
+
+def is_classvar(hint):
+    if isinstance(hint, str):
+        # String annotations, just check if the string 'ClassVar' is in there
+        # This is overly broad and could be smarter.
+        return "ClassVar" in hint
+    else:
+        _typing = sys.modules.get("typing")
+        has_reannotate = "reannotate" in sys.modules
+        if _typing:
+            _Annotated = _typing.Annotated
+            _get_origin = _typing.get_origin
+
+            if _get_origin(hint) is _Annotated:
+                # Extract from `Annotated` in a resolved annotation
+                hint = getattr(hint, "__origin__", None)
+
+            elif has_reannotate and isinstance(hint, _reannotate.DeferredAnnotation):
+                # Extract from a deferred annotation
+                # Include unwrapping from annotated if necessary
+                origin, args = _reannotate.get_origin(hint), _reannotate.get_args(hint)
+                if origin is None:
+                    # Could be a plain classvar with no subscript
+                    hint = hint.evaluate(format=_annotationlib.Format.FORWARDREF)
+                else:
+                    origin = origin.evaluate(format=_annotationlib.Format.FORWARDREF)
+                    if origin is _Annotated:
+                        if args:
+                            # Try to get the origin again
+                            origin = _reannotate.get_origin(args[0])
+                            if origin is None:
+                                # Potentially a plain `ClassVar` with no subscript
+                                hint = args[0].evaluate(format=_annotationlib.Format.FORWARDREF)
+                            else:
+                                # Potentially a ClassVar with a subscript
+                                # We're not going to recurse any further so try to evaluate
+                                hint = origin.evaluate(format=_annotationlib.Format.FORWARDREF)
+                        else:
+                            # No argument Annotated?
+                            # This is invalid, but also not a ClassVar
+                            return False
+                    else:
+                        hint = origin
+            if (
+                hint is _typing.ClassVar
+                or getattr(hint, "__origin__", None) is _typing.ClassVar
+            ):
+                return True
+    return False

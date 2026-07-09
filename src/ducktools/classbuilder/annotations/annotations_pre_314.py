@@ -19,6 +19,8 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+import sys
+
 
 def get_func_annotations(func):
     """
@@ -29,6 +31,7 @@ def get_func_annotations(func):
     """
     return func.__annotations__
 
+
 # This is simplified under 3.13 or earlier
 def get_ns_annotations(ns, cls=None):
     annotations = ns.get("__annotations__")
@@ -38,8 +41,34 @@ def get_ns_annotations(ns, cls=None):
         annotations = {}
     return annotations
 
+
 def resolve_type(obj, stringify_forwardrefs=False):
     return obj
 
+
 def apply_annotations(obj, annotations):
     obj.__annotations__ = annotations
+
+
+def is_classvar(hint):
+    # This is a duplicate of `is_type` but for ClassVar to avoid
+    # importing ClassVar to check it
+    if isinstance(hint, str):
+        # String annotations, just check if the string 'ClassVar' is in there
+        # This is overly broad and could be smarter.
+        return "ClassVar" in hint
+    else:
+        _typing = sys.modules.get("typing")
+        if _typing:
+            _Annotated = _typing.Annotated
+            _get_origin = _typing.get_origin
+
+            if _Annotated and _get_origin(hint) is _Annotated:
+                hint = getattr(hint, "__origin__", None)
+
+            if (
+                hint is _typing.ClassVar
+                or getattr(hint, "__origin__", None) is _typing.ClassVar
+            ):
+                return True
+    return False
