@@ -8,7 +8,7 @@ sys.path.insert(0, _helpers)
 
 collect_ignore: list[str] = []
 
-if sys.version_info < (3, 16):
+if sys.version_info < (3, 18):
     minor_ver = sys.version_info.minor
 
     collect_ignore.extend(

@@ -742,11 +742,12 @@ def make_annotation_gatherer(
         kw_flag = False
 
         for k, v in cls_annotations.items():
-            _t = resolve_type(v, stringify_forwardrefs=False)
-
-            # Ignore ClassVar
-            if is_classvar(_t):
+            # Ignore ClassVar - is_classvar will handle deferred annotations
+            if is_classvar(v):
                 continue
+
+            # Resolve any deferred annotations for further logic
+            _t = resolve_type(v, stringify_forwardrefs=False)
 
             if _t is KW_ONLY or (isinstance(_t, str) and _t == "KW_ONLY"):
                 if kw_flag:

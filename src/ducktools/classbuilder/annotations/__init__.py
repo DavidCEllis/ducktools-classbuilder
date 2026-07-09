@@ -27,6 +27,7 @@ if sys.version_info >= (3, 14):  # cover-req-le3.14
         apply_annotations,
         get_func_annotations,
         get_ns_annotations,
+        is_classvar,
         resolve_type,
     )
 else:  # cover-req-lt3.14
@@ -34,6 +35,7 @@ else:  # cover-req-lt3.14
         apply_annotations,
         get_func_annotations,
         get_ns_annotations,
+        is_classvar,
         resolve_type,
     )
 
@@ -46,30 +48,6 @@ __all__ = [
     "is_type",
     "resolve_type",
 ]
-
-
-def is_classvar(hint):
-    # This is a duplicate of `is_type` but for ClassVar to avoid
-    # importing ClassVar to check it
-    if isinstance(hint, str):
-        # String annotations, just check if the string 'ClassVar' is in there
-        # This is overly broad and could be smarter.
-        return "ClassVar" in hint
-    else:
-        _typing = sys.modules.get("typing")
-        if _typing:
-            _Annotated = _typing.Annotated
-            _get_origin = _typing.get_origin
-
-            if _Annotated and _get_origin(hint) is _Annotated:
-                hint = getattr(hint, "__origin__", None)
-
-            if (
-                hint is _typing.ClassVar
-                or getattr(hint, "__origin__", None) is _typing.ClassVar
-            ):
-                return True
-    return False
 
 
 def is_type(hint, t):
