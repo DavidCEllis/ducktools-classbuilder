@@ -50,6 +50,11 @@ def test_inner_outer_ref():
     assert annos['b_val'].as_str == "global_type"
     assert annos['c_val'].as_str == "hyper_type"
 
+    # Check they evaluate to the correct values
+    assert annos['a_val'].evaluate() is str
+    assert annos['b_val'].evaluate() is int
+    assert annos['c_val'].evaluate() is float
+
 
 def test_inner_outer_ref_resolved():
     # If types can be resolved - they are resolved
@@ -69,10 +74,9 @@ def test_inner_outer_ref_resolved():
 
     annos = make_func()
 
-    assert annos['a_val'] == str
-    assert annos['b_val'] == int
-    assert annos['c_val'] == float
-
+    assert annos['a_val'] is str
+    assert annos['b_val'] is int
+    assert annos['c_val'] is float
 
 
 def test_func_annotations():
@@ -80,42 +84,39 @@ def test_func_annotations():
         return ''
 
     annos = get_func_annotations(forwardref_func)
-    expected = {
-        'x': "unknown",
-        'return': "str",
-    }
+
     assert annos['x'].as_str == "unknown"
     assert annos['return'].as_str == "str"
 
 
-def test_ns_annotations():
-    # The 3.14 annotations version of test_ns_annotations
-    CV = ClassVar
+class TestClassVar:
+    def test_ns_annotations_no_refs(self):
+        # The 3.14 annotations version of test_ns_annotations
+        CV = ClassVar
 
-    class AnnotatedClass:
-        a: str
-        b: "str"
-        c: list[str]
-        d: "list[str]"
-        e: ClassVar[str]
-        f: "ClassVar[str]"
-        g: "ClassVar[forwardref]"
-        h: "Annotated[ClassVar[str], '']"
-        i: "Annotated[ClassVar[forwardref], '']"
-        j: "CV[str]"
+        class AnnotatedClass:
+            a: str
+            b: "str"
+            c: list[str]
+            d: "list[str]"
+            e: ClassVar[str]
+            f: "ClassVar[str]"
+            g: "ClassVar[forwardref]"
+            h: "Annotated[ClassVar[str], '']"
+            i: "Annotated[ClassVar[forwardref], '']"
+            j: "CV[str]"
 
-    annos = get_ns_annotations(vars(AnnotatedClass))
+        annos = get_ns_annotations(vars(AnnotatedClass))
 
-    assert annos == {
-        'a': str,
-        'b': "str",
-        'c': list[str],
-        'd': "list[str]",
-        'e': ClassVar[str],
-        'f': "ClassVar[str]",
-        'g': "ClassVar[forwardref]",
-        'h': "Annotated[ClassVar[str], '']",
-        'i': "Annotated[ClassVar[forwardref], '']",
-        'j': "CV[str]",
-    }
-
+        assert annos == {
+            'a': str,
+            'b': "str",
+            'c': list[str],
+            'd': "list[str]",
+            'e': ClassVar[str],
+            'f': "ClassVar[str]",
+            'g': "ClassVar[forwardref]",
+            'h': "Annotated[ClassVar[str], '']",
+            'i': "Annotated[ClassVar[forwardref], '']",
+            'j': "CV[str]",
+        }
