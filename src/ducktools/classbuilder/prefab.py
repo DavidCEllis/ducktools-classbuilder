@@ -32,9 +32,9 @@ __lazy_modules__ = [
 import sys
 
 try:
-    from _types import GenericAlias, NoneType  # type: ignore
+    from _types import GenericAlias, NoneType, MappingProxyType  # type: ignore
 except ImportError:
-    from types import GenericAlias, NoneType
+    from types import GenericAlias, NoneType, MappingProxyType
 
 # fmt: off
 from . import (
@@ -50,13 +50,13 @@ from . import (
 
 from .constants import (
     FIELD_NOTHING,
+    INTERNALS_DICT,
     NOTHING,
     KW_ONLY as KW_ONLY,
 )
 from .functions import (
     build_completed,
     get_flags,
-    get_fields,
 )
 from .methods import (
     GeneratedCode,
@@ -122,10 +122,15 @@ def get_attributes(cls, *, local=False):
     :param cls: class built with _make_prefab
     :return: dict[str, Attribute] of all gathered attributes
     """
-    attributes = {
-        k: v if isinstance(v, Attribute) else Attribute.from_field(v)
-        for k, v in get_fields(cls, local=local).items()
-    }
+    key = "local_fields" if local else "fields"
+    try:
+        attributes = MappingProxyType({
+            k: v if isinstance(v, Attribute) else Attribute.from_field(v)
+            for k, v in cls.__dict__[INTERNALS_DICT][key].items()
+        })
+    except (AttributeError, KeyError):
+        raise TypeError(f"{cls} is not a classbuilder generated class")
+
     return attributes
 
 
