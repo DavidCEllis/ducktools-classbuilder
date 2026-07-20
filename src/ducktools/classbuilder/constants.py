@@ -21,9 +21,9 @@
 # SOFTWARE.
 
 # Change this name if you make heavy modifications
-INTERNALS_DICT = "__classbuilder_internals__"
-META_GATHERER_NAME = "__classbuilder_meta_gatherer__"
-GATHERED_DATA = "__classbuilder_gathered_fields__"
+INTERNALS_DICT = "_classbuilder_internals_"
+META_GATHERER_NAME = "_classbuilder_meta_gatherer_"
+GATHERED_DATA = "_classbuilder_gathered_fields_"
 
 # Special Cache name
 REPLACE_NAME = "_classbuilder_cache_names_"
