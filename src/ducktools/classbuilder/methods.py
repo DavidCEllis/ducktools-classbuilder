@@ -1110,16 +1110,15 @@ def add_methods(cls, methods, *, internals=None):
         except KeyError:
             raise TypeError(f"{cls} is not a classbuilder generated class")
 
-    existing_methods = internals.get("methods", {})
     new_methods = {}
 
     for method in methods:
         method.attach(cls)
         new_methods[method.funcname] = method
 
-    all_methods = _MappingProxyType(existing_methods | new_methods)
+    if (existing_methods := internals.get("methods")) is not None:
+        existing_methods |= new_methods
+    else:
+        internals["methods"] = new_methods
 
-    # Update the internals dict
-    internals["methods"] = all_methods
-
-    return all_methods
+    return _MappingProxyType(internals["methods"])
