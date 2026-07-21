@@ -15,8 +15,6 @@ class Slotted(ducktools.classbuilder.prefab.Prefab)
  |
  |  Methods defined here:
  |
- |  __classbuilder_meta_gatherer__ = field_unified_gatherer(cls_or_ns) from ducktools.classbuilder.make_unified_gatherer.<locals>
- |
  |  __eq__(self, other) from Slotted
  |
  |  __init__(
@@ -41,10 +39,6 @@ class Slotted(ducktools.classbuilder.prefab.Prefab)
  |  Data and other attributes defined here:
  |
  |  PREFAB_FIELDS = ['the_answer', 'the_question']
- |
- |  __classbuilder_gathered_fields__ = ({'the_answer': Attribute(default=4...
- |
- |  __classbuilder_internals__ = {'build_complete': True, 'fields': {'the_...
  |
  |  __hash__ = None
  |

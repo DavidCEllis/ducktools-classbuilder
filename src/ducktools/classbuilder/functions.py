@@ -20,6 +20,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+try:
+    from _types import (  # type: ignore
+        MappingProxyType as _MappingProxyType,
+    )
+except ImportError:  # pragma: no cover
+    from types import (
+        MappingProxyType as _MappingProxyType,
+    )
+
 from .constants import INTERNALS_DICT
 
 def build_completed(cls):
@@ -47,7 +56,7 @@ def get_fields(cls, *, local=False):
     """
     key = "local_fields" if local else "fields"
     try:
-        return cls.__dict__[INTERNALS_DICT][key]
+        return  _MappingProxyType(cls.__dict__[INTERNALS_DICT][key])
     except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
@@ -61,7 +70,7 @@ def get_flags(cls):
     :return: dictionary of keys and flag values
     """
     try:
-        return cls.__dict__[INTERNALS_DICT]["flags"]
+        return _MappingProxyType(cls.__dict__[INTERNALS_DICT]["flags"])
     except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
@@ -75,7 +84,7 @@ def get_methods(cls):
     :return: dict of generated methods attached to the class by name
     """
     try:
-        return cls.__dict__[INTERNALS_DICT]["methods"]
+        return _MappingProxyType(cls.__dict__[INTERNALS_DICT]["methods"])
     except (AttributeError, KeyError):
         raise TypeError(f"{cls} is not a classbuilder generated class")
 
