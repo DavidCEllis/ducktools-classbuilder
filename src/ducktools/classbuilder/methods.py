@@ -420,7 +420,10 @@ class _CacheStats:
         return 100
 
     def __repr__(self):
-        return f"<CacheStats; hits: {self.hits}, misses: {self.misses}; {self.hit_percent:.1f}% cache hits; uncacheable: {self.skips}>"
+        return (
+            f"<CacheStats; hits: {self.hits}, misses: {self.misses}; "
+            f"{self.hit_percent:.1f}% cache hits; uncacheable: {self.skips}>"
+        )
 
 
 class _SimpleCache:
