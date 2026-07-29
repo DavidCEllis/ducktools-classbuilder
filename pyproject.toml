@@ -33,14 +33,14 @@ dependencies = [
 [dependency-groups]
 dev = [
     {include-group = "test"},
-    {include-group = "type-checking"},
+    {include-group = "type-check"},
 ]
 test = [
     "pytest>=9.1",
     "pytest-cov>=7.1",
     "coverage-simple-excludes>=1.1",
 ]
-type-checking = [
+type-check = [
     "mypy>=2.3; platform_python_implementation == 'CPython'",
     "typing-extensions>=4.16",
 ]
