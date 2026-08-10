@@ -206,12 +206,15 @@ def builder(
     # Assign all of the method generators
     internal_methods = add_methods(cls, methods, internals=internals)
 
-    if "__eq__" in internal_methods and "__hash__" not in internal_methods:
+    if (
+        "__eq__" in internal_methods
+        and "__hash__" not in internal_methods
+        and "__hash__" not in cls.__dict__
+    ):
         # If an eq method has been defined and a hash method has not
         # Then the class is not frozen unless the user has
         # defined a hash method
-        if "__hash__" not in cls.__dict__:
-            setattr(cls, "__hash__", None)
+        cls.__hash__ = None
 
     # Add attribute indicating build completed
     internals["build_complete"] = True
@@ -376,21 +379,24 @@ class SlotMakerMeta(type):
             # Dict access is faster if there is a __dict__ available.
             cached_properties = {}
 
-            if "__dict__" not in slot_values and "__dict__" not in base_attribs:
-                # Don't import functools
-                if functools := sys.modules.get("functools"):
-                    # Iterate over a copy as we will mutate the original
-                    for k, v in ns.copy().items():
-                        if isinstance(v, functools.cached_property):
-                            cached_properties[k] = v
-                            del ns[k]
-                            # Add to slots only if it is not already a slot
-                            slot_attrib = base_attribs.get(k, NOTHING)
-                            if (
-                                slot_attrib is NOTHING
-                                or type(slot_attrib) not in existing_slot_types
-                            ):
-                                slot_values[k] = None
+            # Check for cached properties - don't import functools if it's not imported
+            if (
+                (functools := sys.modules.get("functools"))
+                and "__dict__" not in slot_values
+                and "__dict__" not in base_attribs
+            ):
+                # Iterate over a copy as we will mutate the original
+                for k, v in ns.copy().items():
+                    if isinstance(v, functools.cached_property):
+                        cached_properties[k] = v
+                        del ns[k]
+                        # Add to slots only if it is not already a slot
+                        slot_attrib = base_attribs.get(k, NOTHING)
+                        if (
+                            slot_attrib is NOTHING
+                            or type(slot_attrib) not in existing_slot_types
+                        ):
+                            slot_values[k] = None
 
             # Place slots *after* everything else to be safe
             ns["__slots__"] = slot_values
@@ -404,9 +410,9 @@ class SlotMakerMeta(type):
             # Now reconstruct cached properties
             if cached_properties:
                 # Now the class and slots have been created, create any new cached properties
-                for name, prop in cached_properties.items():
+                for attrname, prop in cached_properties.items():
                     # This may be inherited, which is fine
-                    slot = getattr(new_cls, name)
+                    slot = getattr(new_cls, attrname)
 
                     # May be a replaced cached property already, if so extract the actual slot
                     if isinstance(slot, _SlottedCachedProperty):
@@ -415,10 +421,10 @@ class SlotMakerMeta(type):
                     slotted_property = _SlottedCachedProperty(
                         slot=slot,
                         func=prop.func,
-                        attrname=name,
+                        attrname=attrname,
                     )
 
-                    setattr(new_cls, name, slotted_property)
+                    setattr(new_cls, attrname, slotted_property)
 
         else:
             if gatherer is not None:
@@ -569,7 +575,7 @@ class Field(metaclass=SlotMakerMeta):
         """
         # type is special cased to get the internal value
         inst_fields = {
-            k: getattr(fld, k) if k != "type" else getattr(fld, "_type")
+            k: getattr(fld, k) if k != "type" else fld._type
             for k in get_fields(type(fld))
         }
         argument_dict = {**inst_fields, **kwargs}
@@ -803,8 +809,7 @@ def make_field_gatherer(
 
         cls_modifications = {}
 
-        for name in cls_attributes.keys():
-            attrib = cls_attributes[name]
+        for name, attrib in cls_attributes.items():
             if leave_default_values:
                 cls_modifications[name] = attrib.default
             else:

@@ -67,12 +67,9 @@ def is_type(hint, t):
 
         # Strip `Annotated`
         if _get_origin(hint) is _Annotated:
-            hint = hint.__origin__
+            hint = hint.__origin__  # type: ignore
 
-    if hint is t or getattr(hint, "__origin__", None) is t:
-        return True
-
-    return False
+    return (hint is t or getattr(hint, "__origin__", None) is t)
 
 
 def replace_generic_with_arg(hint):

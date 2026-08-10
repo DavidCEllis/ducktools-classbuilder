@@ -24,7 +24,7 @@ import sys
 import typing
 import types
 
-_CopiableMappings = dict[str, typing.Any] | types.MappingProxyType[str, typing.Any]
+type _CopiableMappings = dict[str, typing.Any] | types.MappingProxyType[str, typing.Any]
 
 def get_func_annotations(
     func: types.FunctionType,
