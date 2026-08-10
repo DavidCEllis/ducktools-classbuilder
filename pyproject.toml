@@ -92,3 +92,10 @@ exclude-newer-package = { reannotate = "1 hour" }
 
 [tool.ruff]
 extend-exclude = ["src/ducktools/classbuilder/_cached_methods.py"]
+
+[tool.ruff.lint]
+ignore = ["BLE001", "I001", "PLC0414", "RUF023", "S102"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"*.pyi" = ["PYI042"]
+"src/ducktools/classbuilder/constants.py" = ["RUF012"]  # Non-annotated dict

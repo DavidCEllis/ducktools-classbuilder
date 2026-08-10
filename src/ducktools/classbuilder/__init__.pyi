@@ -35,17 +35,16 @@ if sys.version_info >= (3, 14):
     import reannotate
     import annotationlib
 
-    _private_type = reannotate.DeferredAnnotation | type | str
-    _field_type = annotationlib.ForwardRef | type | str
+    type _private_type = reannotate.DeferredAnnotation | type | str
+    type _field_type = annotationlib.ForwardRef | type | str
 else:
-    _private_type = _field_type = type | str
+    type _private_type = type | str
+    type _field_type =  type | str
 
-_CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
+type _CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
 
-_T = typing.TypeVar("_T")
-_FieldType = typing.TypeVar("_FieldType", bound=Field)
-_gatherer_argtype = type | _CopiableMappings
-_gatherer_returntype = tuple[dict[str, Field], dict[str, typing.Any]]
+type _gatherer_argtype = type | _CopiableMappings
+type _gatherer_returntype = tuple[dict[str, Field], dict[str, typing.Any]]
 
 __version__: str
 __version_tuple__: tuple[str | int, ...]
@@ -59,7 +58,10 @@ class GetFieldsProtocol(typing.Protocol):
 @typing.type_check_only
 class NoArgGathererProtocol(typing.Protocol):
     def __call__(
-        self, cls_or_ns: _gatherer_argtype, *, cls_annotations: None | dict[str, typing.Any]
+        self,
+        cls_or_ns: _gatherer_argtype,
+        *,
+        cls_annotations: None | dict[str, typing.Any]
     ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 
 @typing.type_check_only
@@ -69,39 +71,39 @@ class NoArgAnnotationGathererProtocol(typing.Protocol):
     ) -> tuple[dict[str, Field], dict[str, typing.Any]]: ...
 
 @typing.type_check_only
-class GathererProtocol(typing.Protocol, typing.Generic[_FieldType]):
+class GathererProtocol[FT: Field](typing.Protocol):
     def __call__(
         self,
         cls_or_ns: _gatherer_argtype,
-    ) -> tuple[dict[str, _FieldType], dict[str, typing.Any]]: ...
+    ) -> tuple[dict[str, FT], dict[str, typing.Any]]: ...
 
 @typing.type_check_only
-class AnnotationGathererProtocol(typing.Protocol, typing.Generic[_FieldType]):
+class AnnotationGathererProtocol[FT: Field](typing.Protocol):
     def __call__(
         self,
         cls_or_ns: _gatherer_argtype,
         *,
         cls_annotations: None | dict[str, typing.Any],
-    ) -> tuple[dict[str, _FieldType], dict[str, typing.Any]]: ...
+    ) -> tuple[dict[str, FT], dict[str, typing.Any]]: ...
 
 
 default_methods: frozenset[MethodMaker]
 
-_TypeT = typing.TypeVar("_TypeT", bound=type)
+# _TypeT = typing.TypeVar("_TypeT", bound=type)
 
 # Construction functions
 @typing.overload
-def builder(
-    cls: _TypeT,
+def builder[TypeT: type](
+    cls: TypeT,
     /,
     *,
     gatherer: GathererProtocol[Field] | NoArgGathererProtocol,
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
     field_getter: GetFieldsProtocol = ...,
-) -> _TypeT: ...
+) -> TypeT: ...
 @typing.overload
-def builder(
+def builder[TypeT: type](
     cls: None = None,
     /,
     *,
@@ -109,13 +111,13 @@ def builder(
     methods: frozenset[MethodMaker] | set[MethodMaker],
     flags: dict[str, bool] | None = None,
     field_getter: GetFieldsProtocol = ...,
-) -> Callable[[_TypeT], _TypeT]: ...
+) -> Callable[[TypeT], TypeT]: ...
 
 class SlotFields(dict): ...
 
-class SlotMakerMeta(type):
+class SlotMakerMeta[TypeT: type](type):
     def __new__(
-        cls: type[_TypeT],
+        cls: type[TypeT],
         name: str,
         bases: tuple[type, ...],
         ns: dict[str, typing.Any],
@@ -123,10 +125,10 @@ class SlotMakerMeta(type):
         gatherer: GathererProtocol | None = ...,
         ignore_annotations: bool | None = ...,
         **kwargs: typing.Any,
-    ) -> _TypeT: ...
+    ) -> TypeT: ...
 
 class GatheredFields:
-    __slots__: tuple[str, ...]
+    __slots__: tuple[str, ...] = ...
 
     fields: dict[str, Field]
     modifications: dict[str, typing.Any]
@@ -134,7 +136,6 @@ class GatheredFields:
     def __init__(
         self, fields: dict[str, Field], modifications: dict[str, typing.Any]
     ) -> None: ...
-    def __repr__(self) -> str: ...
     def __eq__(self, other) -> bool: ...
     def __call__(
         self, cls_or_ns: _gatherer_argtype,
@@ -153,7 +154,7 @@ class Field(metaclass=SlotMakerMeta):
     compare: bool
     kw_only: bool
 
-    __slots__: dict[str, str]
+    __slots__: typing.ClassVar[dict[str, str]] = ...
     __classbuilder_internals__: dict
 
     def __init__(
@@ -169,7 +170,6 @@ class Field(metaclass=SlotMakerMeta):
         kw_only: bool = ...,
     ) -> None: ...
     def __init_subclass__(cls, frozen: bool = ..., ignore_annotations: bool = ...): ...
-    def __repr__(self) -> str: ...
     def __eq__(self, other: Field | object) -> bool: ...
     def __replace__(self, **kwargs) -> typing.Self: ...
     def validate_field(self) -> None: ...
@@ -181,47 +181,27 @@ class Field(metaclass=SlotMakerMeta):
 
 # These types only exist because type[Field] doesn't seem to resolve correctly
 # Technically they're wrong as `isinstance` gets used
-_ReturnsField = Callable[..., Field]
 
 # Gatherers
-@typing.overload
 def make_slot_gatherer(
-    field_type: _ReturnsField = ...,
-) -> NoArgGathererProtocol: ...
-@typing.overload
-def make_slot_gatherer(
-    field_type: type[_FieldType],
-) -> GathererProtocol[_FieldType]: ...
-@typing.overload
+    field_type: type[Field] = ...,
+) -> GathererProtocol[Field]: ...
+
 def make_annotation_gatherer(
-    field_type: _ReturnsField = ...,
+    field_type: type[Field] = ...,
     leave_default_values: bool = False,
-) -> NoArgAnnotationGathererProtocol: ...
-@typing.overload
-def make_annotation_gatherer(
-    field_type: type[_FieldType],
-    leave_default_values: bool = False,
-) -> AnnotationGathererProtocol[_FieldType]: ...
-@typing.overload
+) -> AnnotationGathererProtocol[Field]: ...
+
 def make_field_gatherer(
-    field_type: _ReturnsField = ...,
+    field_type: type[Field] = ...,
     leave_default_values: bool = False,
-) -> NoArgGathererProtocol: ...
-@typing.overload
-def make_field_gatherer(
-    field_type: type[_FieldType],
-    leave_default_values: bool = False,
-) -> GathererProtocol[_FieldType]: ...
-@typing.overload
+) -> GathererProtocol[Field]: ...
+
 def make_unified_gatherer(
-    field_type: _ReturnsField = ...,
+    field_type: type[Field] = ...,
     leave_default_values: bool = ...,
-) -> NoArgGathererProtocol: ...
-@typing.overload
-def make_unified_gatherer(
-    field_type: type[_FieldType],
-    leave_default_values: bool = ...,
-) -> GathererProtocol[_FieldType]: ...
+) -> GathererProtocol[Field]: ...
+
 def slot_gatherer(cls_or_ns: type | _CopiableMappings) -> _gatherer_returntype: ...
 def annotation_gatherer(
     cls_or_ns: type | _CopiableMappings,
@@ -232,22 +212,22 @@ def unified_gatherer(cls_or_ns: type | _CopiableMappings) -> _gatherer_returntyp
 def check_argument_order(cls: type) -> None: ...
 
 # Generic replace function
-def replace(obj: _T, /, **changes: typing.Any) -> _T: ...
+def replace[T](obj: T, /, **changes: typing.Any) -> T: ...
 
 # Basic slotclass example
 @typing.overload
-def slotclass(
-    cls: _TypeT,
+def slotclass[TypeT: type](
+    cls: TypeT,
     /,
     *,
     methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
     syntax_check: bool = True,
-) -> _TypeT: ...
+) -> TypeT: ...
 @typing.overload
-def slotclass(
+def slotclass[TypeT: type](
     cls: None = None,
     /,
     *,
     methods: frozenset[MethodMaker] | set[MethodMaker] = default_methods,
     syntax_check: bool = True,
-) -> Callable[[_TypeT], _TypeT]: ...
+) -> Callable[[TypeT], TypeT]: ...

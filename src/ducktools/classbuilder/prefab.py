@@ -29,8 +29,6 @@ __lazy_modules__ = [
     "ducktools.classbuilder.annotations",
 ]
 
-import sys
-
 try:
     from _types import GenericAlias, NoneType, MappingProxyType  # type: ignore
 except ImportError:
@@ -52,7 +50,7 @@ from .constants import (
     FIELD_NOTHING,
     INTERNALS_DICT,
     NOTHING,
-    KW_ONLY as KW_ONLY,
+    KW_ONLY as KW_ONLY,  # re-export
 )
 from .functions import (
     build_completed,
@@ -240,12 +238,12 @@ def init_generator(cls, funcname="__init__"):
                 kw_only_arglist.append(arg)
             else:
                 pos_arglist.append(arg)
-        # Not in init, but need to set defaults
         else:
+            # Not in init, but need to set defaults
             if attrib.default is not NOTHING:
                 if type(attrib.default) not in LITERAL_TYPES:
                     globs[f"_{name}_default"] = attrib.default
-            elif attrib.default_factory is not NOTHING:
+            elif attrib.default_factory is not NOTHING:  # ruff: ignore[SIM102]  # written to match the DEFAULT condition
                 if attrib.default_factory not in LITERAL_CONTAINERS:
                     globs[f"_{name}_factory"] = attrib.default_factory
 
@@ -591,7 +589,7 @@ def _prefab_preprocess(
                     raise TypeError("Cannot inherit non-frozen prefab from a frozen one")
 
     slots = cls_dict.get("__slots__")
-    slotted = False if slots is None else True
+    slotted = slots is not None
 
     if gathered_fields is not None:
         gatherer = gathered_fields
@@ -703,23 +701,21 @@ def _prefab_postprocess(cls, /, *, fields, kw_only):
 
     # Error check: After inheritance,
     for name, attrib in fields.items():
-        if not kw_only:
+        if (not kw_only and attrib.init and not attrib.kw_only):
             # Syntax check arguments for __init__ don't have non-default after default
-            if attrib.init and not attrib.kw_only:
-                if attrib.default is not NOTHING or attrib.default_factory is not NOTHING:
-                    default_defined.append(name)
-                else:
-                    if default_defined:
-                        names = ", ".join(default_defined)
+            if attrib.default is not NOTHING or attrib.default_factory is not NOTHING:
+                default_defined.append(name)
+            else:
+                if default_defined:
+                    names = ", ".join(default_defined)
 
-                        err = SyntaxError(
-                            "non-default argument follows default argument"
-                        )
-                        if sys.version_info >= (3, 11):
-                            err.add_note(f"defaults: {names}")
-                            err.add_note(f"non_default after default: {name}")
+                    err = SyntaxError(
+                        "non-default argument follows default argument"
+                    )
+                    err.add_note(f"defaults: {names}")
+                    err.add_note(f"non_default after default: {name}")
 
-                        raise err
+                    raise err
 
 
 def _make_prefab(
@@ -791,11 +787,7 @@ def _make_prefab(
 
     setattr(cls, PREFAB_FIELDS, list(fields.keys()))
     if match_args and "__match_args__" not in cls.__dict__:
-        setattr(
-            cls,
-            "__match_args__",
-            tuple(k for k, v in fields.items() if v.init)
-        )
+        cls.__match_args__ = tuple(k for k, v in fields.items() if v.init)
 
     # Post construction checks
     _prefab_postprocess(cls, kw_only=kw_only, fields=fields)
@@ -851,9 +843,8 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
             # Remove the value of slotted if it exists
             flags.pop("slotted", None)
 
-        for k in default_values:
+        for k, default in default_values.items():
             kwarg_value = kwargs.pop(k, None)
-            default = default_values[k]
 
             if kwarg_value is not None:
                 flags[k] = kwarg_value

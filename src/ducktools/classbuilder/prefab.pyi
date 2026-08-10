@@ -23,10 +23,9 @@ __lazy_modules__: list[str]
 
 import typing
 from types import GenericAlias, MappingProxyType
-from typing_extensions import dataclass_transform
+from typing import dataclass_transform
 
-# Suppress weird pylance error
-from collections.abc import Callable  # type: ignore
+from collections.abc import Callable
 
 from . import (
     Field,
@@ -47,8 +46,6 @@ from .constants import (
 from .methods import GeneratedCode, MethodMaker
 
 
-_T = typing.TypeVar("_T")
-
 PREFAB_FIELDS: str
 PREFAB_INIT_FUNC: str
 PRE_INIT_FUNC: str
@@ -57,13 +54,11 @@ POST_INIT_FUNC: str
 LITERAL_TYPES: frozenset[type]
 LITERAL_CONTAINERS: frozenset[type]
 
-_CopiableMappings = dict[str, typing.Any] | MappingProxyType[str, typing.Any]
-
 class PrefabError(Exception): ...
 
-class InitParam(typing.Any):
+class InitParam[T](typing.Any):
     def __class_getitem__(cls, t: type) -> GenericAlias: ...
-    def __new__(cls, arg: _T) -> _T: ...  # type: ignore
+    def __new__(cls, arg: T) -> T: ...  # type: ignore
 
 def get_attributes(cls: type, *, local: bool = ...) -> dict[str, Attribute]: ...
 
@@ -86,7 +81,7 @@ iter_maker: MethodMaker
 asdict_maker: MethodMaker
 
 class Attribute(Field):
-    __slots__: dict
+    __slots__: typing.ClassVar[dict[str, str]] = ...
     __classbuilder_gathered_fields__: tuple[dict[str, Field], dict[str, typing.Any]]
     __classbuilder_meta_gatherer__: GathererProtocol
 
@@ -110,14 +105,13 @@ class Attribute(Field):
         metadata: dict | None = ...,
     ) -> None: ...
 
-    def __repr__(self) -> str: ...
     def __eq__(self, other: Attribute | object) -> bool: ...
     def validate_field(self) -> None: ...
 
 @typing.overload
-def attribute(
+def attribute[T](
     *,
-    default: _T,
+    default: T,
     default_factory: _NothingType = NOTHING,
     init: bool = ...,
     repr: bool = ...,
@@ -130,13 +124,13 @@ def attribute(
     doc: str | None = ...,
     metadata: dict | None = ...,
     type: type | _NothingType = ...,
-) -> _T: ...
+) -> T: ...
 
 @typing.overload
-def attribute(
+def attribute[T](
     *,
     default: _NothingType = NOTHING,
-    default_factory: Callable[[], _T],
+    default_factory: Callable[[], T],
     init: bool = ...,
     repr: bool = ...,
     compare: bool = ...,
@@ -148,7 +142,7 @@ def attribute(
     doc: str | None = ...,
     metadata: dict | None = ...,
     type: type | _NothingType = ...,
-) -> _T: ...
+) -> T: ...
 
 @typing.overload
 def attribute(
@@ -213,40 +207,10 @@ class Prefab(metaclass=SlotMakerMeta):
 # As far as I can tell these are the correct types
 # But mypy.stubtest crashes trying to analyse them
 # Due to the combination of overload and dataclass_transform
-# @typing.overload
-# def prefab(
-#     cls: None = None,
-#     *,
-#     init: bool = ...,
-#     repr: bool = ...,
-#     eq: bool = ...,
-#     iter: bool = ...,
-#     match_args: bool = ...,
-#     kw_only: bool = ...,
-#     frozen: bool = ...,
-#     dict_method: bool = ...,
-# ) -> Callable[[type[_T]], type[_T]]: ...
-
-# @dataclass_transform(field_specifiers=(Attribute, attribute))
-# @typing.overload
-# def prefab(
-#     cls: type[_T],
-#     *,
-#     init: bool = ...,
-#     repr: bool = ...,
-#     eq: bool = ...,
-#     iter: bool = ...,
-#     match_args: bool = ...,
-#     kw_only: bool = ...,
-#     frozen: bool = ...,
-#     dict_method: bool = ...,
-# ) -> type[_T]: ...
-
-# As mypy crashes, and the only difference is the return type
-# just return `Any` for now to avoid the overload.
 @dataclass_transform(field_specifiers=(Attribute, attribute))
-def prefab(
-    cls: type[_T] | None = ...,
+@typing.overload
+def prefab[T](
+    cls: None = None,
     *,
     init: bool = ...,
     repr: bool = ...,
@@ -260,7 +224,26 @@ def prefab(
     dict_method: bool = ...,
     gatherer: GathererProtocol[Attribute] = ...,
     ignore_annotations: bool = ...,
-) -> typing.Any: ...
+) -> Callable[[type[T]], type[T]]: ...
+
+@dataclass_transform(field_specifiers=(Attribute, attribute))
+@typing.overload
+def prefab[T](
+    cls: type[T],
+    *,
+    init: bool = ...,
+    repr: bool = ...,
+    eq: bool = ...,
+    order: bool = ...,
+    iter: bool = ...,
+    match_args: bool = ...,
+    kw_only: bool = ...,
+    frozen: bool = ...,
+    replace: bool = ...,
+    dict_method: bool = ...,
+    gatherer: GathererProtocol[Attribute] = ...,
+    ignore_annotations: bool = ...,
+) -> type[T]: ...
 
 def build_prefab(
     class_name: str,
