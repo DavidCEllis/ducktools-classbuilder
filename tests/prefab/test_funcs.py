@@ -33,6 +33,13 @@ def test_is_prefab():
     assert is_prefab(Coordinate(1, 1))
 
 
+def test_non_prefab_subclass_not_prefab():
+    class CoordinateSub(Coordinate):
+        pass
+
+    assert not is_prefab(CoordinateSub)
+
+
 def test_is_prefab_instance():
     # 'Coordinate' is not a prefab instance, it is a class
     assert not is_prefab_instance(Coordinate)
