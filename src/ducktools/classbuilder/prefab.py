@@ -1035,7 +1035,7 @@ def is_prefab(o):
     :return: True/False
     """
     cls = o if isinstance(o, type) else type(o)
-    return hasattr(cls, PREFAB_FIELDS)
+    return PREFAB_FIELDS in cls.__dict__
 
 
 def is_prefab_instance(o):
@@ -1048,7 +1048,7 @@ def is_prefab_instance(o):
     :param o: object for comparison
     :return: True/False
     """
-    return hasattr(type(o), PREFAB_FIELDS)
+    return PREFAB_FIELDS in type(o).__dict__
 
 
 def as_dict(o):
@@ -1060,7 +1060,7 @@ def as_dict(o):
     :return: dictionary of {k: v} from fields
     """
     cls = type(o)
-    if not hasattr(cls, PREFAB_FIELDS):
+    if PREFAB_FIELDS not in cls.__dict__:
         raise TypeError(f"{o!r} should be a prefab instance, not {cls}")
 
     # Attempt to use the generated method if available
