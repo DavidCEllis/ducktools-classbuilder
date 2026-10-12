@@ -1,9 +1,9 @@
 [build-system]
 requires = [
-    "setuptools>=64",
-    "setuptools-scm>=8",
+    "hatchling>=1.32",
+    "hatch-vcs>=0.5",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "hatchling.build"
 
 [project]
 name = "ducktools-classbuilder"
@@ -12,6 +12,7 @@ authors = [
     { name = "David C Ellis" },
 ]
 license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.12"
 classifiers = [
@@ -55,12 +56,22 @@ docs = [
     "sphinx_rtd_theme>=3.1",
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/ducktools"]
 
-[tool.setuptools_scm]
-version_file = "src/ducktools/classbuilder/_version.py"
-version_file_template = """
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/.github", # Don't include github files in the sdist
+    "/scratch",
+    "uv.lock",  # The lockfile is not part of the sdist
+]
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/ducktools/classbuilder/_version.py"
+template = """
 __version__ = "{version}"
 __version_tuple__ = {version_tuple}
 """
@@ -89,6 +100,7 @@ disable_error_code = ["annotation-unchecked"]
 [tool.uv]
 exclude-newer = "1 week"
 exclude-newer-package = { reannotate = "1 hour" }
+reinstall-package = ["ducktools-classbuilder"]
 
 [tool.ruff]
 extend-exclude = ["src/ducktools/classbuilder/_cached_methods.py"]
