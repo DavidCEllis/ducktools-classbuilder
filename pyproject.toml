@@ -67,6 +67,7 @@ exclude = [
     "/.*", # Ignore all . prefixed files and folders
     "/perf",
     "/scratch",
+    "/scripts",
     "uv.lock",  # The lockfile is not part of the sdist
 ]
 
