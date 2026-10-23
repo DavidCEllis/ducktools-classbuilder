@@ -27,6 +27,8 @@ class Slotted(ducktools.classbuilder.prefab.Prefab)
  |
  |  __repr__(self) from Slotted
  |
+ |  __rich_repr__(self) from Slotted
+ |
  |  ----------------------------------------------------------------------
  |  Data descriptors defined here:
  |
@@ -53,7 +55,7 @@ class Slotted(ducktools.classbuilder.prefab.Prefab)
  |      Use as a base class, slotted by default
  |
  |      :param init: generates __init__ if true or __prefab_init__ if false
- |      :param repr: generate __repr__
+ |      :param repr: generate __repr__ and __rich_repr__
  |      :param eq: generate __eq__
  |      :param iter: generate __iter__
  |      :param match_args: generate __match_args__

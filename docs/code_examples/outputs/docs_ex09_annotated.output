@@ -46,3 +46,10 @@ def __replace__(self, /, **changes):
 def __repr__(self):
     return f'{type(self).__qualname__}(x={self.x!r}, a={self.a!r}, c={self.c!r}, e={self.e!r}, f={self.f!r})'
 
+def __rich_repr__(self):
+    yield 'x', self.x
+    yield 'a', self.a, __classbuilder_a_default
+    yield 'c', self.c, __classbuilder_c_default
+    yield 'e', self.e
+    yield 'f', self.f, __classbuilder_f_default
+
