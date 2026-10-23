@@ -67,6 +67,7 @@ from .methods import (
     ge_maker, gt_maker, le_maker, lt_maker,
     hash_maker,
     replace_maker,
+    rich_repr_maker,
 
     # Cached generator tools
     counter_to_class_generator, get_counter_field_names,
@@ -460,7 +461,7 @@ class Attribute(Field, ignore_annotations=True):
     :param default_factory: 0 argument callable to give a default value
                             (for otherwise mutable defaults, eg: list)
     :param init: Include this attribute in the __init__ parameters
-    :param repr: Include this attribute in the class __repr__
+    :param repr: Include this attribute in the class __repr__ and __rich_repr__
     :param compare: Include this attribute in the class __eq__
     :param iter: Include this attribute in the class __iter__ if generated
     :param kw_only: Make this argument keyword only in init
@@ -497,7 +498,7 @@ def attribute(
     :param default_factory: 0 argument callable to give a default value
                             (for otherwise mutable defaults, eg: list)
     :param init: Include this attribute in the __init__ parameters
-    :param repr: Include this attribute in the class __repr__
+    :param repr: Include this attribute in the class __repr__ and __rich_repr__
     :param compare: Include this attribute in the class __eq__
     :param iter: Include this attribute in the class __iter__ if generated
     :param kw_only: Make this argument keyword only in init
@@ -604,6 +605,10 @@ def _prefab_preprocess(
 
     if repr and "__repr__" not in cls_dict:
         methods.add(repr_maker)
+
+    if repr and "__rich_repr__" not in cls_dict:
+        methods.add(rich_repr_maker)
+
     if eq and "__eq__" not in cls_dict:
         methods.add(eq_maker)
     if order:
@@ -740,7 +745,7 @@ def _make_prefab(
 
     :param cls: Class to convert to a prefab
     :param init: generate __init__
-    :param repr: generate __repr__
+    :param repr: generate __repr__ and __rich_repr__
     :param eq: generate __eq__
     :param iter: generate __iter__
     :param match_args: generate __match_args__
@@ -808,7 +813,7 @@ class Prefab(metaclass=SlotMakerMeta, gatherer=prefab_gatherer):
         Use as a base class, slotted by default
 
         :param init: generates __init__ if true or __prefab_init__ if false
-        :param repr: generate __repr__
+        :param repr: generate __repr__ and __rich_repr__
         :param eq: generate __eq__
         :param iter: generate __iter__
         :param match_args: generate __match_args__
@@ -887,7 +892,7 @@ def prefab(
 
     :param cls: Class to convert to a prefab
     :param init: generates __init__ if true or __prefab_init__ if false
-    :param repr: generate __repr__
+    :param repr: generate __repr__ and __rich_repr__
     :param eq: generate __eq__
     :param iter: generate __iter__
     :param match_args: generate __match_args__
@@ -965,7 +970,7 @@ def build_prefab(
     :param class_dict: Other values to add to the class dictionary on creation
                        This is the 'dict' parameter from 'type'
     :param init: generates __init__ if true or __prefab_init__ if false
-    :param repr: generate __repr__
+    :param repr: generate __repr__ and __rich_repr__
     :param eq: generate __eq__
     :param iter: generate __iter__
     :param match_args: generate __match_args__

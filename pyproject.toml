@@ -14,10 +14,9 @@ authors = [
 license = "MIT"
 license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3.15",
@@ -40,6 +39,7 @@ test = [
     "pytest>=9.1",
     "pytest-cov>=7.1",
     "coverage-simple-excludes>=1.1",
+    "rich>=15.0",
 ]
 type-check = [
     "mypy>=2.3; platform_python_implementation == 'CPython'",
@@ -47,7 +47,7 @@ type-check = [
 ]
 performance = [
     "attrs>=26.0",
-    "pydantic>=2.13; python_full_version < '3.15'",  # Don't bother building pydantic on unsupported python
+    "pydantic>=2.14",
     "msgspec>=0.21",
 ]
 docs = [

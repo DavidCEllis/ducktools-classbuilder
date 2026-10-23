@@ -16,13 +16,13 @@ def idfn(p: Path):
     return p.name
 
 @graalpy_fails
-class TestDocCodeRuns():
+class TestDocCodeRuns:
     @pytest.mark.parametrize("demo_script", SCRIPT_FILES, ids=idfn)
     def test_script_executes(self, demo_script):
         # Test that the script runs without erroring
         runpy.run_path(str(demo_script), run_name="__main__")
 
-    @pytest.mark.skipif(sys.version_info[:2] != (3, 14), reason="Only check outputs on latest Python")
+    @pytest.mark.skipif(sys.version_info[:2] != (3, 15), reason="Only check outputs on latest Python")
     @pytest.mark.parametrize("demo_script", SCRIPT_FILES, ids=idfn)
     def test_script_output(self, demo_script, capsys):
         runpy.run_path(str(demo_script), run_name="__main__")

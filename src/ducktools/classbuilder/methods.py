@@ -997,6 +997,32 @@ def class_hash_generator(cls, funcname="__hash__"):
     return generic_hash_generator(field_names, funcname=funcname)
 
 
+def class_rich_repr_generator(cls, funcname="__rich_repr__"):
+    fields = get_fields(cls)
+    content_lines = []
+    globs = {}
+    for name, attrib in fields.items():
+        if not attrib.repr:
+            continue
+        if attrib.default is not NOTHING:
+            globs[f"__classbuilder_{name}_default"] = attrib.default
+            content_lines.append(f"    yield {name!r}, self.{name}, __classbuilder_{name}_default")
+        elif attrib.default_factory is not NOTHING:
+            globs[f"__classbuilder_{name}_default"] = attrib.default_factory()  # type: ignore
+            content_lines.append(f"    yield {name!r}, self.{name}, __classbuilder_{name}_default")
+        else:
+            content_lines.append(f"    yield {name!r}, self.{name}")
+
+    if content_lines:
+        content = "\n".join(content_lines)
+    else:
+        # Yield an empty tuple if there are no lines
+        content = "    yield ()"
+
+    code = f"def {funcname}(self):\n{content}\n"
+    return GeneratedCode(code, globs=globs)
+
+
 # As only the __get__ method refers to the class we can use the same
 # Descriptor instances for every class.
 init_maker = MethodMaker(
@@ -1096,7 +1122,10 @@ hash_maker = MethodMaker(
         get_compare_args,
     ),
 )
-
+rich_repr_maker = MethodMaker(
+    "__rich_repr__",
+    class_rich_repr_generator,
+)
 
 def add_methods(cls, methods, *, internals=None):
     """

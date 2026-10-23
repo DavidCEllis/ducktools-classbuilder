@@ -276,6 +276,8 @@ def generic_hash_generator(
 ) -> GeneratedCode: ...
 def class_hash_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
 
+def class_rich_repr_generator(cls: type, funcname: str = ...) -> GeneratedCode: ...
+
 init_maker: MethodMaker
 repr_maker: MethodMaker
 eq_maker: MethodMaker
@@ -287,6 +289,7 @@ replace_maker: MethodMaker
 frozen_setattr_maker: MethodMaker
 frozen_delattr_maker: MethodMaker
 hash_maker: MethodMaker
+rich_repr_maker: MethodMaker
 
 def add_methods(
     cls: type,
